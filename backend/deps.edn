@@ -1,0 +1,10 @@
+{:paths ["src"]
+ :deps
+ {org.clojure/clojure {:mvn/version "1.11.3"}
+  http-kit/http-kit {:mvn/version "2.8.0"}
+  metosin/reitit-ring {:mvn/version "0.7.2"}
+  cheshire/cheshire {:mvn/version "5.13.0"}}
+
+ :aliases
+ {:server
+  {:main-opts ["-m" "fantasia.server"]}}}
