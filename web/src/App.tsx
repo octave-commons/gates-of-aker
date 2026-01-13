@@ -2,9 +2,19 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
 
 type Trace = Record<string, any>;
+type Agent = {
+  id: number;
+  pos: [number, number] | null;
+  role: string;
+  needs: Record<string, number>;
+  recall: Record<string, number>;
+  [key: string]: any;
+};
 
 const fmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+const hasPos = (agent?: Agent | null): agent is Agent & { pos: [number, number] } =>
+  !!agent && Array.isArray(agent.pos) && agent.pos.length === 2 && agent.pos.every((v) => typeof v === "number");
 
 export function App() {
   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
@@ -76,14 +86,16 @@ export function App() {
     ctx.clearRect(0, 0, W, H);
 
     ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = "#777";
     for (let x = 0; x < size; x++) {
       for (let y = 0; y < size; y++) {
         ctx.strokeRect(x * cell, y * cell, cell, cell);
       }
     }
     ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#111";
 
-    if (snapshot.shrine) {
+    if (Array.isArray(snapshot.shrine) && snapshot.shrine.length === 2) {
       const [sx, sy] = snapshot.shrine;
       ctx.fillRect(sx * cell + cell * 0.2, sy * cell + cell * 0.2, cell * 0.6, cell * 0.6);
     }
@@ -93,16 +105,31 @@ export function App() {
       ctx.strokeRect(selX * cell + 2, selY * cell + 2, cell - 4, cell - 4);
     }
 
+    const colorForRole = (role?: string) => {
+      switch (role) {
+        case "priest":
+          return "#d7263d";
+        case "knight":
+          return "#3366ff";
+        default:
+          return "#111";
+      }
+    };
+
     for (const agent of snapshot.agents ?? []) {
+      if (!hasPos(agent)) continue;
       const [ax, ay] = agent.pos;
       ctx.beginPath();
+      ctx.fillStyle = colorForRole(agent.role);
       ctx.arc(ax * cell + cell / 2, ay * cell + cell / 2, cell * 0.27, 0, Math.PI * 2);
       ctx.fill();
 
       if (agent.id === selectedAgentId) {
         ctx.beginPath();
+        ctx.strokeStyle = "#ffae00";
         ctx.arc(ax * cell + cell / 2, ay * cell + cell / 2, cell * 0.40, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.strokeStyle = "#111";
       }
     }
   }, [snapshot, selectedCell, selectedAgentId]);
@@ -135,7 +162,7 @@ export function App() {
 
   const recentEvents = snapshot?.["recent-events"] ?? snapshot?.recentEvents ?? snapshot?.recent_events ?? [];
   const mouthpieceId = snapshot?.levers?.["mouthpiece-agent-id"] ?? snapshot?.levers?.mouthpiece_agent_id ?? null;
-  const selectedAgent = selectedAgentId == null ? null : (snapshot?.agents ?? []).find((a: any) => a.id === selectedAgentId) ?? null;
+  const selectedAgent = selectedAgentId == null ? null : (snapshot?.agents ?? []).find((a: Agent) => a.id === selectedAgentId) ?? null;
   const attribution = snapshot?.attribution ?? {};
 
   const onCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -144,7 +171,7 @@ export function App() {
     const x = Math.floor(((event.clientX - rect.left) / rect.width) * 20);
     const y = Math.floor(((event.clientY - rect.top) / rect.height) * 20);
     setSelectedCell([x, y]);
-    const hit = (snapshot.agents ?? []).find((a: any) => a.pos[0] === x && a.pos[1] === y);
+    const hit = (snapshot.agents ?? []).find((a: Agent) => hasPos(a) && a.pos[0] === x && a.pos[1] === y);
     setSelectedAgentId(hit ? hit.id : null);
   };
 
@@ -206,11 +233,38 @@ export function App() {
         />
 
         <div style={{ marginTop: 12 }}>
-          <strong>Selection</strong>
+          <strong>Selected</strong>
           <pre style={{ whiteSpace: "pre-wrap" }}>
             {JSON.stringify({ selectedCell, selectedAgentId, mouthpieceId }, null, 2)}
           </pre>
         </div>
+
+        <div style={{ marginTop: 12 }}>
+          <strong>Selected agent details</strong>
+          <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(selectedAgent, null, 2)}</pre>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <strong>Agents ({(snapshot?.agents ?? []).length})</strong>
+          <div style={{ maxHeight: 220, overflowY: "auto", border: "1px solid #ccc", borderRadius: 8, padding: 8 }}>
+            {(snapshot?.agents ?? []).map((agent: Agent) => (
+              <div key={agent.id} style={{ padding: "4px 0", borderBottom: "1px solid #eee" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>
+                    #{agent.id} — {agent.role ?? "unknown"}
+                  </span>
+                  <span style={{ opacity: 0.6 }}>
+                    {hasPos(agent) ? `(${agent.pos[0]},${agent.pos[1]})` : "pos:n/a"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  top facets: {JSON.stringify(agent["top-facets"] ?? agent.topFacets ?? [])}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
 
         <div style={{ marginTop: 12 }}>
           <strong>Selected agent details</strong>

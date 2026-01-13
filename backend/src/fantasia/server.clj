@@ -3,7 +3,7 @@
   (:require
     [cheshire.core :as json]
     [clojure.string :as str]
-    [org.httpkit.server :as http]
+    [org.httpkit.server :as http :refer [with-channel send! on-close on-receive]]
     [reitit.ring :as ring]
     [fantasia.sim.core :as sim]))
 
@@ -55,50 +55,47 @@
 
 (defn handle-ws [req]
   (http/with-channel req ch
-    (let [channel ch]
-      (swap! *clients conj channel)
-      (ws-send! channel {:op "hello"
-                         :state (select-keys (sim/get-state) [:tick :shrine :levers])})
-      (http/on-close channel (fn [_] (swap! *clients disj channel)))
-      (http/on-receive
-        channel
-        (fn [raw]
-          (let [msg (try (-> (json/parse-string raw true) keywordize-deep)
-                         (catch Exception _ nil))
-                op (:op msg)]
-            (case op
-              "tick"
-              (let [n (int (or (:n msg) 1))
-                    outs (sim/tick! n)]
-                (doseq [o outs]
-                  (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                  (when-let [ev (:event o)]
-                    (broadcast! {:op "event" :data ev}))
-                  (doseq [tr (:traces o)]
-                    (broadcast! {:op "trace" :data tr}))))
+    (swap! *clients conj ch)
+    (ws-send! ch {:op "hello"
+                  :state (select-keys (sim/get-state) [:tick :shrine :levers])})
+    (http/on-close ch (fn [_] (swap! *clients disj ch)))
+    (http/on-receive
+      ch
+      (fn [raw]
+        (let [msg (try (-> (json/parse-string raw true) keywordize-deep)
+                       (catch Exception _ nil))
+              op (:op msg)]
+          (case op
+            "tick"
+            (let [n (int (or (:n msg) 1))
+                  outs (sim/tick! n)]
+              (doseq [o outs]
+                (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                (when-let [ev (:event o)]
+                  (broadcast! {:op "event" :data ev}))
+                (doseq [tr (:traces o)]
+                  (broadcast! {:op "trace" :data tr}))))
 
-              "reset"
-              (do (sim/reset-world! {:seed (long (or (:seed msg) 1))})
-                  (broadcast! {:op "reset" :state (sim/get-state)}))
+            "reset"
+            (do (sim/reset-world! {:seed (long (or (:seed msg) 1))})
+                (broadcast! {:op "reset" :state (sim/get-state)}))
 
-              "set_levers"
-              (do (sim/set-levers! (:levers msg))
-                  (broadcast! {:op "levers" :levers (:levers (sim/get-state))}))
+            "set_levers"
+            (do (sim/set-levers! (:levers msg))
+                (broadcast! {:op "levers" :levers (:levers (sim/get-state))}))
 
-              "place_shrine"
-              (do (sim/place-shrine! (:pos msg))
-                  (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))
+            "place_shrine"
+            (do (sim/place-shrine! (:pos msg))
+                (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))
 
             "appoint_mouthpiece"
             (do (sim/appoint-mouthpiece! (:agent_id msg))
                 (broadcast! {:op "mouthpiece"
                              :mouthpiece (get-in (sim/get-state) [:levers :mouthpiece-agent-id])}))
 
-            (ws-send! channel {:op "error" :message "unknown op"}))))))
-    ))
+            (ws-send! ch {:op "error" :message "unknown op"})))))))
 
 (defn start-runner! []
-
   (when-not (:running? @*runner)
     (let [fut (future
                 (swap! *runner assoc :running? true)

@@ -1,1 +1,6 @@
 .obsidian
+.clj-kondo
+backend/.cpcache
+.clj-kondo/
+backend/.lsp
+backend/.lsp/

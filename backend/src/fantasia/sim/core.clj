@@ -165,8 +165,9 @@
                             :else 1.00)))]
           {:new-recall (assoc new-recall (:id et) new)
            :mentions (cond-> mentions mention? (conj {:event-type (:id et)
-                                                      :claim claim
-                                                      :weight weight}))
+                                                       :claim claim
+                                                       :weight weight
+                                                       :event-instance (:instance-id (:event-token packet))}))
            :traces (cond-> traces
                      mention?
                      (conj {:trace/id (str "t-" (:id et) "-" (:listener-id packet)
@@ -185,7 +186,8 @@
                             :claim-activation [{:claim claim :delta (* 0.6 drec)}]
                             :mention {:event-type (:id et)
                                       :claim claim
-                                      :weight weight}}))}))
+                                      :weight weight
+                                      :event-instance (:instance-id (:event-token packet))}}))}))
       {:new-recall old-recall :mentions [] :traces []}
       (events/all-event-types))))
 
@@ -288,7 +290,11 @@
                 :facets (->> (:signature et) keys (take 4) vec)
                 :tone {:awe (double (:witness-score event-instance))
                        :urgency 0.4}
-                :claim-hint nil}
+                :claim-hint nil
+                :event-token {:type (:type event-instance)
+                              :instance-id (keyword (:id event-instance))
+                              :event-type (:type event-instance)
+                              :tick (:tick event-instance)}}
         res (recall-and-mentions (:recall agent)
                                  fr2
                                  (assoc packet

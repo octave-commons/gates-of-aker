@@ -13,15 +13,19 @@
                ledger))))
 
 (defn add-mention
-  "Update ledger for (event-type, claim)."
-  [ledger {:keys [event-type claim weight]}]
+  "Update ledger for (event-type, claim) with optional event-instance grounding."
+  [ledger {:keys [event-type claim weight event-instance]}]
   (let [k [event-type claim]
         w (double weight)]
-    (-> ledger
-        (update-in [k :buzz] (fnil + 0.0) w)
-        ;; tradition grows slower than buzz; log-ish makes sustained talk matter more
-        (update-in [k :tradition] (fnil + 0.0) (* 0.12 (Math/log (+ 1.0 w))))
-        (update-in [k :mentions] (fnil inc 0)))))
+    (as-> ledger ledger$
+      (-> ledger$
+          (update-in [k :buzz] (fnil + 0.0) w)
+          ;; tradition grows slower than buzz; log-ish makes sustained talk matter more
+          (update-in [k :tradition] (fnil + 0.0) (* 0.12 (Math/log (+ 1.0 w))))
+          (update-in [k :mentions] (fnil inc 0)))
+      (if event-instance
+        (update-in ledger$ [k :event-instances] (fnil conj #{}) event-instance)
+        ledger$))))
 
 (defn attribution
   "Compute attribution probabilities per event-type from ledger."

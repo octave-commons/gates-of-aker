@@ -97,7 +97,7 @@
      :patron/fire 0.7
      :deity/storm 0.35})
   (threshold 0.78)
-  (mention-delta 0.17)
+  (mention-delta 0.03)
   (claim :claim/winter-judgment-flame :deity :patron/fire :bonus 0.02)
   (claim :claim/storm-wrath :deity :deity/storm :bonus 0.01)
   (claim :rebuttal/natural-chance :deity nil :bonus 0.00))

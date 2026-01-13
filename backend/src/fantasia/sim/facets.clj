@@ -60,13 +60,15 @@
 
 (defn event-recall
   "Compute recall activation for an event from a facet signature.
-  signature: {facet weight}."
+  signature: {facet weight}. Returns a normalized score in [0,1]."
   [frontier signature {:keys [threshold] :or {threshold 0.70}}]
-  (let [score (reduce
-                (fn [acc [facet w]]
-                  (let [a (double (get-in frontier [facet :a] 0.0))]
-                    (+ acc (* a (double w)))))
-                0.0
-                signature)]
+  (let [raw (reduce
+              (fn [acc [facet w]]
+                (let [a (double (get-in frontier [facet :a] 0.0))]
+                  (+ acc (* a (double w)))))
+              0.0
+              signature)
+        total (max 1.0e-9 (reduce + 0.0 (map (comp double val) signature)))
+        score (clamp01 (/ raw total))]
     {:score score
      :recalled? (>= score (double threshold))}))
