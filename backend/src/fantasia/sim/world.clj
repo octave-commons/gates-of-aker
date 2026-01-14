@@ -1,0 +1,42 @@
+(ns fantasia.sim.world
+  (:require [fantasia.sim.events :as events]
+            [fantasia.sim.myth :as myth]))
+
+(defn snapshot
+  "Produce a UI-friendly snapshot of world state + attribution map."
+  [world attribution]
+  {:tick (:tick world)
+   :shrine (:shrine world)
+   :levers (:levers world)
+   :recent-events (:recent-events world)
+   :attribution attribution
+   :agents (mapv (fn [a]
+                   {:id (:id a)
+                    :pos (:pos a)
+                    :role (:role a)
+                    :needs (:needs a)
+                    :recall (:recall a)
+                    :top-facets (->> (:frontier a)
+                                     (sort-by (fn [[_ {:keys [a]}]] (- (double a))))
+                                     (take 8)
+                                     (mapv (fn [[k v]] {:facet k :a (:a v)})))})
+                 (:agents world))
+   :ledger (into {}
+                 (map (fn [[[et claim] v]]
+                        [(str (name et) "/" (name claim))
+                         {:buzz (:buzz v)
+                          :tradition (:tradition v)
+                          :mentions (:mentions v)}])
+                      (:ledger world)))} )
+
+(defn update-ledger
+  "Apply decay + mentions to the ledger and return {:ledger ledger2 :attr {...}}"
+  [world mentions]
+  (let [ledger1 (myth/decay-ledger (:ledger world))
+        ledger2 (reduce myth/add-mention ledger1 mentions)
+        attr (into {}
+                   (map (fn [et]
+                          [(:id et) (myth/attribution ledger2 (:id et))])
+                        (events/all-event-types)))]
+    {:ledger ledger2
+     :attribution attr}))

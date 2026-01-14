@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [org.httpkit.server :as http :refer [with-channel send! on-close on-receive]]
     [reitit.ring :as ring]
-    [fantasia.sim.core :as sim]))
+    [fantasia.sim.tick :as sim]))
 
 (defn json-resp
   ([m] (json-resp 200 m))
@@ -59,8 +59,7 @@
     (ws-send! ch {:op "hello"
                   :state (select-keys (sim/get-state) [:tick :shrine :levers])})
     (http/on-close ch (fn [_] (swap! *clients disj ch)))
-    (http/on-receive
-      ch
+    (http/on-receive ch
       (fn [raw]
         (let [msg (try (-> (json/parse-string raw true) keywordize-deep)
                        (catch Exception _ nil))

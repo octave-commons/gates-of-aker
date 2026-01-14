@@ -4,3 +4,4 @@ backend/.cpcache
 .clj-kondo/
 backend/.lsp
 backend/.lsp/
+backend/target
