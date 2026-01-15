@@ -8,6 +8,40 @@
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
 
+(def default-world-size [20 20])
+(def min-world-dimension 6)
+(def max-world-dimension 60)
+
+(defn- clamp [lo hi n]
+  (-> n (max lo) (min hi)))
+
+(defn- parse-long* [v default]
+  (cond
+    (number? v) (long (Math/round (double v)))
+    (string? v) (try
+                  (Long/parseLong v)
+                  (catch Exception _ default))
+    :else default))
+
+(defn- sanitize-size [size]
+  (let [[w h]
+        (cond
+          (and (map? size) (contains? size :width) (contains? size :height))
+          [(:width size) (:height size)]
+          (and (map? size) (contains? size :w) (contains? size :h))
+          [(:w size) (:h size)]
+          (and (sequential? size) (>= (count size) 2))
+          [(nth size 0) (nth size 1)]
+          :else default-world-size)
+        w (Math/abs (parse-long* w (first default-world-size)))
+        h (Math/abs (parse-long* h (second default-world-size)))]
+    [(clamp min-world-dimension max-world-dimension w)
+     (clamp min-world-dimension max-world-dimension h)]))
+
+(defn- normalize-reset-opts [{:keys [seed size]}]
+  {:seed (parse-long* (or seed 1) 1)
+   :size (sanitize-size size)})
+
 (defn ->agent [id x y role]
   {:id id
    :pos [x y]
@@ -16,13 +50,26 @@
    :frontier {}
    :recall {}})
 
-(defn initial-world [seed]
-  (let [r (rng seed)]
+(defn initial-world [seed-or-opts]
+  (let [{:keys [seed size]}
+        (if (map? seed-or-opts)
+          (normalize-reset-opts seed-or-opts)
+          (normalize-reset-opts {:seed seed-or-opts}))
+        r (rng seed)
+        [w h] size
+        tree-w (max 1 (min w (long (Math/ceil (* 0.4 w)))))
+        tree-h (max 1 (min h (long (Math/ceil (* 0.4 h)))))
+        tree-start-x (long (clamp 0 (- w tree-w) (Math/floor (* 0.5 w))))
+        tree-start-y (long (clamp 0 (- h tree-h) (Math/floor (* 0.1 h))))
+        tree-end-x (min w (+ tree-start-x tree-w))
+        tree-end-y (min h (+ tree-start-y tree-h))
+        rand-bound-w (max 1 w)
+        rand-bound-h (max 1 h)]
     {:seed seed
      :tick 0
-     :size [20 20]
-     :trees (set (for [x (range 10 18)
-                       y (range 2 10)]
+     :size size
+     :trees (set (for [x (range tree-start-x tree-end-x)
+                       y (range tree-start-y tree-end-y)]
                    [x y]))
      :shrine nil
      :cold-snap 0.85
@@ -38,7 +85,7 @@
                :canonical {:facets [:fire :judgment :winter]
                            :claim-hint :claim/winter-judgment-flame}}}
      :agents (vec (for [i (range 12)]
-                    (->agent i (rand-int* r 20) (rand-int* r 20)
+                    (->agent i (rand-int* r rand-bound-w) (rand-int* r rand-bound-h)
                             (cond
                               (= i 0) :priest
                               (= i 1) :knight
@@ -136,8 +183,10 @@
 
 (defn get-state [] @*state)
 
-(defn reset-world! [{:keys [seed] :or {seed 1}}]
-  (clojure.core/reset! *state (initial-world seed)))
+(defn reset-world!
+  ([] (reset-world! {}))
+  ([opts]
+   (clojure.core/reset! *state (initial-world (or opts {})))))
 
 (defn set-levers! [levers]
   (swap! *state update :levers merge levers))

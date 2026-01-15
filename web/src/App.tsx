@@ -16,6 +16,35 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 const hasPos = (agent?: Agent | null): agent is Agent & { pos: [number, number] } =>
   !!agent && Array.isArray(agent.pos) && agent.pos.length === 2 && agent.pos.every((v) => typeof v === "number");
 
+const DEFAULT_WORLD_SIZE: [number, number] = [20, 20];
+const MIN_WORLD_DIMENSION = 6;
+const MAX_WORLD_DIMENSION = 60;
+
+const parseWorldSize = (raw: any): [number, number] | null => {
+  if (!raw) return null;
+  if (Array.isArray(raw) && raw.length >= 2) {
+    const [w, h] = raw;
+    if (typeof w === "number" && typeof h === "number") return [w, h];
+  }
+  if (typeof raw === "object") {
+    const maybeWidth = raw?.width ?? raw?.w;
+    const maybeHeight = raw?.height ?? raw?.h;
+    if (typeof maybeWidth === "number" && typeof maybeHeight === "number") {
+      return [maybeWidth, maybeHeight];
+    }
+  }
+  return null;
+};
+
+const clampWorldDimension = (value: number) => {
+  if (!Number.isFinite(value)) return DEFAULT_WORLD_SIZE[0];
+  const rounded = Math.round(value);
+  const absValue = Math.abs(rounded);
+  return Math.max(MIN_WORLD_DIMENSION, Math.min(MAX_WORLD_DIMENSION, absValue));
+};
+
+const sizesEqual = (a: [number, number], b: [number, number]) => a[0] === b[0] && a[1] === b[1];
+
 export function App() {
   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
   const [tick, setTick] = useState(0);
@@ -25,6 +54,9 @@ export function App() {
 
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+  const [worldSize, setWorldSize] = useState<[number, number]>(DEFAULT_WORLD_SIZE);
+  const [worldWidthInput, setWorldWidthInput] = useState(DEFAULT_WORLD_SIZE[0]);
+  const [worldHeightInput, setWorldHeightInput] = useState(DEFAULT_WORLD_SIZE[1]);
 
   const [fireToPatron, setFireToPatron] = useState(0.8);
   const [lightningToStorm, setLightningToStorm] = useState(0.75);
@@ -32,12 +64,21 @@ export function App() {
 
   const client = useMemo(() => {
     const url = `ws://localhost:3000/ws`;
+    const applyWorldSize = (raw: any) => {
+      const parsed = parseWorldSize(raw);
+      if (!parsed) return;
+      setWorldSize((prev) => (sizesEqual(prev, parsed) ? prev : parsed));
+    };
     return new WSClient(
       url,
       (m: WSMessage) => {
+        if (m.op === "hello") {
+          applyWorldSize(m.state?.size);
+        }
         if (m.op === "tick") {
           setTick(m.data?.tick ?? 0);
           setSnapshot(m.data?.snapshot ?? null);
+          applyWorldSize(m.data?.snapshot?.size ?? m.data?.size);
         }
         if (m.op === "trace") {
           setTraces((prev) => {
@@ -56,6 +97,7 @@ export function App() {
           setEvents([]);
           setSelectedCell(null);
           setSelectedAgentId(null);
+          applyWorldSize(m.state?.size);
         }
       },
       (s) => setStatus(s)
@@ -67,6 +109,11 @@ export function App() {
     return () => client.close();
   }, [client]);
 
+  useEffect(() => {
+    setWorldWidthInput(worldSize[0]);
+    setWorldHeightInput(worldSize[1]);
+  }, [worldSize]);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -75,20 +122,23 @@ export function App() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const size = 20;
-    const W = 480;
-    const H = 480;
-    const cell = Math.floor(W / size);
+    const [rawCols, rawRows] = worldSize;
+    const gridCols = Math.max(1, Math.round(rawCols));
+    const gridRows = Math.max(1, Math.round(rawRows));
+    const maxCells = Math.max(gridCols, gridRows);
+    const cell = Math.max(4, Math.floor(480 / Math.max(1, maxCells)));
+    const widthPx = cell * gridCols;
+    const heightPx = cell * gridRows;
 
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = widthPx;
+    canvas.height = heightPx;
 
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, widthPx, heightPx);
 
     ctx.globalAlpha = 0.25;
     ctx.strokeStyle = "#777";
-    for (let x = 0; x < size; x++) {
-      for (let y = 0; y < size; y++) {
+    for (let x = 0; x < gridCols; x++) {
+      for (let y = 0; y < gridRows; y++) {
         ctx.strokeRect(x * cell, y * cell, cell, cell);
       }
     }
@@ -100,8 +150,17 @@ export function App() {
       ctx.fillRect(sx * cell + cell * 0.2, sy * cell + cell * 0.2, cell * 0.6, cell * 0.6);
     }
 
-    if (selectedCell) {
-      const [selX, selY] = selectedCell;
+    const highlightCell =
+      selectedCell &&
+      selectedCell[0] >= 0 &&
+      selectedCell[1] >= 0 &&
+      selectedCell[0] < gridCols &&
+      selectedCell[1] < gridRows
+        ? selectedCell
+        : null;
+
+    if (highlightCell) {
+      const [selX, selY] = highlightCell;
       ctx.strokeRect(selX * cell + 2, selY * cell + 2, cell - 4, cell - 4);
     }
 
@@ -127,15 +186,26 @@ export function App() {
       if (agent.id === selectedAgentId) {
         ctx.beginPath();
         ctx.strokeStyle = "#ffae00";
-        ctx.arc(ax * cell + cell / 2, ay * cell + cell / 2, cell * 0.40, 0, Math.PI * 2);
+        ctx.arc(ax * cell + cell / 2, ay * cell + cell / 2, cell * 0.4, 0, Math.PI * 2);
         ctx.stroke();
         ctx.strokeStyle = "#111";
       }
     }
-  }, [snapshot, selectedCell, selectedAgentId]);
+  }, [snapshot, selectedCell, selectedAgentId, worldSize]);
 
   const sendTick = (n: number) => client.send({ op: "tick", n });
-  const reset = (seed: number) => client.send({ op: "reset", seed });
+  const reset = (seed: number, size?: [number, number]) => {
+    const payload: Record<string, unknown> = { op: "reset", seed };
+    if (size) payload.size = size;
+    client.send(payload);
+  };
+  const handleReset = () => {
+    const width = clampWorldDimension(worldWidthInput);
+    const height = clampWorldDimension(worldHeightInput);
+    setWorldWidthInput(width);
+    setWorldHeightInput(height);
+    reset(1, [width, height]);
+  };
 
   const placeShrineAtSelected = () => {
     if (!selectedCell) return;
@@ -168,8 +238,14 @@ export function App() {
   const onCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!snapshot) return;
     const rect = (event.target as HTMLCanvasElement).getBoundingClientRect();
-    const x = Math.floor(((event.clientX - rect.left) / rect.width) * 20);
-    const y = Math.floor(((event.clientY - rect.top) / rect.height) * 20);
+    const [rawCols, rawRows] = worldSize;
+    const gridCols = Math.max(1, Math.round(rawCols));
+    const gridRows = Math.max(1, Math.round(rawRows));
+    const relX = (event.clientX - rect.left) / rect.width;
+    const relY = (event.clientY - rect.top) / rect.height;
+    const clampIndex = (value: number, max: number) => Math.min(max - 1, Math.max(0, value));
+    const x = clampIndex(Math.floor(relX * gridCols), gridCols);
+    const y = clampIndex(Math.floor(relY * gridRows), gridRows);
     setSelectedCell([x, y]);
     const hit = (snapshot.agents ?? []).find((a: Agent) => hasPos(a) && a.pos[0] === x && a.pos[1] === y);
     setSelectedAgentId(hit ? hit.id : null);
@@ -186,7 +262,6 @@ export function App() {
         <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
           <button onClick={() => sendTick(1)}>Tick</button>
           <button onClick={() => sendTick(10)}>Tick×10</button>
-          <button onClick={() => reset(1)}>Reset</button>
           <button onClick={placeShrineAtSelected} disabled={!selectedCell}>
             Place shrine @ selected
           </button>
@@ -195,7 +270,39 @@ export function App() {
           </button>
         </div>
 
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            width
+            <input
+              type="number"
+              min={MIN_WORLD_DIMENSION}
+              max={MAX_WORLD_DIMENSION}
+              step={1}
+              value={worldWidthInput}
+              onChange={(e) => setWorldWidthInput(Number(e.target.value))}
+              style={{ width: 72 }}
+            />
+          </label>
+          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            height
+            <input
+              type="number"
+              min={MIN_WORLD_DIMENSION}
+              max={MAX_WORLD_DIMENSION}
+              step={1}
+              value={worldHeightInput}
+              onChange={(e) => setWorldHeightInput(Number(e.target.value))}
+              style={{ width: 72 }}
+            />
+          </label>
+          <button onClick={handleReset}>Reset world</button>
+          <span style={{ opacity: 0.7 }}>
+            Current: {worldSize[0]}×{worldSize[1]} (range {MIN_WORLD_DIMENSION}-{MAX_WORLD_DIMENSION})
+          </span>
+        </div>
+ 
+         <div style={{ marginBottom: 12 }}>
+
           <div style={{ marginBottom: 6 }}>
             <strong>Tick:</strong> {tick}
           </div>

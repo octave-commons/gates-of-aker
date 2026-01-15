@@ -57,7 +57,7 @@
   (http/with-channel req ch
     (swap! *clients conj ch)
     (ws-send! ch {:op "hello"
-                  :state (select-keys (sim/get-state) [:tick :shrine :levers])})
+                  :state (select-keys (sim/get-state) [:tick :shrine :levers :size])})
     (http/on-close ch (fn [_] (swap! *clients disj ch)))
     (http/on-receive ch
       (fn [raw]
@@ -76,8 +76,10 @@
                   (broadcast! {:op "trace" :data tr}))))
 
             "reset"
-            (do (sim/reset-world! {:seed (long (or (:seed msg) 1))})
-                (broadcast! {:op "reset" :state (sim/get-state)}))
+            (let [seed (:seed msg)
+                  size (:size msg)]
+              (sim/reset-world! {:seed seed :size size})
+              (broadcast! {:op "reset" :state (sim/get-state)}))
 
             "set_levers"
             (do (sim/set-levers! (:levers msg))
@@ -130,10 +132,14 @@
 
        ["/sim/reset"
         {:post (fn [req]
-                 (let [b (read-json-body req)
-                       seed (long (or (:seed b) 1))]
-                   (sim/reset-world! {:seed seed})
-                   (json-resp 200 {:ok true :seed seed})))
+                 (let [b (or (read-json-body req) {})
+                       opts {:seed (:seed b)
+                             :size (:size b)}]
+                   (sim/reset-world! opts)
+                   (let [state (sim/get-state)]
+                     (json-resp 200 {:ok true
+                                     :seed (:seed state)
+                                     :size (:size state)}))))
          :options (fn [_] (json-resp 200 {:ok true}))}]
 
        ["/sim/tick"

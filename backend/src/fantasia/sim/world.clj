@@ -6,6 +6,7 @@
   "Produce a UI-friendly snapshot of world state + attribution map."
   [world attribution]
   {:tick (:tick world)
+   :size (:size world)
    :shrine (:shrine world)
    :levers (:levers world)
    :recent-events (:recent-events world)

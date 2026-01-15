@@ -52,6 +52,12 @@
     (is (= (set (range 12)) (set ids)))
     (is (every? #(spatial/in-bounds? (:size world) (:pos %)) (:agents world)))))
 
+(deftest initial-world-respects-custom-size
+  (let [world (core/initial-world {:seed 21 :size [34 12]})]
+    (is (= [34 12] (:size world)))
+    (is (<= 1 (count (:trees world))))
+    (is (every? #(spatial/in-bounds? (:size world) (:pos %)) (:agents world)))))
+
 
 
 (deftest apply-institution-broadcast-respects-mouthpiece
@@ -68,6 +74,7 @@
   (let [world (core/initial-world 10)
         snap (world/snapshot world {:winter 1.0})]
     (is (= (:tick world) (:tick snap)))
+    (is (= (:size world) (:size snap)))
     (is (= (:levers world) (:levers snap)))
     (is (vector? (:agents snap)))
     (is (map? (:ledger snap)))))
