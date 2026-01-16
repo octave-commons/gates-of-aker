@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "compose:up": "docker compose up --build -d",
+    "compose:down": "docker compose down",
+    "test:e2e": "npm run compose:up && node e2e/compose.e2e.mjs; npm run compose:down || npm run compose:down"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -25,6 +28,7 @@
     "jsdom": "^24.1.0",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
-    "vitest": "^2.1.5"
+    "vitest": "^2.1.5",
+    "ws": "^8.19.0"
   }
 }

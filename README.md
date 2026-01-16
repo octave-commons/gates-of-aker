@@ -36,6 +36,18 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
 - Build: `npm run build --prefix web` (runs `tsc -b` then `vite build`).
 - Preview: `npm run preview --prefix web` to serve the production bundle locally.
 
+## Docker Compose
+- Prereq: Docker Engine/Desktop 20.10+ with Compose v2.
+- Validate syntax via `docker compose config` in the repo root.
+- Launch both services with hot reload via:
+  ```bash
+  docker compose up --build
+  ```
+  - Backend container (`backend`) runs `clojure -M:server` and binds `localhost:3000`.
+  - Frontend container (`web`) runs `npm run dev -- --host 0.0.0.0 --port 5173` and binds `http://localhost:5173`.
+- Stop with `Ctrl+C`; add `-d` to detach. Compose mounts the repo plus caches (`~/.m2`, `web/node_modules`) so edits on the host refresh inside containers.
+- Override the UI’s API origin (default `http://localhost:3000`) by setting `VITE_BACKEND_ORIGIN` before `docker compose up`; the value propagates into the Vite dev server.
+
 ## Coding Standards
 - **Backend:** keep IO (`fantasia.server`) separate from pure simulation namespaces, prefer `cond->`, guard all external input, and broadcast helpful WS ops (`{:op "error" ...}`) instead of throwing.
 - **Frontend:** React function components only, hooks over classes, strict typing (tuples, discriminated unions), stable keys, and controlled form inputs. WebSocket usage should always flow through `WSClient`.

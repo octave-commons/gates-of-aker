@@ -9,7 +9,11 @@ afterEach(() => {
 const noop = () => {};
 
 if (typeof HTMLCanvasElement !== "undefined") {
-  HTMLCanvasElement.prototype.getContext = function getContext() {
+  HTMLCanvasElement.prototype.getContext = (function getContext(this: HTMLCanvasElement, contextId: string) {
+    if (contextId !== "2d") {
+      return null;
+    }
+
     return {
       canvas: this,
       beginPath: noop,
@@ -19,20 +23,11 @@ if (typeof HTMLCanvasElement !== "undefined") {
       strokeRect: noop,
       arc: noop,
       stroke: noop,
-      set globalAlpha(_: number) {},
-      get globalAlpha() {
-        return 1;
-      },
-      set strokeStyle(_: string | CanvasGradient | CanvasPattern) {},
-      get strokeStyle() {
-        return "#111";
-      },
-      set fillStyle(_: string | CanvasGradient | CanvasPattern) {},
-      get fillStyle() {
-        return "#111";
-      },
-    } as CanvasRenderingContext2D;
-  };
+      strokeStyle: "#111",
+      fillStyle: "#111",
+      globalAlpha: 1,
+    } as unknown as CanvasRenderingContext2D;
+  } as unknown as HTMLCanvasElement["getContext"]);
 
   HTMLCanvasElement.prototype.getBoundingClientRect = () => ({
     x: 0,

@@ -28,9 +28,10 @@ export function App() {
   const [stormToDeity, setStormToDeity] = useState(0.85);
 
   const client = useMemo(() => {
-    const url = `ws://localhost:3000/ws`;
+    const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
+    const wsUrl = backendOrigin.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
     return new WSClient(
-      url,
+      wsUrl,
       (m: WSMessage) => {
         if (m.op === "tick") {
           setTick(m.data?.tick ?? 0);
