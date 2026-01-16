@@ -5,3 +5,8 @@ backend/.cpcache
 backend/.lsp
 backend/.lsp/
 backend/target
+coverage/
+web/node_modules/
+web/dist/
+web/.vite/
+web/coverage/

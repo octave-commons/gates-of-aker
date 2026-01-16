@@ -36,12 +36,6 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
 - Build: `npm run build --prefix web` (runs `tsc -b` then `vite build`).
 - Preview: `npm run preview --prefix web` to serve the production bundle locally.
 
-## Testing & Verification
-Formal automated tests are not yet committed. Follow these expectations until suites land:
-- Backend: use REPL-driven checks or future `:test` alias (`clojure -X:test :only 'namespace/var'`).
-- Frontend: rely on TypeScript strict mode (`npm exec --prefix web tsc --noEmit`) plus manual UI verification (tick, adjust levers, place shrine, appoint mouthpiece in one session).
-- Document seeds, lever values, and reproduction steps in `docs/notes` when filing bugs or PRs.
-
 ## Coding Standards
 - **Backend:** keep IO (`fantasia.server`) separate from pure simulation namespaces, prefer `cond->`, guard all external input, and broadcast helpful WS ops (`{:op "error" ...}`) instead of throwing.
 - **Frontend:** React function components only, hooks over classes, strict typing (tuples, discriminated unions), stable keys, and controlled form inputs. WebSocket usage should always flow through `WSClient`.

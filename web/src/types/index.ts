@@ -1,0 +1,13 @@
+export type Trace = Record<string, any>;
+
+export type Agent = {
+  id: number;
+  pos: [number, number] | null;
+  role: string;
+  needs: Record<string, number>;
+  recall: Record<string, number>;
+  [key: string]: any;
+};
+
+export const hasPos = (agent?: Agent | null): agent is Agent & { pos: [number, number] } =>
+  !!agent && Array.isArray(agent.pos) && agent.pos.length === 2 && agent.pos.every((v) => typeof v === "number");
