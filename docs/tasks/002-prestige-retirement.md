@@ -9,13 +9,13 @@ status: new
 ---
 
 ## Summary
-Implement the champion lifecycle loop where eras end through the Aker rite, prestige tokens (Herald Marks, Solar Seals, Lunar Knots) are distilled, inheritance/baggage are rolled, and a successor candidate slate emerges from the current social graph.
+Implement the champion lifecycle loop where eras end through the Aker rite ([[docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock|Aker Rite]]), prestige tokens (Herald Marks, Solar Seals, Lunar Knots) are distilled, inheritance/baggage are rolled, and a successor candidate slate emerges from the current social graph ([[docs/notes/planning/2026-01-15-roadmap|Roadmap]]).
 
 ## Key Outputs
-- Distillation routine covering structural deltas (bonds, conflicts, institutions, routes, narratives, taboos, violence) per `docs/chats/...:1172-1259`.
-- Prestige token economy with spend hooks for boons, world edits, inheritance slots, and baggage guarantees (`docs/chats/...:1207-1290`).
-- Candidate generator that ties Calling/Shadow/Bond/Taboo traits directly to recent world changes (`docs/chats/...:1271-1309`).
-- UI/UX for the Aker rite (freeze rumors, display spend decisions, select successor) referencing `docs/chats/...:1315-1339`.
+- Distillation routine covering structural deltas (bonds, conflicts, institutions, routes, narratives, taboos, violence) per `docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock.md` ([[docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock|Aker Rite]]).
+- Prestige token economy with spend hooks for boons, world edits, inheritance slots, and baggage guarantees (`docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock.md`).
+- Candidate generator that ties Calling/Shadow/Bond/Taboo traits directly to recent world changes (`docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock.md`).
+- UI/UX for the Aker rite (freeze rumors, display spend decisions, select successor) referencing `docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock.md`.
 
 ## Acceptance Criteria
 - Retirement cannot occur without emitting prestige bundle + at least one inheritance and one baggage element.
@@ -23,5 +23,5 @@ Implement the champion lifecycle loop where eras end through the Aker rite, pres
 - Telemetry proves prestige spend modifies subsequent era start state (routes, doctrines, boons).
 
 ## References
-- `docs/chats/2026-01-13_16-03-38_ChatGPT_A model that matches what you liked in RimWorld, without the....md:1170-1364`
-- `docs/chats/2026-01-13_16-03-38_ChatGPT_A model that matches what you liked in RimWorld, without the....md:1315-1364`
+- `docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock.md`
+- `docs/notes/planning/2026-01-15-roadmap.md`
