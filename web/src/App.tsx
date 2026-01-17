@@ -10,6 +10,8 @@ import {
   TraceFeed,
 } from "./components";
 import { Agent, Trace } from "./types";
+import { axialToPixel, pixelToAxial, hexPolygonPoints, inBounds, randAxial } from "./hex";
+import { axialToPixel, pixelToAxial, hexPolygonPoints, neighborsAxial, distanceAxial, inBounds, randAxial } from "./hex";
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 

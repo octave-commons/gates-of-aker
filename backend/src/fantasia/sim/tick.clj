@@ -3,33 +3,35 @@
             [fantasia.sim.events.runtime :as runtime]
             [fantasia.sim.institutions :as institutions]
             [fantasia.sim.spatial :as spatial]
+            [fantasia.sim.hex :as hex]
             [fantasia.sim.world :as world]))
 
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
 
-(defn ->agent [id x y role]
+(defn ->agent [id q r role]
   {:id id
-   :pos [x y]
+   :pos [q r]
    :role role
    :needs {:warmth 0.6 :food 0.7 :sleep 0.7}
    :frontier {}
    :recall {}})
 
 (defn initial-world [seed]
-  (let [r (rng seed)]
+  (let [r (rng seed)
+        hex-map {:kind :hex
+                  :layout :pointy
+                  :bounds (hex/normalize-bounds {:w 20 :h 20} nil)}]
     {:seed seed
      :tick 0
-     :size [20 20]
-     :trees (set (for [x (range 10 18)
-                       y (range 2 10)]
-                   [x y]))
+     :map hex-map
+     :tiles { [10 2] {:terrain :ground :resource :tree}}
      :shrine nil
      :cold-snap 0.85
      :levers {:iconography {:fire->patron 0.80
                             :lightning->storm 0.75
                             :storm->deity 0.85}
-              :mouthpiece-agent-id nil}
+               :mouthpiece-agent-id nil}
      :institutions
      {:temple {:id :temple
                :name "Temple of Embers"
@@ -38,11 +40,13 @@
                :canonical {:facets [:fire :judgment :winter]
                            :claim-hint :claim/winter-judgment-flame}}}
      :agents (vec (for [i (range 12)]
-                    (->agent i (rand-int* r 20) (rand-int* r 20)
-                            (cond
-                              (= i 0) :priest
-                              (= i 1) :knight
-                              :else :peasant))))
+                    (->agent i
+                              (first (hex/rand-pos r hex-map))
+                              (second (hex/rand-pos r hex-map))
+                              (cond
+                                (= i 0) :priest
+                                (= i 1) :knight
+                                :else :peasant))))
      :edges {[:cold :fire] 0.60
              [:trees :fire] 0.45
              [:lightning :storm] 0.70
@@ -136,8 +140,10 @@
 
 (defn get-state [] @*state)
 
-(defn reset-world! [{:keys [seed] :or {seed 1}}]
-  (clojure.core/reset! *state (initial-world seed)))
+(defn reset-world!
+  ([] (reset-world! {}))
+  ([opts]
+   (clojure.core/reset! *state (initial-world opts))))
 
 (defn set-levers! [levers]
   (swap! *state update :levers merge levers))

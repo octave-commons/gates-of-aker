@@ -8,6 +8,8 @@
   {:tick (:tick world)
    :shrine (:shrine world)
    :levers (:levers world)
+   :map (:map world)
+   :tiles (:tiles world)
    :recent-events (:recent-events world)
    :attribution attribution
    :agents (mapv (fn [a]

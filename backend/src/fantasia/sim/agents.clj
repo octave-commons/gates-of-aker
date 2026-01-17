@@ -1,7 +1,8 @@
 (ns fantasia.sim.agents
   (:require [fantasia.sim.facets :as f]
             [fantasia.sim.events :as events]
-            [fantasia.sim.spatial :as spatial]))
+            [fantasia.sim.spatial :as spatial]
+            [fantasia.sim.hex :as hex]))
 
 (defn update-needs
   "Decay warmth/food/sleep relative to cold snap."
@@ -33,12 +34,12 @@
             :urgency (if (< warmth 0.25) 0.6 0.2)}}))
 
 (defn interactions
-  "Generate adjacent agent pairs for conversation."
+  "Generate adjacent agent pairs for conversation (using hex distance)."
   [agents]
   (for [a agents
         b agents
         :when (and (not= (:id a) (:id b))
-                   (<= (spatial/manhattan (:pos a) (:pos b)) 1))]
+                   (<= (hex/distance (:pos a) (:pos b)) 1))]
     [a b]))
 
 (defn scaled-edges
