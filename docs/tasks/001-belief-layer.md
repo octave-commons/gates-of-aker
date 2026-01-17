@@ -22,5 +22,5 @@ Stand up the belief/narrative layer described in the 2026-01-13 chat so every ev
 - Telemetry/logging proves when/how belief flips occur (critical for debugging fairness).
 
 ## References
-- `docs/chats/2026-01-13_16-03-38_ChatGPT_A model that matches what you liked in RimWorld, without the....md:1711-1794`
-- `docs/chats/2026-01-13_16-03-38_ChatGPT_A model that matches what you liked in RimWorld, without the....md:1769-1795`
+- `docs/notes/brainstorming/2026-01-15-you-re-describing-the-exact-gap-between-a-story-optimizer-an.md#L53`
+- `docs/notes/design/2026-01-15-resolution-system.md#L1`

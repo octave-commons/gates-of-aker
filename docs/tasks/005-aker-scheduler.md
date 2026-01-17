@@ -12,7 +12,7 @@ status: new
 Deliver the Aker phase loop where day belongs to the champion, night belongs to sleeping deities, and staying awake trades deity power for fatigue and risk. This scheduler also hosts the prestige rite UI and telegraphs for impending moves.
 
 ## Key Outputs
-- Phase clock implementation with Dawn/Dusk transitions and champion sleep choice gating Night abilities (`docs/chats/...:1315-1339`, `...:1818-1838`).
+- Phase clock implementation with Dawn/Dusk transitions and champion sleep choice gating Night abilities (`docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock.md`).
 - Fatigue + recovery modeling when the champion refuses to sleep, including knock-on effects for day actions.
 - Hooks for nightly telegraphs (owls, beacons, crowds) and for freezing rumor propagation during the rite.
 - UI overlay showing upcoming deity move opportunities and rival probabilities (per `docs/chats/...:2130-2145`).
