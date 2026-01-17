@@ -428,20 +428,3 @@ Moon — Always: **Blackmail Thread**
 
 *   **Counter:** Sun grants amnesty; Herald publicizes early
     #moon #leverage
-
-
-* * *
-
-If you want the “competing storytellers” feel to pop immediately
-----------------------------------------------------------------
-
-Implement just these three things and you’ll _feel_ it:
-
-1.  **Belief layer** (claims with confidence per group)
-
-2.  **Move collisions** (when two gods target same node, winner gets effect, loser becomes complication—not nothing)
-
-3.  **Telegraphs** (every move leaves _signs_ before it lands)
-
-
-If you want, next I can write a tiny **resolution algorithm** (deterministic + a little noise) and a starter set of **event-family generators** that these cards feed into (so “raid” becomes motive-driven chains, not a random bolt).
