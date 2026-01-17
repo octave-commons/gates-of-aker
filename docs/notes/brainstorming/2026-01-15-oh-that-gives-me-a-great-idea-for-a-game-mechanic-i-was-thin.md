@@ -1,12 +1,5 @@
-
-## User
-Oh that gives me a great idea for a game mechanic. I was thinkng aboout how we hand the champions life cycles... Then you said \*prestige\*, and I was reminded of the common prestige game mechanic. You restart your character, but you get to start with extra advantages using a special prestige currency afterwards.  So champions can retire, and your diety chooses a new champion from among the young and loyal
-
-## ChatGPT
-Champion “Prestige” as a myth-engine mechanic
----------------------------------------------
-
-This fits _perfectly_ with your world model: a champion’s life doesn’t just end — it **solidifies into culture**. When they retire, their deeds become _prestige_ that reshapes what the next generation can do.
+A champion’s life doesn’t just end — it **solidifies into culture**.
+When they retire, their deeds become _prestige_ that reshapes what the next generation can do.
 
 ### Core loop
 
@@ -161,27 +154,3 @@ A couple of simple rules:
 
 *   New champion always inherits **new problems** (factions adapt; rivals learn your patterns).
 
-
-* * *
-
-Why this fits your “prestige culture” theme
--------------------------------------------
-
-You’re literally simulating how a “prestige civilization” forms:
-
-*   **stories become norms**
-
-*   **norms become institutions**
-
-*   **institutions produce the next generation**
-
-
-Your prestige mechanic becomes the player-facing handle for that.
-
-* * *
-
-If you want the next step, I can write:
-
-*   a small **data model** for “retirement distillation” (what graph deltas convert into prestige)
-
-*   10–15 **prestige perks** that map cleanly to Hermes/Sun/Moon roles _without naming them as gods_ (so it stays mythology-portable)

@@ -1,10 +1,3 @@
-
-## User
-hmm... ok... yea this is what I am trying to get at, "Hellenization" has caused Greek culture to be an almost universal connector that all Afro-Eurasian cultures share with each other at some level or another. More generally, though, removed from Greece's it's self.  Is there a word to describe cultures with this kind of influence on cultures around them?  Why did Greek culture survive like this? China, and egypt are kind of similar in this regard?  Egypt had so much contact with greece already though, the presence of egyptian culture in the world is also connected to the presence of greek culture through out the world because they were constantly sharing idea's with each other.
-
-## ChatGPT
-Yep—there _are_ a few words people use for “a culture that becomes a regional connector / template” (even after its political peak). None is perfect, but these cover most of what you mean:
-
 Words for “cultures with this kind of influence”
 ------------------------------------------------
 

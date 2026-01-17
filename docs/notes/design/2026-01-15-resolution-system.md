@@ -1,4 +1,3 @@
-
 1) Resolution system: from Moves → Effects → World Events
 =========================================================
 
@@ -359,23 +358,3 @@ Keep RimWorld’s “it corrects when you get wrecked,” but attach it to **div
 
 No pity drops. Just systems responding.
 
-* * *
-
-Next deliverable (I’ll do it the way you’re steering)
------------------------------------------------------
-
-If you say “continue” again, I’ll produce:
-
-1.  A **minimal schema** for `Move`, `Sign`, `EventCandidate`, `BeliefClaim`
-
-2.  A **candidate generator** function for each of the 6 families (small, parameterized)
-
-3.  An **example tick** showing:
-
-    *   3 gods submit moves
-
-    *   collisions resolve
-
-    *   2 event candidates spawn
-
-    *   one resolves with telegraphs + aftermath graph edits

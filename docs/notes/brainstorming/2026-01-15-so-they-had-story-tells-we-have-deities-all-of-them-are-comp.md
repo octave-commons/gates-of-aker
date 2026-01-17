@@ -1,12 +1,3 @@
-
-## User
-So, they had story tells, we have deities. All of them are competing. So our society has a diety who is trying to make us win, other societies around us have dieties trying to make them win, and there are other less affilliated world dieties that are not trying to help any group of people, but maybe like "animal spirit" so it's trying to protect animals and will hurt you if you do bad stuff to em etc. or titan like beings who govern more fundemental aspects of reality, who aren't protecting any force on earth, but maybe like a balence in the universe, or just enforcing some natural laws (like chonos, god of time. Nothing happens in the world with out time, time ages us, time allows us to have an experience, it eventually kills us, it brings more of us into the world)  We have many story tellers all competing for the historical narrative.
-
-## ChatGPT
-Yes. This is _exactly_ the right abstraction: RimWorld has **one external Director**; your world has **many internal Directors** who are _characters in the setting_.
-
-That unlocks “fair but brutal” pacing _without_ feeling arbitrary, because every push comes from **someone who wanted it**.
-
 Three-tier pantheon that stays causal
 -------------------------------------
 
@@ -163,25 +154,3 @@ flowchart TD
   I --> P
   I --> S
 ```
-
-If you want one “design vow” for this system
---------------------------------------------
-
-> No event without an _agent of causality_: a god, a spirit, a faction, or a law.
-
-That’s how you get story pacing **without** the “samey random table” feel.
-
-If you want to keep going, the next concrete step is to define **a minimal “Deity Move Set”** (like 12 moves total) with:
-
-*   channel (who it works through)
-
-*   cost (budget + credibility)
-
-*   preconditions (graph facts)
-
-*   effect (world change + belief change)
-
-*   counters (what rival deities can do)
-
-
-I can draft that move set in a way that’s mythology-agnostic but trivially skinnable.

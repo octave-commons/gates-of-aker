@@ -12,7 +12,7 @@ status: new
 Stand up the belief/narrative layer described in the 2026-01-13 chat so every event has both a factual outcome and a contested "what people think happened" record. This enables deities to compete via belief density and lets Herald/Sun/Moon abilities meaningfully shift legitimacy instead of toggling raw stats.
 
 ## Key Outputs
-- Data model for claims with confidence/alignment per group (per `docs/chats/...md:1711-1794`).
+- Data model for claims with confidence/alignment per group (per `docs/notes/design/2026-01-15-card-format.md#L440`).
 - APIs to adjust belief weights via deity moves, rumors, audits, and taboos.
 - Visible ledger so players can inspect competing versions of events and forecast social fallout.
 

@@ -1,12 +1,3 @@
-
-## User
-gates-of-aker-main.zip
-
-Zip Archive
-
-Review this and let's get a roadmap started. I want to get to a simple rimworld clone + powers + champion control. walls, a hexagonal map, and 6 neighbor factions, so 6 decks of cards
-
-## ChatGPT
 Review (what you have right now)
 --------------------------------
 
@@ -241,6 +232,3 @@ One design constraint to decide early (so the roadmap doesn’t wobble)
 
 Given you already have a Clojure authoritative sim loop: I’d keep _truth_ in backend and let UI do optional previews later.
 
-* * *
-
-If you want, next I can turn this roadmap into a **first sprint** (Milestone 1 slice) with a concrete file/module plan (`fantasia.sim.hex`, tile schema, canvas hex rendering math, and the WS ops you’ll need).

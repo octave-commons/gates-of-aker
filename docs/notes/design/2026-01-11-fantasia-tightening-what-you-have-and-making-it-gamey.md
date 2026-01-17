@@ -1,10 +1,4 @@
 
-# Fantasia — tightening what you have (and making it *gamey*)
-
-You’ve got the right bones. The main thing now is: **define the “physics” of agency + faith** so your two modes feel inevitable instead of arbitrary.
-
----
-
 ## Champion: make “agency loss” feel like the world taking the wheel
 
 Right now you’ve got: *unmet needs reduce agency → reduces ability to control the champion*. That can become a really unique feel if it’s not just “can’t click”.
