@@ -4,44 +4,45 @@
             [fantasia.sim.facets :as f]))
 
 (defn generate
-  "Sample a world event candidate from the current world + agent list.
+  "Sample a world event candidate from current world + agent list.
    Returns nil or an event map with :id/:type/:pos/:witnesses/etc.
    Optional rng overrides random sampling for deterministic tests."
   ([world agents]
    (generate world agents nil))
   ([world agents rng]
-   (let [t (:tick world)
-         ^java.util.Random r (or rng (java.util.Random. (long (+ (:seed world) (* 7919 t)))))
-         p (.nextDouble r)
-         [w h] (:size world)
-         pos [(.nextInt r (int (max 1 w))) (.nextInt r (int (max 1 h)))]
-         witnesses (->> agents
-                        (filter (fn [a]
-                                  (<= (+ (Math/abs (long (- (first (:pos a)) (first pos))))
-                                         (Math/abs (long (- (second (:pos a)) (second pos))))) 4)))
-                        (mapv :id))
-         witness-score (min 1.0 (/ (count witnesses) 6.0))
-         cold (:cold-snap world)
-         fear (->> agents
-                   (map #(get-in % [:needs :warmth] 0.6))
-                   (map (fn [w] (- 1.0 (double w))))
-                   (reduce + 0.0)
-                   (/ (max 1 (count agents)))
-                   (min 1.0))
-         ev (cond
-              (< p (+ 0.015 (* 0.015 cold) (* 0.01 fear)))
-              {:type :winter-pyre
-               :pos pos
-               :impact (+ 0.6 (* 0.4 (.nextDouble r)))
-               :witness-score witness-score
-               :witnesses witnesses}
-              (< p (+ 0.004 (* 0.01 cold)))
-              {:type :lightning-commander
-               :pos pos
-               :impact (+ 0.7 (* 0.3 (.nextDouble r)))
-               :witness-score (min 1.0 (+ witness-score 0.2))
-               :witnesses witnesses}
-              :else nil)]
+    (let [t (:tick world)
+          ^java.util.Random r (or rng (java.util.Random. (long (+ (:seed world) (* 7919 t)))))
+          p (.nextDouble r)
+          bounds (get-in world [:map :bounds] {:w 20 :h 20})
+          [w h] (if (= (:shape bounds) :rect) [(:w bounds) (:h bounds)] [20 20])
+          pos [(.nextInt r (int (max 1 w))) (.nextInt r (int (max 1 h)))]
+          witnesses (->> agents
+                         (filter (fn [a]
+                                   (<= (+ (Math/abs (long (- (first (:pos a)) (first pos))))
+                                          (Math/abs (long (- (second (:pos a)) (second pos))))) 4)))
+                         (mapv :id))
+          witness-score (min 1.0 (/ (count witnesses) 6.0))
+          cold (:cold-snap world)
+          fear (->> agents
+                    (map #(get-in % [:needs :warmth] 0.6))
+                    (map (fn [w] (- 1.0 (double w))))
+                    (reduce + 0.0)
+                    (/ (max 1 (count agents)))
+                    (min 1.0))
+          ev (cond
+               (< p (+ 0.015 (* 0.015 cold) (* 0.01 fear)))
+               {:type :winter-pyre
+                :pos pos
+                :impact (+ 0.6 (* 0.4 (.nextDouble r)))
+                :witness-score witness-score
+                :witnesses witnesses}
+               (< p (+ 0.004 (* 0.01 cold)))
+               {:type :lightning-commander
+                :pos pos
+                :impact (+ 0.7 (* 0.3 (.nextDouble r)))
+                :witness-score (min 1.0 (+ witness-score 0.2))
+                :witnesses witnesses}
+               :else nil)]
       (when ev
         (assoc ev :id (str "e-" (name (:type ev)) "-" t "-" (.nextInt r 100000))
                   :tick t)))))

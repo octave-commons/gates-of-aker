@@ -3,5 +3,8 @@ export { StatusBar } from "./StatusBar";
 export { TickControls } from "./TickControls";
 export { LeverControls } from "./LeverControls";
 export { SimulationCanvas } from "./SimulationCanvas";
+export { AgentCard } from "./AgentCard";
 export { AgentList } from "./AgentList";
+export { EventCard } from "./EventCard";
+export { EventFeed } from "./EventFeed";
 export { TraceFeed } from "./TraceFeed";

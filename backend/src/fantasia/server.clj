@@ -57,7 +57,7 @@
   (http/with-channel req ch
     (swap! *clients conj ch)
     (ws-send! ch {:op "hello"
-                  :state (select-keys (sim/get-state) [:tick :shrine :levers])})
+                  :state (select-keys (sim/get-state) [:tick :shrine :levers :map :tiles])})
     (http/on-close ch (fn [_] (swap! *clients disj ch)))
     (http/on-receive ch
       (fn [raw]
@@ -76,8 +76,12 @@
                   (broadcast! {:op "trace" :data tr}))))
 
             "reset"
-            (do (sim/reset-world! {:seed (long (or (:seed msg) 1))})
-                (broadcast! {:op "reset" :state (sim/get-state)}))
+            (let [opts {:seed (long (or (:seed msg) 1))}
+                  opts (if (:bounds msg)
+                         (assoc opts :bounds (:bounds msg))
+                         opts)]
+              (sim/reset-world! opts)
+              (broadcast! {:op "reset" :state (sim/get-state)}))
 
             "set_levers"
             (do (sim/set-levers! (:levers msg))
@@ -86,6 +90,10 @@
             "place_shrine"
             (do (sim/place-shrine! (:pos msg))
                 (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))
+
+            "place_wall_ghost"
+            (do (sim/place-wall-ghost! (:pos msg))
+                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
 
             "appoint_mouthpiece"
             (do (sim/appoint-mouthpiece! (:agent_id msg))
@@ -128,13 +136,17 @@
         {:get (fn [_] (json-resp 200 (sim/get-state)))
          :options (fn [_] (json-resp 200 {:ok true}))}]
 
-       ["/sim/reset"
-        {:post (fn [req]
-                 (let [b (read-json-body req)
-                       seed (long (or (:seed b) 1))]
-                   (sim/reset-world! {:seed seed})
-                   (json-resp 200 {:ok true :seed seed})))
-         :options (fn [_] (json-resp 200 {:ok true}))}]
+        ["/sim/reset"
+         {:post (fn [req]
+                  (let [b (read-json-body req)
+                        seed (long (or (:seed b) 1))
+                        opts {:seed seed}
+                        opts (if (:bounds b)
+                               (assoc opts :bounds (:bounds b))
+                               opts)]
+                    (sim/reset-world! opts)
+                    (json-resp 200 {:ok true :seed seed})))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
 
        ["/sim/tick"
         {:post (fn [req]

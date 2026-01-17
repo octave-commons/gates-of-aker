@@ -17,36 +17,37 @@
    :frontier {}
    :recall {}})
 
-(defn initial-world [seed]
-  (let [r (rng seed)
+(defn initial-world [opts]
+  (let [{:keys [seed bounds]} opts
+        actual-seed (or seed 1)
+        r (rng actual-seed)
+        hex-bounds (hex/normalize-bounds bounds {:shape :rect :w 20 :h 20})
         hex-map {:kind :hex
                   :layout :pointy
-                  :bounds (hex/normalize-bounds {:w 20 :h 20} nil)}]
-    {:seed seed
+                  :bounds hex-bounds}]
+    {:seed actual-seed
      :tick 0
      :map hex-map
-     :tiles { [10 2] {:terrain :ground :resource :tree}}
+     :tiles {"10,2" {:terrain :ground :resource :tree}}
      :shrine nil
      :cold-snap 0.85
      :levers {:iconography {:fire->patron 0.80
-                            :lightning->storm 0.75
-                            :storm->deity 0.85}
-               :mouthpiece-agent-id nil}
+                             :lightning->storm 0.75
+                             :storm->deity 0.85}
+                :mouthpiece-agent-id nil}
      :institutions
      {:temple {:id :temple
-               :name "Temple of Embers"
-               :entropy 0.2
-               :broadcast-every 6
-               :canonical {:facets [:fire :judgment :winter]
-                           :claim-hint :claim/winter-judgment-flame}}}
+                :name "Temple of Embers"
+                :entropy 0.2
+                :broadcast-every 6
+                :canonical {:facets [:fire :judgment :winter]
+                            :claim-hint :claim/winter-judgment-flame}}}
      :agents (vec (for [i (range 12)]
-                    (->agent i
-                              (first (hex/rand-pos r hex-map))
-                              (second (hex/rand-pos r hex-map))
-                              (cond
-                                (= i 0) :priest
-                                (= i 1) :knight
-                                :else :peasant))))
+                     (let [[q r] (hex/rand-pos r hex-map)]
+                       (->agent i q r (cond
+                                           (= i 0) :priest
+                                           (= i 1) :knight
+                                           :else :peasant)))))
      :edges {[:cold :fire] 0.60
              [:trees :fire] 0.45
              [:lightning :storm] 0.70
@@ -153,6 +154,16 @@
 
 (defn appoint-mouthpiece! [agent-id]
   (swap! *state assoc-in [:levers :mouthpiece-agent-id] agent-id))
+
+(defn place-wall-ghost! [pos]
+  (let [world @*state
+        [q r] pos
+        tile-key (str q "," r)
+        tile (get-in world [:tiles tile-key])]
+    (when (and (hex/in-bounds? (:map world) pos)
+               (nil? (:structure tile)))
+      (swap! *state assoc-in [:tiles tile-key]
+             {:terrain :ground :structure :wall-ghost :resource nil}))))
 
 (defn tick! [n]
   (loop [i 0

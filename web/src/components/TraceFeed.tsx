@@ -30,7 +30,11 @@ export function TraceFeed({ traces }: TraceFeedProps) {
             </div>
             <div style={{ marginTop: 8 }}>
               <strong>packet</strong> <span style={{ opacity: 0.7 }}>{trace.packet?.intent}</span>
-              <code style={{ marginLeft: 6 }}>{JSON.stringify(trace.packet?.facets)}</code>
+              {trace.packet?.facets && (
+                <span style={{ marginLeft: 6 }}>
+                  facets: {Array.isArray(trace.packet.facets) ? trace.packet.facets.join(", ") : trace.packet.facets}
+                </span>
+              )}
               {trace.packet?.["claim-hint"] ? (
                 <span style={{ marginLeft: 6, opacity: 0.7 }}>hint: {String(trace.packet?.["claim-hint"])} </span>
               ) : null}

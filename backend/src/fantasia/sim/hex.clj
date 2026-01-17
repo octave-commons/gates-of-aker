@@ -63,13 +63,16 @@
     (ensure-origin bounds)))
 
 (defn- rect-in-bounds?
+  "Check if axial position is within rectangular bounds."
   [{:keys [origin w h]} [q r]]
-  (let [[oq or] (or origin [0 0])
-        q-max (+ oq (dec (long w)))
-        r-max (+ or (dec (long h)))]
+  (let [[oq or-orig] (or origin [0 0])
+        w (or (long w) 20)
+        h (or (long h) 20)
+        q-max (+ oq (dec w))
+        r-max (+ or-orig (dec h))]
     (and (<= oq q)
          (<= q q-max)
-         (<= or r)
+         (<= or-orig r)
          (<= r r-max))))
 
 (defn- radius-in-bounds?
@@ -78,12 +81,13 @@
     (<= (distance origin pos) (long r))))
 
 (defn in-bounds?
-  "True when the given position lies within the provided map metadata.
+  "True when given position lies within provided map metadata.
    `hex-map` expects {:bounds {:shape ...}} as stored in world state."
   [hex-map pos]
   (let [{:keys [bounds]} hex-map
-        {:keys [shape]} bounds
-        bounds (ensure-origin bounds)]
+        bounds (or bounds {:shape :rect :w 20 :h 20})
+        bounds (ensure-origin bounds)
+        {:keys [shape]} bounds]
     (case shape
       :radius (radius-in-bounds? bounds pos)
       ;; Default to :rect when unspecified

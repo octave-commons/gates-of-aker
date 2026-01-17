@@ -17,14 +17,14 @@
                           :claim-hint :claim/winter-judgment-flame}}]
     {:seed 42
      :tick 0
-     :size [6 6]
-     :trees #{[1 1]}
+     :map {:kind :hex :layout :pointy :bounds {:shape :rect :w 6 :h 6}}
+     :tiles {"1,1" {:terrain :ground :resource :tree}}
      :shrine [2 2]
      :cold-snap 0.4
      :levers {:iconography {:fire->patron 0.8
-                            :lightning->storm 0.7
-                            :storm->deity 0.9}
-              :mouthpiece-agent-id nil}
+                             :lightning->storm 0.7
+                             :storm->deity 0.9}
+               :mouthpiece-agent-id nil}
      :institutions {:temple inst}
      :agents [(core/->agent 0 1 1 :priest)
               (core/->agent 1 3 3 :peasant)]
@@ -43,19 +43,21 @@
      :trace-max 20}))
 
 (deftest initial-world-structure
-  (let [world (core/initial-world 99)
+  (let [world (core/initial-world {:seed 99})
         ids (map :id (:agents world))]
     (is (= 99 (:seed world)))
-    (is (= [20 20] (:size world)))
-    (is (= 64 (count (:trees world))))
+    (is (= :hex (get-in world [:map :kind])))
+    (is (= :pointy (get-in world [:map :layout])))
+    (is (map? (:map world)))
+    (is (map? (:tiles world)))
     (is (= 12 (count ids)))
     (is (= (set (range 12)) (set ids)))
-    (is (every? #(spatial/in-bounds? (:size world) (:pos %)) (:agents world)))))
+    (is (every? #(spatial/in-bounds? (:map world) (:pos %)) (:agents world)))))
 
 
 
 (deftest apply-institution-broadcast-respects-mouthpiece
-  (let [world (-> (core/initial-world 9)
+  (let [world (-> (core/initial-world {:seed 9})
                   (assoc-in [:levers :mouthpiece-agent-id] 1))
         agents (:agents world)
         broadcast (first (inst/broadcasts (assoc world :tick 6)))
@@ -65,7 +67,7 @@
     (is (vector? (:traces res)))))
 
 (deftest snapshot-summarizes-world
-  (let [world (core/initial-world 10)
+  (let [world (core/initial-world {:seed 10})
         snap (world/snapshot world {:winter 1.0})]
     (is (= (:tick world) (:tick snap)))
     (is (= (:levers world) (:levers snap)))
