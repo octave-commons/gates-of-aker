@@ -1,13 +1,14 @@
 export type WSMessage =
-  | { op: "hello"; state: any }
-  | { op: "tick"; data: any }
-  | { op: "trace"; data: any }
-  | { op: "reset"; state: any }
-  | { op: "levers"; levers: any }
-  | { op: "shrine"; shrine: any }
-  | { op: "mouthpiece"; mouthpiece: any }
-  | { op: "error"; message: string }
-  | { op: string; [k: string]: any };
+   | { op: "hello"; state: any }
+   | { op: "tick"; data: any }
+   | { op: "trace"; data: any }
+   | { op: "reset"; state: any }
+   | { op: "levers"; levers: any }
+   | { op: "shrine"; shrine: any }
+   | { op: "mouthpiece"; mouthpiece: any }
+   | { op: "tiles"; tiles: any }
+   | { op: "error"; message: string }
+   | { op: string; [k: string]: any };
 
 export class WSClient {
   private ws: WebSocket | null = null;
@@ -39,6 +40,10 @@ export class WSClient {
   }
 
   close() {
-    this.ws?.close();
-  }
-}
+     this.ws?.close();
+   }
+
+   sendPlaceWallGhost(pos: [number, number]) {
+     this.send({ op: "place_wall_ghost", pos });
+   }
+ }

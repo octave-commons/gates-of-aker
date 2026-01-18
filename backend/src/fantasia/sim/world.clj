@@ -3,16 +3,19 @@
             [fantasia.sim.myth :as myth]))
 
 (defn snapshot
-  "Produce a UI-friendly snapshot of world state + attribution map."
-  [world attribution]
-  {:tick (:tick world)
-   :shrine (:shrine world)
-   :levers (:levers world)
-   :map (:map world)
-   :tiles (:tiles world)
-   :recent-events (:recent-events world)
-   :attribution attribution
-   :agents (mapv (fn [a]
+   "Produce a UI-friendly snapshot of world state + attribution map."
+   [world attribution]
+   {:tick (:tick world)
+    :shrine (:shrine world)
+    :levers (:levers world)
+    :map (:map world)
+    :tiles (:tiles world)
+    :recent-events (:recent-events world)
+    :attribution attribution
+    :jobs (:jobs world)
+    :items (:items world)
+    :stockpiles (:stockpiles world)
+    :agents (mapv (fn [a]
                    {:id (:id a)
                     :pos (:pos a)
                     :role (:role a)

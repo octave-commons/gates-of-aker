@@ -197,3 +197,26 @@ Files: `web/src/components/BuildControls.tsx`, `web/src/components/SimulationCan
 - Consider adding job visualization in UI (show worker moving to build site)
 - Pathing cache might be needed if many agents calculate paths each tick
 - Wall ghosts allow previewing before committing resources
+
+## Implementation Notes (2026-01-17)
+
+### Completed Files:
+- `backend/src/fantasia/sim/jobs.clj` - Job system with create-job, assign-job!, advance-job!, complete-job!
+- `backend/src/fantasia/sim/pathing.clj` - BFS and A* pathfinding with passable? checks
+- `backend/src/fantasia/sim/tick.clj` - Added items/jobs to world state, integrated job processing
+- `backend/src/fantasia/sim/world.clj` - Updated snapshot to include jobs/items
+- `backend/src/fantasia/server.clj` - WS handler for place_wall_ghost already existed
+- `web/src/components/BuildControls.tsx` - Build mode toggle component
+- `web/src/components/SimulationCanvas.tsx` - Renders wall-ghost (dashed) and wall (solid)
+- `web/src/ws.ts` - Added sendPlaceWallGhost method, added tiles op type
+- `web/src/App.tsx` - Integrated BuildControls, handles tiles op, passes build mode to click handler
+
+### Testing:
+- Backend compiles: ✓
+- Frontend builds: ✓
+- WS op place_wall_ghost exists in server.clj:94-96
+- Tiles op handler added in App.tsx:87-92
+
+### Remaining:
+- Smoke test requires running UI and manually testing placement/behavior
+- Manual job assignment via REPL can test job logic

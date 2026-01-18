@@ -1,21 +1,24 @@
 (ns fantasia.sim.tick
-  (:require [fantasia.sim.agents :as agents]
-            [fantasia.sim.events.runtime :as runtime]
-            [fantasia.sim.institutions :as institutions]
-            [fantasia.sim.spatial :as spatial]
-            [fantasia.sim.hex :as hex]
-            [fantasia.sim.world :as world]))
+   (:require [fantasia.sim.agents :as agents]
+             [fantasia.sim.events.runtime :as runtime]
+             [fantasia.sim.institutions :as institutions]
+             [fantasia.sim.spatial :as spatial]
+             [fantasia.sim.hex :as hex]
+             [fantasia.sim.world :as world]
+             [fantasia.sim.jobs :as jobs]
+             [fantasia.sim.pathing :as pathing]))
 
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
 
 (defn ->agent [id q r role]
-  {:id id
-   :pos [q r]
-   :role role
-   :needs {:warmth 0.6 :food 0.7 :sleep 0.7}
-   :frontier {}
-   :recall {}})
+   {:id id
+    :pos [q r]
+    :role role
+    :needs {:warmth 0.6 :food 0.7 :sleep 0.7}
+    :inventory {:wood 0 :food 0}
+    :frontier {}
+    :recall {}})
 
 (defn initial-world [opts]
   (let [{:keys [seed bounds]} opts
@@ -25,12 +28,15 @@
         hex-map {:kind :hex
                   :layout :pointy
                   :bounds hex-bounds}]
-    {:seed actual-seed
+    {    :seed actual-seed
      :tick 0
      :map hex-map
      :tiles {"10,2" {:terrain :ground :resource :tree}}
      :shrine nil
      :cold-snap 0.85
+     :jobs []
+     :items {}
+     :stockpiles {}
      :levers {:iconography {:fire->patron 0.80
                              :lightning->storm 0.75
                              :storm->deity 0.85}
@@ -62,20 +68,52 @@
      :traces []
      :trace-max 250}))
 
+(defn process-jobs!
+  "Process jobs for agents: advance progress if adjacent to target."
+  [world]
+  (reduce
+    (fn [w agent-id]
+      (if-let [job (jobs/get-agent-job w agent-id)]
+        (let [agent-pos (get-in w [:agents agent-id :pos])
+              job-target (:target job)
+              delta (if (<= (hex/distance agent-pos job-target) 1)
+                      0.2
+                      0.0)]
+          (jobs/advance-job! w agent-id delta))
+        w))
+    world
+    (range (count (:agents world)))))
+
+(defn move-agent-with-job
+   "Move an agent one step. If agent has job, use pathing toward target.
+    Otherwise, use random movement."
+   [world agent]
+   (if-let [job (jobs/get-agent-job world (:id agent))]
+     (let [current-pos (:pos agent)
+           job-target (:target job)]
+       (if (= current-pos job-target)
+         agent
+         (let [next-pos (pathing/next-step-toward world current-pos job-target)]
+           (if (not= next-pos current-pos)
+             (assoc agent :pos next-pos)
+             agent))))
+     (spatial/move-agent world agent)))
+
 (defn tick-once [world]
-  (let [t (inc (:tick world))
-        world (assoc world :tick t)
-        agents1 (->> (:agents world)
-                     (map (fn [a]
-                            (agents/update-needs world
-                                                 (spatial/move-agent world a))))
-                     vec)
-        ev (runtime/generate world agents1)
+   (let [t (inc (:tick world))
+         w1 (assoc world :tick t)
+          w2 (process-jobs! w1)
+         agents1 (->> (:agents w2)
+                       (map (fn [a]
+                              (agents/update-needs w2
+                                                   (move-agent-with-job w2 a))))
+                       vec)
+         ev (runtime/generate w2 agents1)
         ev-step (if ev
                   (reduce
                     (fn [{:keys [agents mentions traces]} a]
                       (if (contains? (set (:witnesses ev)) (:id a))
-                        (let [res (runtime/apply-to-witness world a ev)]
+                        (let [res (runtime/apply-to-witness w2 a ev)]
                           {:agents (conj agents (:agent res))
                            :mentions (into mentions (:mentions res))
                            :traces (into traces (:traces res))})
@@ -85,57 +123,57 @@
                     {:agents [] :mentions [] :traces []}
                     agents1)
                   {:agents agents1 :mentions [] :traces []})
-        agents2 (:agents ev-step)
-        pairs (agents/interactions agents2)
-        talk-step (reduce
-                   (fn [{:keys [agents mentions traces]} [speaker listener]]
-                     (let [packet (agents/choose-packet world speaker)
-                           res (agents/apply-packet-to-listener world listener speaker packet)
-                           agents' (assoc agents (:id listener) (:listener res))]
-                       {:agents agents'
-                        :mentions (into mentions (:mentions res))
-                        :traces (into traces (:traces res))}))
+         agents2 (:agents ev-step)
+         pairs (agents/interactions agents2)
+         talk-step (reduce
+                    (fn [{:keys [agents mentions traces]} [speaker listener]]
+                      (let [packet (agents/choose-packet w2 speaker)
+                            res (agents/apply-packet-to-listener w2 listener speaker packet)
+                            agents' (assoc agents (:id listener) (:listener res))]
+                        {:agents agents'
+                         :mentions (into mentions (:mentions res))
+                         :traces (into traces (:traces res))}))
                    {:agents (vec agents2)
                     :mentions (:mentions ev-step)
                     :traces (:traces ev-step)}
                    pairs)
-        agents3 (:agents talk-step)
-        bcasts (institutions/broadcasts world)
-        inst-step (reduce
-                   (fn [{:keys [agents mentions traces]} b]
-                     (let [res (institutions/apply-broadcast world agents b)]
-                       {:agents (:agents res)
-                        :mentions (into mentions (:mentions res))
-                        :traces (into traces (:traces res))}))
+         agents3 (:agents talk-step)
+         bcasts (institutions/broadcasts w2)
+         inst-step (reduce
+                    (fn [{:keys [agents mentions traces]} b]
+                      (let [res (institutions/apply-broadcast w2 agents b)]
+                        {:agents (:agents res)
+                         :mentions (into mentions (:mentions res))
+                         :traces (into traces (:traces res))}))
                    {:agents agents3
                     :mentions (:mentions talk-step)
                     :traces (:traces talk-step)}
                    bcasts)
-        agents4 (:agents inst-step)
-        ledger-info (world/update-ledger world (:mentions inst-step))
-        ledger2 (:ledger ledger-info)
-        attr (:attribution ledger-info)
-        recent' (if ev
-                  (->> (concat (:recent-events world)
-                               [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
-                       (take-last (:recent-max world))
-                       vec)
-                  (:recent-events world))
-        traces' (->> (concat (:traces world) (:traces inst-step))
-                     (take-last (:trace-max world))
-                     vec)
-        world' (-> world
-                   (assoc :agents agents4)
-                   (assoc :ledger ledger2)
-                   (assoc :recent-events recent')
-                   (assoc :traces traces'))]
-    {:world world'
-     :out {:tick t
-           :event ev
-           :mentions (:mentions inst-step)
-           :traces (:traces inst-step)
-           :attribution attr
-           :snapshot (world/snapshot world' attr)}}))
+         agents4 (:agents inst-step)
+         ledger-info (world/update-ledger w2 (:mentions inst-step))
+         ledger2 (:ledger ledger-info)
+         attr (:attribution ledger-info)
+         recent' (if ev
+                   (->> (concat (:recent-events w2)
+                                [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
+                        (take-last (:recent-max w2))
+                        vec)
+                   (:recent-events w2))
+         traces' (->> (concat (:traces w2) (:traces inst-step))
+                      (take-last (:trace-max w2))
+                      vec)
+         world' (-> w2
+                    (assoc :agents agents4)
+                    (assoc :ledger ledger2)
+                    (assoc :recent-events recent')
+                    (assoc :traces traces'))]
+     {:world world'
+      :out {:tick t
+            :event ev
+            :mentions (:mentions inst-step)
+            :traces (:traces inst-step)
+            :attribution attr
+            :snapshot (world/snapshot world' attr)}}))
 
 (defonce *state (atom (initial-world 1)))
 
@@ -154,6 +192,29 @@
 
 (defn appoint-mouthpiece! [agent-id]
   (swap! *state assoc-in [:levers :mouthpiece-agent-id] agent-id))
+
+(defn assign-build-wall-job!
+   "Manually assign a build-wall job to an agent at a specific position."
+   [agent-id pos]
+   (let [world @*state]
+     (when (get-in world [:agents agent-id])
+       (let [job (jobs/create-job :job/build-wall pos)]
+         (swap! *state jobs/assign-job! job agent-id)))))
+
+(defn move-agent-with-job
+   "Move an agent one step. If agent has job, use pathing toward target.
+    Otherwise, use random movement."
+   [world agent]
+   (if-let [job (jobs/get-agent-job world (:id agent))]
+     (let [current-pos (:pos agent)
+           job-target (:target job)]
+       (if (= current-pos job-target)
+         agent
+         (let [next-pos (pathing/next-step-toward world current-pos job-target)]
+           (if (not= next-pos current-pos)
+             (assoc agent :pos next-pos)
+             agent))))
+     (spatial/move-agent world agent)))
 
 (defn place-wall-ghost! [pos]
   (let [world @*state

@@ -1,16 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
-import {
-  AgentCard,
-  AgentList,
-  EventFeed,
-  LeverControls,
-  RawJSONFeedPanel,
-  SimulationCanvas,
-  StatusBar,
-  TickControls,
-  TraceFeed,
-} from "./components";
+ import {
+     AgentCard,
+     AgentList,
+     AttributionPanel,
+     EventFeed,
+     LedgerPanel,
+     LeverControls,
+     RawJSONFeedPanel,
+     SelectedPanel,
+     SimulationCanvas,
+     StatusBar,
+     TickControls,
+     TraceFeed,
+     BuildControls,
+   } from "./components";
 import { Agent, Trace, hasPos } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
 
@@ -26,7 +30,9 @@ export function App() {
   const [events, setEvents] = useState<any[]>([]);
 
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
-  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+
+   const [buildMode, setBuildMode] = useState(false);
 
   const [fireToPatron, setFireToPatron] = useState(0.8);
   const [lightningToStorm, setLightningToStorm] = useState(0.75);
@@ -34,6 +40,9 @@ export function App() {
 
   const [worldWidth, setWorldWidth] = useState(20);
   const [worldHeight, setWorldHeight] = useState(20);
+
+  const [tracesCollapsed, setTracesCollapsed] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const client = useMemo(() => {
     const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
@@ -67,17 +76,23 @@ export function App() {
           });
         }
         if (m.op === "reset") {
-          setTraces([]);
-          setEvents([]);
-          setSelectedCell(null);
-          setSelectedAgentId(null);
-          const state = m.state ?? {};
-          setSnapshot(state);
-          if (state.map) {
-            setMapConfig(state.map as HexConfig);
-          }
+           setTraces([]);
+           setEvents([]);
+           setSelectedCell(null);
+           setSelectedAgentId(null);
+           const state = m.state ?? {};
+           setSnapshot(state);
+           if (state.map) {
+             setMapConfig(state.map as HexConfig);
+           }
+         }
+        if (m.op === "tiles") {
+          setSnapshot((prev: any) => {
+            if (!prev) return prev;
+            return { ...prev, tiles: m.tiles };
+          });
         }
-      },
+       },
       (s) => setStatus(s)
     );
   }, []);
@@ -86,6 +101,67 @@ export function App() {
     client.connect();
     return () => client.close();
   }, [client]);
+
+  // Initialize snapshot - fetch latest or create new one
+  useEffect(() => {
+    const initializeSnapshot = async () => {
+      setIsInitializing(true);
+      try {
+        const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
+        const response = await fetch(`${backendOrigin}/sim/state`);
+        
+        if (response.ok) {
+          const state = await response.json();
+          
+          // Check if the state has meaningful data
+          const hasData = state && (
+            (state.tick && state.tick > 0) || 
+            (state.agents && state.agents.length > 0) ||
+            (state.ledger && Object.keys(state.ledger).length > 0)
+          );
+          
+          if (hasData) {
+            console.log("Loaded existing snapshot:", { tick: state.tick, agents: state.agents?.length });
+            // Use existing state
+            setTick(state.tick ?? 0);
+            setSnapshot(state);
+            if (state.map) {
+              setMapConfig(state.map as HexConfig);
+            }
+          } else {
+            console.log("Existing state is empty, creating new snapshot");
+            // Create new snapshot with default seed
+            createNewSnapshot();
+          }
+        } else {
+          console.warn("Failed to fetch state, creating new snapshot");
+          // If fetch fails, create new snapshot
+          createNewSnapshot();
+        }
+      } catch (error) {
+        console.warn("Error fetching existing state, creating new one:", error);
+        createNewSnapshot();
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    const createNewSnapshot = () => {
+      const defaultSeed = Math.floor(Math.random() * 1000000);
+      console.log("Creating new snapshot with seed:", defaultSeed);
+      client.send({ op: "reset", seed: defaultSeed });
+    };
+
+    // Initialize snapshot when component mounts
+    const timeoutId = setTimeout(() => {
+      // Only initialize if WebSocket hasn't provided data yet
+      if (!snapshot && status === "open") {
+        initializeSnapshot();
+      }
+    }, 1500); // Wait 1.5 seconds for WebSocket "hello" message
+
+    return () => clearTimeout(timeoutId);
+  }, [client, snapshot, status]);
 
   const sendTick = (n: number) => client.send({ op: "tick", n });
   const reset = (seed: number, bounds?: { w: number; h: number }) => {
@@ -97,9 +173,12 @@ export function App() {
   };
 
   const handleCellSelect = (cell: [number, number], agentId: number | null) => {
-    setSelectedCell(cell);
-    setSelectedAgentId(agentId);
-  };
+     if (buildMode) {
+       client.sendPlaceWallGhost(cell);
+     }
+     setSelectedCell(cell);
+     setSelectedAgentId(agentId);
+   };
 
   const placeShrineAtSelected = () => {
     if (!selectedCell) return;
@@ -145,6 +224,31 @@ export function App() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 16, padding: 16, height: "calc(100vh - 32px)" }}>
       <div style={{ overflow: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+        {/* Loading overlay for snapshot initialization */}
+        {isInitializing && !snapshot && (
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            gap: 16
+          }}>
+            <div style={{ fontSize: "1.2em", fontWeight: "bold", color: "#333" }}>
+              Initializing Simulation...
+            </div>
+            <div style={{ fontSize: "0.9em", color: "#666" }}>
+              {status === "open" ? "Fetching latest snapshot..." : "Connecting to server..."}
+            </div>
+          </div>
+        )}
+        
         <SimulationCanvas
           snapshot={snapshot}
           mapConfig={mapConfig}
@@ -192,15 +296,21 @@ export function App() {
       <div style={{ overflow: "auto", paddingRight: 8 }}>
         <StatusBar status={status} />
         <TickControls
-          onTick={sendTick}
-          onReset={() => reset(1)}
-          onPlaceShrine={placeShrineAtSelected}
-          onSetMouthpiece={setMouthpieceToSelected}
-          canPlaceShrine={!!selectedCell}
-          canSetMouthpiece={selectedAgentId != null}
+           onTick={sendTick}
+           onReset={() => reset(1)}
+           onPlaceShrine={placeShrineAtSelected}
+           onSetMouthpiece={setMouthpieceToSelected}
+           canPlaceShrine={!!selectedCell}
+           canSetMouthpiece={selectedAgentId != null}
+         />
+
+        <BuildControls
+          onPlaceWallGhost={client.sendPlaceWallGhost}
+          onModeChange={(mode: "select" | "build") => setBuildMode(mode === "build")}
+          buildMode={buildMode}
         />
 
-        <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+         <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
           <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <label style={{ fontSize: 12 }}>Width:</label>
@@ -247,22 +357,45 @@ export function App() {
           onApply={applyLevers}
         />
 
-        <RawJSONFeedPanel
-          title="Selected"
-          data={{ selectedCell, selectedAgentId, mouthpieceId }}
+        <SelectedPanel
+          selectedCell={selectedCell}
+          selectedAgentId={selectedAgentId}
+          selectedAgent={selectedAgent}
+          mouthpieceId={mouthpieceId}
           style={{ marginTop: 12 }}
         />
-        <RawJSONFeedPanel title="Selected agent details" data={selectedAgent} style={{ marginTop: 12 }} />
 
         <div style={{ marginTop: 12 }}>
-          <AgentList agents={agents} />
+          <AgentList agents={agents} collapsible />
         </div>
 
         <div style={{ marginTop: 12 }}>
-          <strong>Traces</strong> <span style={{ opacity: 0.7 }}>({traces.length})</span>
-        </div>
-        <div style={{ display: "grid", gap: 10 }}>
-          {[...traces].reverse().map((trace: Trace, idx) => (
+          <div 
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+              padding: "8px 0",
+              borderBottom: tracesCollapsed ? "1px solid #ddd" : "none"
+            }}
+            onClick={() => setTracesCollapsed(!tracesCollapsed)}
+          >
+            <strong style={{ margin: 0 }}>Traces</strong> 
+            <span style={{ opacity: 0.7, marginRight: 8 }}>({traces.length})</span>
+            <span style={{ 
+              fontSize: "1.2em", 
+              color: "#666",
+              transition: "transform 0.2s ease",
+              transform: tracesCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
+            }}>
+              ▼
+            </span>
+          </div>
+          
+          {!tracesCollapsed && (
+            <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
+              {[...traces].reverse().map((trace: Trace, idx) => (
             <div
               key={trace["trace/id"] ?? idx}
               data-testid="trace-card"
@@ -308,12 +441,14 @@ export function App() {
               </div>
             </div>
           ))}
+            </div>
+          )}
         </div>
 
-        <RawJSONFeedPanel title="Attribution" data={attribution} style={{ marginTop: 12 }} />
-        <EventFeed events={recentEvents} title="Recent events (snapshot)" compact />
-        <EventFeed events={events} title="Live event feed" compact />
-        <RawJSONFeedPanel title="Ledger" data={snapshot?.ledger ?? null} style={{ marginTop: 12 }} />
+        <AttributionPanel data={attribution} style={{ marginTop: 12 }} />
+        <EventFeed events={recentEvents} title="Recent events (snapshot)" compact collapsible />
+        <EventFeed events={events} title="Live event feed" compact collapsible />
+        <LedgerPanel data={snapshot?.ledger ?? null} style={{ marginTop: 12 }} />
       </div>
     </div>
   );

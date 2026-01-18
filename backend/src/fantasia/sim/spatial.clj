@@ -6,7 +6,7 @@
   [world pos]
   (hex/in-bounds? (:map world) pos))
 
-(defn- manhattan
+(defn manhattan
   "Compute Manhattan distance between two coordinates (legacy helper)."
   [[ax ay] [bx by]]
   (+ (Math/abs (long (- ax bx)))

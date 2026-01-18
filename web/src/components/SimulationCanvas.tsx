@@ -80,15 +80,50 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       ctx.closePath();
       ctx.stroke();
 
-      const tileKey = `${hex[0]},${hex[1]}`;
-      const tile = snapshot.tiles?.[tileKey];
-      if (tile?.resource === "tree") {
-        ctx.fillStyle = "#2e7d32";
-        ctx.beginPath();
-        ctx.arc(px, py, HEX_SIZE * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
+       const tileKey = `${hex[0]},${hex[1]}`;
+       const tile = snapshot.tiles?.[tileKey];
+       if (tile?.resource === "tree") {
+         ctx.fillStyle = "#2e7d32";
+         ctx.beginPath();
+         ctx.arc(px, py, HEX_SIZE * 0.4, 0, Math.PI * 2);
+         ctx.fill();
+       }
+       if (tile?.structure === "wall-ghost") {
+         ctx.strokeStyle = "#ffae00";
+         ctx.lineWidth = 2;
+         ctx.setLineDash([4, 2]);
+         ctx.beginPath();
+         for (let i = 0; i < 6; i++) {
+           const [cx, cy] = hexCorner([px, py], HEX_SIZE - 4, i);
+           if (i === 0) {
+             ctx.moveTo(cx, cy);
+           } else {
+             ctx.lineTo(cx, cy);
+           }
+         }
+         ctx.closePath();
+         ctx.stroke();
+         ctx.setLineDash([]);
+         ctx.lineWidth = 1;
+       }
+       if (tile?.structure === "wall") {
+         ctx.fillStyle = "#666";
+         ctx.beginPath();
+         for (let i = 0; i < 6; i++) {
+           const [cx, cy] = hexCorner([px, py], HEX_SIZE - 3, i);
+           if (i === 0) {
+             ctx.moveTo(cx, cy);
+           } else {
+             ctx.lineTo(cx, cy);
+           }
+         }
+         ctx.closePath();
+         ctx.fill();
+         ctx.strokeStyle = "#444";
+         ctx.lineWidth = 1;
+         ctx.stroke();
+       }
+     }
     ctx.globalAlpha = 1;
     ctx.strokeStyle = "#111";
 
