@@ -136,6 +136,37 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       ctx.fill();
     }
 
+    const stockpiles = snapshot.stockpiles ?? {};
+    for (const [tileKey, stockpile] of Object.entries(stockpiles)) {
+      const [q, r] = tileKey.split(",").map(Number) as [number, number];
+      const [sx, sy] = axialToPixel([q, r], size);
+      const sp = stockpile as { resource: string; maxQty: number; currentQty: number };
+      const fillLevel = sp.currentQty / sp.maxQty;
+      
+      const stockpileColor = (resource: string) => {
+        switch (resource) {
+          case "wood":
+            return "#8d6e63";
+          case "food":
+            return "#ff9800";
+          default:
+            return "#9e9e9e";
+        }
+      };
+
+      ctx.fillStyle = stockpileColor(sp.resource);
+      ctx.fillRect(sx - HEX_SIZE * 0.4, sy - HEX_SIZE * 0.4, HEX_SIZE * 0.8, HEX_SIZE * 0.8);
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx - HEX_SIZE * 0.4, sy - HEX_SIZE * 0.4, HEX_SIZE * 0.8, HEX_SIZE * 0.8);
+      
+      ctx.fillStyle = "white";
+      ctx.font = "8px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${sp.currentQty}/${sp.maxQty}`, sx, sy);
+    }
+
     if (selectedCell) {
       const [selQ, selR] = selectedCell;
       const [sx, sy] = axialToPixel([selQ, selR], size);
