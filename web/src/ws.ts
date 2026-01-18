@@ -7,6 +7,8 @@ export type WSMessage =
    | { op: "shrine"; shrine: any }
    | { op: "mouthpiece"; mouthpiece: any }
    | { op: "tiles"; tiles: any }
+   | { op: "stockpiles"; stockpiles: any }
+   | { op: "jobs"; jobs: any }
    | { op: "error"; message: string }
    | { op: string; [k: string]: any };
 
@@ -45,5 +47,13 @@ export class WSClient {
 
    sendPlaceWallGhost(pos: [number, number]) {
      this.send({ op: "place_wall_ghost", pos });
+   }
+
+   sendPlaceStockpile(pos: [number, number], resource: string, maxQty?: number) {
+     this.send({ op: "place_stockpile", pos, resource, max_qty: maxQty });
+   }
+
+   sendAssignJob(jobType: string, targetPos: [number, number], agentId: number) {
+     this.send({ op: "assign_job", job_type: jobType, target_pos: targetPos, agent_id: agentId });
    }
  }

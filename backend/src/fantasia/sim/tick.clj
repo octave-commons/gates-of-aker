@@ -102,14 +102,16 @@
      (spatial/move-agent world agent)))
 
 (defn tick-once [world]
-   (let [t (inc (:tick world))
-         w1 (assoc world :tick t)
-          w2 (process-jobs! w1)
-         agents1 (->> (:agents w2)
-                       (map (fn [a]
-                              (agents/update-needs w2
-                                                   (move-agent-with-job w2 a))))
-                       vec)
+    (let [t (inc (:tick world))
+          w1 (assoc world :tick t)
+           w2 (-> w1
+                  (jobs/auto-generate-jobs!)
+                  (process-jobs!))
+          agents1 (->> (:agents w2)
+                        (map (fn [a]
+                               (agents/update-needs w2
+                                                    (move-agent-with-job w2 a))))
+                        vec)
          ev (runtime/generate w2 agents1)
         ev-step (if ev
                   (reduce

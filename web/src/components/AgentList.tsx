@@ -4,11 +4,18 @@ import { AgentCard } from "./AgentCard";
 
 type AgentListProps = {
   agents: Agent[];
+  jobs?: any[];
   collapsible?: boolean;
 };
 
-export function AgentList({ agents, collapsible = false }: AgentListProps) {
+export function AgentList({ agents, jobs = [], collapsible = false }: AgentListProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const getAgentJob = (agentId: number) => {
+    const agent = agents.find((a: any) => a.id === agentId);
+    const jobId = agent?.current_job;
+    return jobs.find((j: any) => j.id === jobId);
+  };
 
   if (collapsible) {
     return (
@@ -45,7 +52,7 @@ export function AgentList({ agents, collapsible = false }: AgentListProps) {
             marginTop: 8
           }}>
             {agents.map((agent) => (
-              <AgentCard key={agent.id} agent={agent} compact />
+              <AgentCard key={agent.id} agent={agent} compact currentJob={getAgentJob(agent.id)} />
             ))}
           </div>
         )}
@@ -59,7 +66,7 @@ export function AgentList({ agents, collapsible = false }: AgentListProps) {
       <strong>Agents ({agents.length})</strong>
       <div style={{ maxHeight: 220, overflowY: "auto", border: "1px solid #ccc", borderRadius: 8, padding: 8 }}>
         {agents.map((agent) => (
-          <AgentCard key={agent.id} agent={agent} compact />
+          <AgentCard key={agent.id} agent={agent} compact currentJob={getAgentJob(agent.id)} />
         ))}
       </div>
     </div>

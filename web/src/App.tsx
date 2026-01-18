@@ -1,20 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
  import {
-     AgentCard,
-     AgentList,
-     AttributionPanel,
-     EventFeed,
-     LedgerPanel,
-     LeverControls,
-     RawJSONFeedPanel,
-     SelectedPanel,
-     SimulationCanvas,
-     StatusBar,
-     TickControls,
-     TraceFeed,
-     BuildControls,
-   } from "./components";
+      AgentCard,
+      AgentList,
+      AttributionPanel,
+      EventFeed,
+      LedgerPanel,
+      LeverControls,
+      RawJSONFeedPanel,
+      SelectedPanel,
+      SimulationCanvas,
+      StatusBar,
+      TickControls,
+      TraceFeed,
+      BuildControls,
+      JobQueuePanel,
+    } from "./components";
 import { Agent, Trace, hasPos } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
 
@@ -33,6 +34,7 @@ export function App() {
    const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
 
    const [buildMode, setBuildMode] = useState(false);
+   const [stockpileMode, setStockpileMode] = useState(false);
 
   const [fireToPatron, setFireToPatron] = useState(0.8);
   const [lightningToStorm, setLightningToStorm] = useState(0.75);
@@ -87,9 +89,21 @@ export function App() {
            }
          }
         if (m.op === "tiles") {
+           setSnapshot((prev: any) => {
+             if (!prev) return prev;
+             return { ...prev, tiles: m.tiles };
+           });
+         }
+        if (m.op === "stockpiles") {
           setSnapshot((prev: any) => {
             if (!prev) return prev;
-            return { ...prev, tiles: m.tiles };
+            return { ...prev, stockpiles: m.stockpiles };
+          });
+        }
+        if (m.op === "jobs") {
+          setSnapshot((prev: any) => {
+            if (!prev) return prev;
+            return { ...prev, jobs: m.jobs };
           });
         }
        },
@@ -172,13 +186,13 @@ export function App() {
     client.send(payload);
   };
 
-  const handleCellSelect = (cell: [number, number], agentId: number | null) => {
-     if (buildMode) {
-       client.sendPlaceWallGhost(cell);
-     }
-     setSelectedCell(cell);
-     setSelectedAgentId(agentId);
-   };
+   const handleCellSelect = (cell: [number, number], agentId: number | null) => {
+      if (buildMode) {
+        client.sendPlaceWallGhost(cell);
+      }
+      setSelectedCell(cell);
+      setSelectedAgentId(agentId);
+    };
 
   const placeShrineAtSelected = () => {
     if (!selectedCell) return;
@@ -213,6 +227,12 @@ export function App() {
     selectedAgentId == null ? null : (snapshot?.agents ?? []).find((a: Agent) => a.id === selectedAgentId) ?? null;
   const attribution = snapshot?.attribution ?? {};
   const agents: Agent[] = (snapshot?.agents ?? []) as Agent[];
+  const jobs = (snapshot?.jobs ?? []) as any[];
+  
+  const getAgentJob = (agentId: number) => {
+    const currentJobId = selectedAgent?.current_job ?? (agents.find((a: Agent) => a.id === agentId) as any)?.current_job;
+    return jobs.find((j: any) => j.id === currentJobId);
+  };
 
   const selectedTile = selectedCell ? snapshot?.tiles?.[`${selectedCell[0]},${selectedCell[1]}`] : null;
   const selectedTileAgents = selectedCell ? (snapshot?.agents ?? []).filter((a: Agent) => {
@@ -274,10 +294,36 @@ export function App() {
               Selected Cell: {selectedCell[0]}, {selectedCell[1]}
             </div>
             {selectedTile && (
-              <div style={{ marginBottom: 8 }}>
-                <div><strong>Resource:</strong> {selectedTile.resource ?? "none"}</div>
-              </div>
-            )}
+               <div style={{ marginBottom: 8 }}>
+                 <div><strong>Resource:</strong> {selectedTile.resource ?? "none"}</div>
+                 {selectedTile.resource === ":tree" && (
+                   <button
+                     onClick={() => {
+                       const idleAgents = agents.filter((a: any) => !a.current_job);
+                       if (idleAgents.length > 0) {
+                         client.sendAssignJob(":job/chop-tree", selectedCell, idleAgents[0].id);
+                       }
+                     }}
+                     style={{ marginTop: 4, padding: "4px 8px", fontSize: 12 }}
+                   >
+                     Assign Chop Job
+                   </button>
+                 )}
+                 {selectedTile.structure === ":wall-ghost" && (
+                   <button
+                     onClick={() => {
+                       const idleAgents = agents.filter((a: any) => !a.current_job);
+                       if (idleAgents.length > 0) {
+                         client.sendAssignJob(":job/build-wall", selectedCell, idleAgents[0].id);
+                       }
+                     }}
+                     style={{ marginTop: 4, padding: "4px 8px", fontSize: 12 }}
+                   >
+                     Assign Build Job
+                   </button>
+                 )}
+               </div>
+             )}
             {selectedTileAgents.length > 0 && (
               <div>
                 <div><strong>Agents ({selectedTileAgents.length}):</strong></div>
@@ -305,10 +351,14 @@ export function App() {
          />
 
         <BuildControls
-          onPlaceWallGhost={client.sendPlaceWallGhost}
-          onModeChange={(mode: "select" | "build") => setBuildMode(mode === "build")}
-          buildMode={buildMode}
-        />
+           onPlaceWallGhost={client.sendPlaceWallGhost}
+           onPlaceStockpile={client.sendPlaceStockpile}
+           onToggleBuildMode={() => setBuildMode(!buildMode)}
+           buildMode={buildMode}
+           selectedCell={selectedCell}
+         />
+
+        <JobQueuePanel jobs={jobs} />
 
          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
           <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
@@ -366,8 +416,8 @@ export function App() {
         />
 
         <div style={{ marginTop: 12 }}>
-          <AgentList agents={agents} collapsible />
-        </div>
+           <AgentList agents={agents} jobs={jobs} collapsible />
+         </div>
 
         <div style={{ marginTop: 12 }}>
           <div 

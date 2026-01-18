@@ -244,9 +244,8 @@
             jobs-to-add)))
 
 (defn generate-need-jobs! [world]
-  (reduce (fn [w agent]
-            (let [id (:id agent)
-                  needs (:needs agent)
+  (reduce (fn [w [_ agent]]
+            (let [needs (:needs agent)
                   thresholds (or (:need-thresholds agent) {})
                   food (get needs :food 1.0)
                   sleep (get needs :sleep 1.0)
@@ -257,8 +256,8 @@
               (cond-> w
                 (< food food-hungry) (update :jobs conj (create-job :job/eat food-pos))
                 (< sleep sleep-tired) (update :jobs conj (create-job :job/sleep pos)))))
-          world
-          (vals (:agents world))))
+        world
+        (vals (:agents world))))
 
 (defn auto-generate-jobs! [world]
   (-> world

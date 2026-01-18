@@ -5,8 +5,9 @@
     [clojure.string :as str]
     [org.httpkit.server :as http]
     [reitit.ring :as ring]
-    [fantasia.sim.tick :as sim]))
-
+    [fantasia.sim.tick :as sim]
+    [fantasia.sim.jobs :as jobs]))
+(print "hi")
 (defn json-resp
   ([m] (json-resp 200 m))
   ([status m]
@@ -103,6 +104,15 @@
             "place_stockpile"
             (do (sim/place-stockpile! (:pos msg) (:resource msg) (:max_qty msg))
                 (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
+
+            "assign_job"
+            (let [agent-id (:agent_id msg)
+                  job-type (:job_type msg)
+                  target-pos (:target_pos msg)]
+              (when (get-in (sim/get-state) [:agents agent-id])
+                (let [job (jobs/create-job job-type target-pos)]
+                  (swap! sim/*state jobs/assign-job! job agent-id)
+                  (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))}))))
 
             (ws-send! ch {:op "error" :message "unknown op"})))))))
 

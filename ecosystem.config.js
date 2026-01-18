@@ -4,8 +4,9 @@ module.exports = {
   apps: [
     {
       name: "gates-backend",
+        interpreter:"bash",
       script: "clojure",
-      args: "-M:server",
+        args: ["-M:server"],
       cwd: "./backend",
       instances: 1,
       autorestart: true,
@@ -20,19 +21,5 @@ module.exports = {
         NODE_ENV: "development"
       }
     },
-
-    {
-      name: "gates-frontend",
-      script: "npm",
-      args: "run dev",
-      cwd: "./web",
-      instances: 1,
-      autorestart: true,
-      // We don't watch frontend here; Vite already handles HMR in dev mode.
-      watch: false,
-      env: {
-        NODE_ENV: "development"
-      }
-    }
   ]
 };
