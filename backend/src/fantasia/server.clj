@@ -3,7 +3,7 @@
   (:require
     [cheshire.core :as json]
     [clojure.string :as str]
-    [org.httpkit.server :as http :refer [with-channel send! on-close on-receive]]
+    [org.httpkit.server :as http]
     [reitit.ring :as ring]
     [fantasia.sim.tick :as sim]))
 
@@ -99,6 +99,10 @@
             (do (sim/appoint-mouthpiece! (:agent_id msg))
                 (broadcast! {:op "mouthpiece"
                              :mouthpiece (get-in (sim/get-state) [:levers :mouthpiece-agent-id])}))
+
+            "place_stockpile"
+            (do (sim/place-stockpile! (:pos msg) (:resource msg) (:max_qty msg))
+                (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
 
             (ws-send! ch {:op "error" :message "unknown op"})))))))
 

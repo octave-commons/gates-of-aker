@@ -16,6 +16,8 @@
     :pos [q r]
     :role role
     :needs {:warmth 0.6 :food 0.7 :sleep 0.7}
+    :need-thresholds {:food-starve 0.0 :food-hungry 0.3 :food-satisfied 0.8
+                      :sleep-exhausted 0.0 :sleep-tired 0.3 :sleep-rested 0.8}
     :inventory {:wood 0 :food 0}
     :frontier {}
     :recall {}})
@@ -225,6 +227,16 @@
                (nil? (:structure tile)))
       (swap! *state assoc-in [:tiles tile-key]
              {:terrain :ground :structure :wall-ghost :resource nil}))))
+
+(defn place-stockpile! [pos resource max-qty]
+  (let [world @*state
+        [q r] pos
+        tile-key (str q "," r)
+        tile (get-in world [:tiles tile-key])]
+    (when (and (hex/in-bounds? (:map world) pos)
+               (nil? (:structure tile))
+               (nil? (get-in world [:stockpiles tile-key])))
+      (swap! *state jobs/create-stockpile! pos resource (or max-qty 100)))))
 
 (defn tick! [n]
   (loop [i 0
