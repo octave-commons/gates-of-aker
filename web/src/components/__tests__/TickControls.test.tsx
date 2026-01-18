@@ -8,6 +8,7 @@ describe("TickControls", () => {
     const user = userEvent.setup();
     const onTick = vi.fn();
     const onReset = vi.fn();
+    const onToggleRun = vi.fn();
     const noop = vi.fn();
 
     render(
@@ -18,6 +19,8 @@ describe("TickControls", () => {
         onSetMouthpiece={noop}
         canPlaceShrine={false}
         canSetMouthpiece={false}
+        isRunning={false}
+        onToggleRun={onToggleRun}
       />
     );
 
@@ -39,6 +42,8 @@ describe("TickControls", () => {
         onSetMouthpiece={() => {}}
         canPlaceShrine={false}
         canSetMouthpiece={false}
+        isRunning={false}
+        onToggleRun={() => {}}
       />
     );
 
@@ -53,10 +58,46 @@ describe("TickControls", () => {
         onSetMouthpiece={() => {}}
         canPlaceShrine
         canSetMouthpiece
+        isRunning={false}
+        onToggleRun={() => {}}
       />
     );
 
     expect(screen.getByRole("button", { name: /Place shrine/ })).toBeEnabled();
     expect(screen.getByRole("button", { name: /Set mouthpiece/ })).toBeEnabled();
+  });
+
+  it("shows Play/Pause button correctly", () => {
+    const onToggleRun = vi.fn();
+
+    const { rerender } = render(
+      <TickControls
+        onTick={() => {}}
+        onReset={() => {}}
+        onPlaceShrine={() => {}}
+        onSetMouthpiece={() => {}}
+        canPlaceShrine={false}
+        canSetMouthpiece={false}
+        isRunning={false}
+        onToggleRun={onToggleRun}
+      />
+    );
+
+    expect(screen.getByText("▶ Play")).toBeInTheDocument();
+
+    rerender(
+      <TickControls
+        onTick={() => {}}
+        onReset={() => {}}
+        onPlaceShrine={() => {}}
+        onSetMouthpiece={() => {}}
+        canPlaceShrine={false}
+        canSetMouthpiece={false}
+        isRunning
+        onToggleRun={onToggleRun}
+      />
+    );
+
+    expect(screen.getByText("⏸ Pause")).toBeInTheDocument();
   });
 });

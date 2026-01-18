@@ -42,8 +42,8 @@
             (if (nil? (:current-job agent))
               (claim-next-job! w (:id agent))
               w))
-          world
-          (vals (:agents world))))
+        world
+        (:agents world)))
 
 (defn add-item! [world pos resource qty]
   (let [tile-key (str (first pos) "," (second pos))]
@@ -244,7 +244,7 @@
             jobs-to-add)))
 
 (defn generate-need-jobs! [world]
-  (reduce (fn [w [_ agent]]
+  (reduce (fn [w agent]
             (let [needs (:needs agent)
                   thresholds (or (:need-thresholds agent) {})
                   food (get needs :food 1.0)
@@ -257,7 +257,7 @@
                 (< food food-hungry) (update :jobs conj (create-job :job/eat food-pos))
                 (< sleep sleep-tired) (update :jobs conj (create-job :job/sleep pos)))))
         world
-        (vals (:agents world))))
+        (:agents world)))
 
 (defn auto-generate-jobs! [world]
   (-> world

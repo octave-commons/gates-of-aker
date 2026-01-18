@@ -105,8 +105,9 @@
     (let [t (inc (:tick world))
           w1 (assoc world :tick t)
            w2 (-> w1
-                  (jobs/auto-generate-jobs!)
-                  (process-jobs!))
+                   (jobs/auto-generate-jobs!)
+                   (jobs/auto-assign-jobs!)
+                   (process-jobs!))
           agents1 (->> (:agents w2)
                         (map (fn [a]
                                (agents/update-needs w2

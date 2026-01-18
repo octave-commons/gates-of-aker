@@ -53,7 +53,16 @@ export class WSClient {
      this.send({ op: "place_stockpile", pos, resource, max_qty: maxQty });
    }
 
-   sendAssignJob(jobType: string, targetPos: [number, number], agentId: number) {
-     this.send({ op: "assign_job", job_type: jobType, target_pos: targetPos, agent_id: agentId });
-   }
- }
+    sendAssignJob(jobType: string, targetPos: [number, number], agentId: number) {
+      this.send({ op: "assign_job", job_type: jobType, target_pos: targetPos, agent_id: agentId });
+    }
+
+    sendStartRun() {
+      this.send({ op: "start_run" });
+    }
+
+    sendStopRun() {
+      this.send({ op: "stop_run" });
+    }
+  }
+

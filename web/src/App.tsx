@@ -45,7 +45,21 @@ export function App() {
 
   const [tracesCollapsed, setTracesCollapsed] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        toggleRun();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isRunning]);
+
+ 
   const client = useMemo(() => {
     const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
     const wsUrl = backendOrigin.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
@@ -176,6 +190,16 @@ export function App() {
 
     return () => clearTimeout(timeoutId);
   }, [client, snapshot, status]);
+
+  const toggleRun = () => {
+    if (isRunning) {
+      client.sendStopRun();
+      setIsRunning(false);
+    } else {
+      client.sendStartRun();
+      setIsRunning(true);
+    }
+  };
 
   const sendTick = (n: number) => client.send({ op: "tick", n });
   const reset = (seed: number, bounds?: { w: number; h: number }) => {
@@ -348,6 +372,8 @@ export function App() {
            onSetMouthpiece={setMouthpieceToSelected}
            canPlaceShrine={!!selectedCell}
            canSetMouthpiece={selectedAgentId != null}
+           isRunning={isRunning}
+           onToggleRun={toggleRun}
          />
 
         <BuildControls
