@@ -1,6 +1,13 @@
 1) `docs/notes/world-schema.md` (MVP authoritative world shape)
 ===============================================================
 
+## Related Documentation
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
+- [[spec/2026-01-15-myth-engine.md]] - Myth engine
+- [[docs/notes/design/2026-01-15-aker-boundry-control-flow.md]] - Card system
+- [[spec/2026-01-17-milestone2-walls-pathing-build-ghosts.md]] - Walls and pathing
+
 ```md
 # Gates of Aker — World Schema (MVP) #gates-of-aker #schema #world
 

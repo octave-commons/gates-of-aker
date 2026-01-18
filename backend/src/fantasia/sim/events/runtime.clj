@@ -13,8 +13,8 @@
     (let [t (:tick world)
           ^java.util.Random r (or rng (java.util.Random. (long (+ (:seed world) (* 7919 t)))))
           p (.nextDouble r)
-          bounds (get-in world [:map :bounds] {:w 20 :h 20})
-          [w h] (if (= (:shape bounds) :rect) [(:w bounds) (:h bounds)] [20 20])
+          bounds (get-in world [:map :bounds] {:w 32 :h 32})
+          [w h] (if (= (:shape bounds) :rect) [(:w bounds) (:h bounds)] [32 32])
           pos [(.nextInt r (int (max 1 w))) (.nextInt r (int (max 1 h)))]
           witnesses (->> agents
                          (filter (fn [a]

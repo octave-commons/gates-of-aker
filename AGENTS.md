@@ -1,5 +1,12 @@
 # AGENTS
 
+## Related Documentation
+- [[README.md]] - Project overview
+- [[HACK.md]] - High-level vision and inspirations
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
+- [[spec/2026-01-15-myth-engine.md]] - Myth engine
+
 ## Mission & Scope
 - Maintain parity between backend simulation services, the React/Vite client, and supporting docs.
 - This document governs every directory in the repo; add nested AGENTS.md files for narrower overrides.

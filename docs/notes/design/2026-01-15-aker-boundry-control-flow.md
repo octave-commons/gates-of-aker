@@ -1,4 +1,15 @@
 
+## Related Documentation
+- [[README.md]] - Project overview
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint roadmap
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle
+- [[spec/2026-01-15-myth-engine.md]] - Myth engine
+- [[docs/notes/design/2026-01-15-world-schema.md]] - World schema
+- [[docs/tasks/005-aker-scheduler.md]] - Aker scheduler
+- [[docs/tasks/003-deity-moves.md]] - Deity moves
+
+---
+
 Aker boundary control flow (where cards happen) #aker #cards
 ============================================================
 

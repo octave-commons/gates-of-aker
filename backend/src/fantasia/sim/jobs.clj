@@ -172,11 +172,11 @@
         target (:target job)
         food-in-inventory (get-in agent [:inventory :food] 0)]
     (if (pos? food-in-inventory)
-      (let [[w' delivered] (jobs/take-from-stockpile! world target :food 100)
-            space-remaining (jobs/stockpile-space-remaining w' target)
+      (let [[w' delivered] (take-from-stockpile! world target :food 100)
+            space-remaining (stockpile-space-remaining w' target)
             to-store (min food-in-inventory space-remaining)
             w'' (if (pos? to-store)
-                  (jobs/add-to-stockpile! w' target :food to-store)
+                  (add-to-stockpile! w' target :food to-store)
                   w')
             new-inventory (- food-in-inventory to-store)]
         (-> w''

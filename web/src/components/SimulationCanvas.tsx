@@ -98,34 +98,6 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
-        keysPressed.current.add(e.code);
-        e.preventDefault();
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
-        keysPressed.current.delete(e.code);
-        e.preventDefault();
-      }
-    };
-
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.setAttribute("tabIndex", "0");
-    }
-
-    window.addEventListener("keydown", handleKeyDown, { passive: false });
-    window.addEventListener("keyup", handleKeyUp, { passive: false });
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container || !snapshot || !mapConfig) return;

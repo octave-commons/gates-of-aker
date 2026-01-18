@@ -46,8 +46,8 @@ export function App() {
   const [minInterval, setMinInterval] = useState(20);
   const [maxInterval, setMaxInterval] = useState(160);
 
-  const [worldWidth, setWorldWidth] = useState(128);
-  const [worldHeight, setWorldHeight] = useState(128);
+  const [worldWidth, setWorldWidth] = useState<number | null>(null);
+  const [worldHeight, setWorldHeight] = useState<number | null>(null);
   const [treeDensity, setTreeDensity] = useState(0.05);
 
    const [tracesCollapsed, setTracesCollapsed] = useState(false);
@@ -201,7 +201,20 @@ export function App() {
     }, 1500); // Wait 1.5 seconds for WebSocket "hello" message
 
     return () => clearTimeout(timeoutId);
-  }, [client, snapshot, status]);
+    }, [client, snapshot, status]);
+
+  useEffect(() => {
+    if (!mapConfig || !mapConfig.bounds) return;
+    const b = mapConfig.bounds as any;
+    if (b.shape === "rect") {
+      setWorldWidth(b.w);
+      setWorldHeight(b.h);
+    } else if (b.shape === "radius") {
+      const size = (b.r * 2) + 1;
+      setWorldWidth(size);
+      setWorldHeight(size);
+    }
+  }, [mapConfig]);
 
   const toggleRun = () => {
     if (isRunning) {
@@ -266,6 +279,7 @@ export function App() {
   };
 
   const applyWorldSize = () => {
+    if (worldWidth == null || worldHeight == null) return;
     reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
   };
 
@@ -433,30 +447,30 @@ export function App() {
          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-             <label style={{ fontSize: 12 }}>Width:</label>
-             <input
-               type="number"
-               min={0}
-               max={1200}
-               value={worldWidth}
-               onChange={(e) => {
-                 const val = parseInt(e.target.value, 10);
-                 if (!isNaN(val)) setWorldWidth(val);
-               }}
-               style={{ width: 60 }}
-             />
-             <label style={{ fontSize: 12 }}>Height:</label>
-             <input
-               type="number"
-               min={0}
-               max={1200}
-               value={worldHeight}
-               onChange={(e) => {
-                 const val = parseInt(e.target.value, 10);
-                 if (!isNaN(val)) setWorldHeight(val);
-               }}
-               style={{ width: 60 }}
-             />
+            <label style={{ fontSize: 12 }}>Width:</label>
+              <input
+                type="number"
+                min={0}
+                max={1200}
+                value={worldWidth ?? 0}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) setWorldWidth(val);
+                }}
+                style={{ width: 60 }}
+              />
+              <label style={{ fontSize: 12 }}>Height:</label>
+              <input
+                type="number"
+                min={0}
+                max={1200}
+                value={worldHeight ?? 0}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) setWorldHeight(val);
+                }}
+                style={{ width: 60 }}
+              />
              <button
                onClick={applyWorldSize}
                style={{ padding: "4px 8px", fontSize: 12 }}
@@ -486,7 +500,7 @@ export function App() {
              />
            </div>
            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>
-             ~{Math.floor(worldWidth * worldHeight * treeDensity)} trees expected
+             ~{Math.floor((worldWidth ?? 0) * (worldHeight ?? 0) * treeDensity)} trees expected
            </div>
          </div>
 

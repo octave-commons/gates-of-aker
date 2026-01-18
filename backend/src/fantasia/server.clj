@@ -7,7 +7,7 @@
     [reitit.ring :as ring]
     [fantasia.sim.tick :as sim]
     [fantasia.sim.jobs :as jobs]))
-(print "hi")
+
 (defn json-resp
   ([m] (json-resp 200 m))
   ([status m]
@@ -125,6 +125,10 @@
 
             "place_stockpile"
             (do (sim/place-stockpile! (:pos msg) (:resource msg) (:max_qty msg))
+                (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
+
+            "place_warehouse"
+            (do (sim/place-warehouse! (:pos msg) (:resource msg) (:max_qty msg))
                 (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
 
             "assign_job"

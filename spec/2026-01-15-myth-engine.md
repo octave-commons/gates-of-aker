@@ -1,5 +1,15 @@
 # Myth Engine Spec
 
+## Related Documentation
+- [[README.md]] - Project overview
+- [[AGENTS.md]] - Coding standards
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Roadmap
+- [[docs/notes/design/2026-01-15-world-schema.md]] - World schema
+- [[docs/notes/design/2026-01-15-aker-boundry-control-flow.md]] - Card system
+- [[docs/notes/design/2026-01-15-semantic-packets.md]] - Semantic packets
+- [[docs/notes/dsl/2026-01-11-event-dsl-macro-based-like-defgroup-event-archetypes-miracle.md]] - Event DSL
+
 ## Purpose
 Capture how raw simulation events become cultural narratives, miracles, and reusable pantheon powers. Source notes:
 - `docs/notes/2026-01-11-fantasia-tightening-what-you-have-and-making-it-gamey.md` (faith network, attestation loop)

@@ -19,10 +19,31 @@
   [pos]
   (mapv #(add pos %) pointy-dirs))
 
+(defn- coerce-axial
+  "Coerce various position shapes into an axial [q r] pair.
+   Accepts sequential [q r], string \"q,r\", map with :q/:r, numbers (treated as [n 0]) or nil.
+   Falls back to [0 0] for unknown inputs to keep callers resilient." 
+  [p]
+  (cond
+    (sequential? p) [(long (first p)) (long (second p))]
+    (string? p) (let [parts (clojure.string/split p #",")]
+                  (try [(Long/parseLong (nth parts 0)) (Long/parseLong (nth parts 1))]
+                       (catch Exception _ [0 0])))
+    (map? p) (cond
+               (and (contains? p :q) (contains? p :r)) [(long (:q p)) (long (:r p))]
+               (contains? p :pos) (recur (:pos p))
+               :else [0 0])
+    (number? p) [(long p) 0]
+    :else [0 0]))
+
 (defn distance
-  "Hex (axial) distance between points a and b."
-  [[aq ar] [bq br]]
-  (let [dq (Math/abs (long (- aq bq)))
+  "Hex (axial) distance between points a and b.
+   This version coerces inputs to axial pairs to avoid runtime crashes when inputs are malformed,
+   returning a large distance (via normal calculation) when values are unexpected." 
+  [a b]
+  (let [[aq ar] (coerce-axial a)
+        [bq br] (coerce-axial b)
+        dq (Math/abs (long (- aq bq)))
         dr (Math/abs (long (- ar br)))
         ;; s = -q - r for axial coords
         as (- (+ aq ar))
@@ -40,9 +61,9 @@
 (defn normalize-bounds
   "Normalize user-supplied bounds into {:shape :rect ... :origin [0 0]}.
    Supported inputs:
-   - {:shape :rect :w 20 :h 20}
+   - {:shape :rect :w 32 :h 32}
    - {:shape :radius :r 10}
-   - {:width 20 :height 20}, {:w 20 :h 20}
+   - {:width 32 :height 32}, {:w 32 :h 32}
    - [w h]
    Returns {:shape :rect ...} for now; :radius bounds are passed through."
   [input default]
@@ -66,8 +87,8 @@
   "Check if axial position is within rectangular bounds."
   [{:keys [origin w h]} [q r]]
   (let [[oq or-orig] (or origin [0 0])
-        w (or (long w) 20)
-        h (or (long h) 20)
+        w (or (long w) 32)
+        h (or (long h) 32)
         q-max (+ oq (dec w))
         r-max (+ or-orig (dec h))]
     (and (<= oq q)
@@ -85,7 +106,7 @@
    `hex-map` expects {:bounds {:shape ...}} as stored in world state."
   [hex-map pos]
   (let [{:keys [bounds]} hex-map
-        bounds (or bounds {:shape :rect :w 20 :h 20})
+        bounds (or bounds {:shape :rect :w 32 :h 32})
         bounds (ensure-origin bounds)
         {:keys [shape]} bounds]
     (case shape

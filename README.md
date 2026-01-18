@@ -58,6 +58,48 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
 - `docs/inbox` stores volatile experiments; timestamp any additions.
 - `docs/notes` acts as the changelog of facts (API contracts, seeds, payload examples). Append rather than rewrite when possible.
 
+### Key Design Documents
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
+- [[docs/notes/planning/2025-01-15-mvp.md]] - MVP definition
+- [[docs/notes/design/2026-01-15-world-schema.md]] - World schema (MVP authoritative shape)
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle and champion mechanics
+- [[spec/2026-01-15-myth-engine.md]] - Myth engine and miracle pipeline
+- [[docs/notes/design/2026-01-15-aker-boundry-control-flow.md]] - Card system and Aker boundary
+
+### Milestone Specifications
+- [[spec/2026-01-17-milestone2-walls-pathing-build-ghosts.md]] - Walls, pathing, and build ghosts
+- [[spec/2026-01-17-milestone3-colony-core.md]] - Colony job loop
+
+### Task List
+- [[docs/tasks/001-belief-layer.md]] - Belief layer implementation
+- [[docs/tasks/002-prestige-retirement.md]] - Prestige and retirement system
+- [[docs/tasks/003-deity-moves.md]] - Deity moves and powers
+- [[docs/tasks/004-event-director.md]] - Event director
+- [[docs/tasks/005-aker-scheduler.md]] - Aker day/night scheduler
+- [[docs/tasks/006-sim-spatial.md]] - Spatial systems and hex math
+- [[docs/tasks/007-sim-agents.md]] - Agent simulation
+- [[docs/tasks/008-sim-institutions.md]] - Institutions and groups
+- [[docs/tasks/009-events-runtime.md]] - Events runtime
+- [[docs/tasks/010-world-snapshot.md]] - World snapshot system
+- [[docs/tasks/011-tick-engine.md]] - Tick engine
+
+### Design Notes
+- [[docs/notes/design/2026-01-15-minimal-schemas.md]] - Minimal schemas
+- [[docs/notes/design/2026-01-15-sim-modules.md]] - Simulation modules
+- [[docs/notes/design/2026-01-15-card-format.md]] - Card format spec
+- [[docs/notes/design/2026-01-15-resolution-system.md]] - Resolution system
+- [[docs/notes/design/2026-01-15-retirement-distillation.md]] - Retirement distillation
+- [[docs/notes/design/2026-01-15-aker-the-day-night-hinge-as-the-prestige-clock.md]] - Aker as prestige clock
+
+### Brainstorming
+- [[docs/notes/brainstorming/2026-01-11-alright-here-s-a-minimal-working-myth-engine-in-a-box-scaffo.md]]
+- [[docs/notes/brainstorming/2026-01-15-oh-that-gives-me-a-great-idea-for-a-game-mechanic-i-was-thin.md]]
+- [[docs/notes/brainstorming/2026-01-15-so-they-had-story-tells-we-have-deities-all-of-them-are-comp.md]]
+- [[docs/notes/brainstorming/2026-01-15-yea-let-s-do-it-major-deities-get-3-abilities-each-night-abi.md]]
+- [[docs/notes/brainstorming/2026-01-15-you-can-keep-the-myth-energy-without-pinning-the-project-to-.md]]
+- [[docs/notes/brainstorming/2026-01-15-you-re-describing-the-exact-gap-between-a-story-optimizer-an.md]]
+- [[docs/notes/brainstorming/2026-01-15-the-cleanest-third-pillar-names.md]]
+
 ## Contributing Workflow
 1. Branch from `main` and keep changes focused and reviewable.
 2. Follow the build/run/test commands above before opening a PR.

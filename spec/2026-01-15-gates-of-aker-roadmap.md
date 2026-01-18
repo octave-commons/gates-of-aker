@@ -1,5 +1,14 @@
 # Gates of Aker Roadmap
 
+## Related Documentation
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Detailed roadmap with implementation notes
+- [[README.md]] - Project overview
+- [[AGENTS.md]] - Coding standards
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
+- [[spec/2026-01-15-myth-engine.md]] - Myth engine
+- [[docs/notes/design/2026-01-15-world-schema.md]] - World schema
+- [[docs/notes/planning/2025-01-15-mvp.md]] - MVP definition
+
 ## MVP North Star
 A hex-based colony sim where you build walls, manage needs/jobs, directly control a champion during day, and play deity cards at night while six neighbor factions compete via decks. Key references:
 - Vision + MVP slice (`docs/notes/2026-01-11-fantasia-design-pass-turning-the-vibe-into-a-runnable-loop.md:226-265`)

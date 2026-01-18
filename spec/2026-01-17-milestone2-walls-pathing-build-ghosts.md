@@ -1,5 +1,14 @@
 # Milestone 2 — Walls, Pathing, and Build Ghosts
 
+## Related Documentation
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
+- [[docs/notes/planning/2025-01-15-mvp.md]] - MVP definition
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
+- [[docs/notes/design/2026-01-15-world-schema.md]] - World schema
+- [[docs/notes/design/2026-01-15-sim-modules.md]] - Simulation modules
+- [[docs/tasks/006-sim-spatial.md]] - Spatial systems
+- [[spec/2026-01-17-milestone3-colony-core.md]] - Next milestone
+
 ## Context
 - Issue: gh#3 (Milestone 2 — Walls, Pathing, and Build Ghosts)
 - Roadmap: docs/notes/planning/2026-01-15-roadmap.md (Sprint 2)

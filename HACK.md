@@ -1,4 +1,14 @@
 # High level
+
+## Related Documentation
+- [[README.md]] - Project overview and getting started
+- [[AGENTS.md]] - Coding standards and conventions
+- [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
+- [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
+- [[spec/2026-01-15-myth-engine.md]] - Myth engine and miracle system
+
+---
+
 - Title: Fantasia
 - top down
 - user directly controls a single character half during the day
