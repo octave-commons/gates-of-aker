@@ -5,8 +5,10 @@
       "models": {
         "4.7-free": {
           "limit": {
-            "context": 150000
+            "output":100000,
+            "context":150000
           }
+
         }
       }
     },
@@ -14,7 +16,8 @@
       "models": {
         "glm-4.7-free": {
           "limit": {
-            "context": 150000
+            "output":100000,
+            "context":150000
           }
         }
       }

@@ -6,7 +6,8 @@
              [fantasia.sim.hex :as hex]
              [fantasia.sim.world :as world]
              [fantasia.sim.jobs :as jobs]
-             [fantasia.sim.pathing :as pathing]))
+             [fantasia.sim.pathing :as pathing]
+             [fantasia.sim.biomes :as biomes]))
 
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
@@ -29,46 +30,49 @@
         hex-bounds (hex/normalize-bounds bounds {:shape :rect :w 128 :h 128})
         hex-map {:kind :hex
                   :layout :pointy
-                  :bounds hex-bounds}]
-    {    :seed actual-seed
-     :tick 0
-     :map hex-map
-     :tiles {"10,2" {:terrain :ground :resource :tree}}
-     :shrine nil
-     :cold-snap 0.85
-     :jobs []
-     :items {}
-     :stockpiles {}
-     :levers {:iconography {:fire->patron 0.80
-                             :lightning->storm 0.75
-                             :storm->deity 0.85}
-                :mouthpiece-agent-id nil}
-     :institutions
-     {:temple {:id :temple
-                :name "Temple of Embers"
-                :entropy 0.2
-                :broadcast-every 6
-                :canonical {:facets [:fire :judgment :winter]
-                            :claim-hint :claim/winter-judgment-flame}}}
-     :agents (vec (for [i (range 12)]
-                     (let [[q r] (hex/rand-pos r hex-map)]
-                       (->agent i q r (cond
-                                           (= i 0) :priest
-                                           (= i 1) :knight
-                                           :else :peasant)))))
-     :edges {[:cold :fire] 0.60
-             [:trees :fire] 0.45
-             [:lightning :storm] 0.70
-             [:storm :deity/storm] 0.80
-             [:fire :patron/fire] 0.80
-             [:patron/fire :judgment] 0.35
-             [:deity/storm :awe] 0.25
-             [:judgment :awe] 0.25}
-     :ledger {}
-     :recent-events []
-     :recent-max 30
-     :traces []
-     :trace-max 250}))
+                  :bounds hex-bounds}
+        base-world {:seed actual-seed
+                    :tick 0
+                    :map hex-map
+                    :tiles {}
+                    :shrine nil
+                    :cold-snap 0.85
+                    :jobs []
+                    :items {}
+                    :stockpiles {}
+                    :levers {:iconography {:fire->patron 0.80
+                                            :lightning->storm 0.75
+                                            :storm->deity 0.85}
+                               :mouthpiece-agent-id nil}
+                    :institutions
+                    {:temple {:id :temple
+                              :name "Temple of Embers"
+                              :entropy 0.2
+                              :broadcast-every 6
+                              :canonical {:facets [:fire :judgment :winter]
+                                          :claim-hint :claim/winter-judgment-flame}}}
+                    :edges {[:cold :fire] 0.60
+                            [:trees :fire] 0.45
+                            [:lightning :storm] 0.70
+                            [:storm :deity/storm] 0.80
+                            [:fire :patron/fire] 0.80
+                            [:patron/fire :judgment] 0.35
+                            [:deity/storm :awe] 0.25
+                            [:judgment :awe] 0.25}
+                    :ledger {}
+                    :recent-events []
+                    :recent-max 30
+                    :traces []
+                    :trace-max 250}
+        world-with-biomes (biomes/generate-biomes! base-world)
+        world-with-resources (biomes/spawn-biome-resources! world-with-biomes)]
+    (assoc world-with-resources
+           :agents (vec (for [i (range 12)]
+                          (let [[q r] (biomes/rand-pos-in-biome r hex-map :village (:tiles world-with-resources))]
+                            (->agent i q r (cond
+                                                (= i 0) :priest
+                                                (= i 1) :knight
+                                                :else :peasant))))))))
 
 (defn process-jobs!
   "Process jobs for agents: advance progress if adjacent to target."

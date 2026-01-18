@@ -30,3 +30,17 @@
                (nil? (:structure tile))
                (nil? (get-in world [:stockpiles tile-key])))
       (swap! fantasia.sim.tick.core/*state jobs/create-stockpile! pos resource (or max-qty 100)))))
+
+(defn place-warehouse! [pos resource max-qty]
+  (let [world (core/get-state)
+        [q r] pos
+        tile-key (str q "," r)
+        tile (get-in world [:tiles tile-key])]
+    (when (and (hex/in-bounds? (:map world) pos)
+               (nil? (:structure tile))
+               (nil? (get-in world [:stockpiles tile-key])))
+      (swap! fantasia.sim.tick.core/*state 
+             (fn [w] 
+               (-> w
+                   (assoc-in [:tiles tile-key] {:terrain :ground :structure :warehouse :resource nil})
+                   (jobs/create-stockpile! pos resource (or max-qty 100))))))))

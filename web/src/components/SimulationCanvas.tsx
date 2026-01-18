@@ -50,11 +50,18 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      keysPressed.current.delete(e.code);
+      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
+        keysPressed.current.delete(e.code);
+      }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.setAttribute("tabIndex", "0");
+    }
+
+    window.addEventListener("keydown", handleKeyDown, { passive: false });
+    window.addEventListener("keyup", handleKeyUp, { passive: false });
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
@@ -65,26 +72,57 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     let animationFrameId: number;
 
     const handleCameraMovement = () => {
-      setCamera((prev) => {
-        let newOffsetX = prev.offsetX;
-        let newOffsetY = prev.offsetY;
-        const moveAmount = PAN_SPEED / prev.zoom;
+      const keys = Array.from(keysPressed.current);
+      if (keys.length > 0) {
+        setCamera((prev) => {
+          let newOffsetX = prev.offsetX;
+          let newOffsetY = prev.offsetY;
+          const moveAmount = PAN_SPEED / prev.zoom;
 
-        if (keysPressed.current.has("KeyW")) newOffsetY += moveAmount;
-        if (keysPressed.current.has("KeyS")) newOffsetY -= moveAmount;
-        if (keysPressed.current.has("KeyA")) newOffsetX += moveAmount;
-        if (keysPressed.current.has("KeyD")) newOffsetX -= moveAmount;
+          if (keys.includes("KeyW")) newOffsetY += moveAmount;
+          if (keys.includes("KeyS")) newOffsetY -= moveAmount;
+          if (keys.includes("KeyA")) newOffsetX += moveAmount;
+          if (keys.includes("KeyD")) newOffsetX -= moveAmount;
 
-        if (newOffsetX !== prev.offsetX || newOffsetY !== prev.offsetY) {
-          return { ...prev, offsetX: newOffsetX, offsetY: newOffsetY };
-        }
-        return prev;
-      });
+          if (newOffsetX !== prev.offsetX || newOffsetY !== prev.offsetY) {
+            return { ...prev, offsetX: newOffsetX, offsetY: newOffsetY };
+          }
+          return prev;
+        });
+      }
       animationFrameId = requestAnimationFrame(handleCameraMovement);
     };
 
     animationFrameId = requestAnimationFrame(handleCameraMovement);
     return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
+        keysPressed.current.add(e.code);
+        e.preventDefault();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
+        keysPressed.current.delete(e.code);
+        e.preventDefault();
+      }
+    };
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.setAttribute("tabIndex", "0");
+    }
+
+    window.addEventListener("keydown", handleKeyDown, { passive: false });
+    window.addEventListener("keyup", handleKeyUp, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, []);
 
   useEffect(() => {
@@ -139,11 +177,21 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       }
     }
 
-    ctx.globalAlpha = 0.25;
+    const biomeColors: Record<string, string> = {
+      forest: "#2e7d32",
+      village: "#8d6e63",
+      field: "#9e9e24",
+      rocky: "#616161"
+    };
+
+    ctx.globalAlpha = 0.4;
     ctx.strokeStyle = "#777";
     ctx.lineWidth = 1;
 
     for (const hex of hexesToDraw) {
+      const tileKey = `${hex[0]},${hex[1]}`;
+      const tile = snapshot.tiles?.[tileKey];
+
       const [px, py] = axialToPixel(hex, size);
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
@@ -155,14 +203,30 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
         }
       }
       ctx.closePath();
+
+      const biomeColor = tile?.biome ? biomeColors[tile.biome as string] : null;
+      if (biomeColor) {
+        ctx.fillStyle = biomeColor;
+        ctx.fill();
+      }
       ctx.stroke();
 
-       const tileKey = `${hex[0]},${hex[1]}`;
-       const tile = snapshot.tiles?.[tileKey];
        if (tile?.resource === "tree") {
          ctx.fillStyle = "#2e7d32";
          ctx.beginPath();
          ctx.arc(px, py, HEX_SIZE * 0.4, 0, Math.PI * 2);
+         ctx.fill();
+       }
+       if (tile?.resource === "grain") {
+         ctx.fillStyle = "#ffeb3b";
+         ctx.beginPath();
+         ctx.arc(px, py, HEX_SIZE * 0.25, 0, Math.PI * 2);
+         ctx.fill();
+       }
+       if (tile?.resource === "rock") {
+         ctx.fillStyle = "#757575";
+         ctx.beginPath();
+         ctx.rect(px - HEX_SIZE * 0.3, py - HEX_SIZE * 0.3, HEX_SIZE * 0.6, HEX_SIZE * 0.5);
          ctx.fill();
        }
        if (tile?.structure === "wall-ghost") {
@@ -302,14 +366,16 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const padding = HEX_SIZE * 2;
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
 
-    const x = (event.clientX - rect.left) * scaleX;
-    const y = (event.clientY - rect.top) * scaleY;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
 
-    const [q, r] = pixelToAxial(x - padding, y - padding, HEX_SIZE + HEX_SPACING);
+    const worldX = (x - centerX) / camera.zoom - camera.offsetX;
+    const worldY = (y - centerY) / camera.zoom - camera.offsetY;
+
+    const [q, r] = pixelToAxial(worldX, worldY, HEX_SIZE + HEX_SPACING);
     const cell: AxialCoords = [q, r];
 
     const hit = (snapshot.agents ?? []).find((a: Agent) => {
@@ -320,12 +386,78 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     onCellSelect(cell, hit ? hit.id : null);
   };
 
+  const handleWheel = (event: WheelEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    if (!canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    const worldX = (mouseX - centerX) / camera.zoom - camera.offsetX;
+    const worldY = (mouseY - centerY) / camera.zoom - camera.offsetY;
+
+    const zoomDelta = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+    const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, camera.zoom + zoomDelta));
+
+    const newOffsetX = worldX - (mouseX - centerX) / newZoom;
+    const newOffsetY = worldY - (mouseY - centerY) / newZoom;
+
+    setCamera({ ...camera, zoom: newZoom, offsetX: newOffsetX, offsetY: newOffsetY });
+  };
+
+  const handleMouseDown = (event: MouseEvent<HTMLCanvasElement>) => {
+    if (event.button === 1) {
+      event.preventDefault();
+      setIsDragging(true);
+      setDragStart([event.clientX, event.clientY]);
+      setCameraStart({ ...camera });
+    }
+  };
+
+  const handleMouseMove = (event: MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !dragStart || !cameraStart) return;
+
+    const dx = event.clientX - dragStart[0];
+    const dy = event.clientY - dragStart[1];
+
+    const newOffsetX = cameraStart.offsetX + dx / camera.zoom;
+    const newOffsetY = cameraStart.offsetY + dy / camera.zoom;
+
+    setCamera({ ...camera, offsetX: newOffsetX, offsetY: newOffsetY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setDragStart(null);
+    setCameraStart(null);
+  };
+
+  const handleContextMenu = (event: MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+  };
+
   return (
-    <canvas
-      data-testid="simulation-canvas"
-      ref={canvasRef}
-      style={{ border: "1px solid #aaa", borderRadius: 8, cursor: "crosshair" }}
-      onClick={handleClick}
-    />
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}
+    >
+      <canvas
+        data-testid="simulation-canvas"
+        ref={canvasRef}
+        style={{ display: "block", width: "100%", height: "100%", cursor: isDragging ? "grabbing" : "crosshair" }}
+        onClick={handleClick}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onContextMenu={handleContextMenu}
+      />
+    </div>
   );
 }

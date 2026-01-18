@@ -41,3 +41,11 @@ Add a configurable `tree_density` parameter to the reset endpoint with a higher 
 - Test with tree density 0.05 (default, should have ~819 trees on 128x128 map)
 - Test with tree density 0.10 (dense forest)
 - Verify UI slider clamps values properly
+
+## Changelog
+- Modified backend/src/fantasia/sim/tick/trees.clj: Added 2-arity function for `spawn-initial-trees!` with tree-density parameter
+- Modified backend/src/fantasia/sim/tick/initial.clj: Extract and pass tree-density from opts, default 0.05
+- Modified backend/src/fantasia/server.clj: Accept tree_density in both WebSocket and HTTP reset endpoints
+- Modified web/src/App.tsx: Added treeDensity state, UI slider, and integration with reset function
+- All changes type-checked successfully (tsc --noEmit)
+- Clojure dependencies verified

@@ -1,6 +1,7 @@
 (ns fantasia.sim.tick.initial
   (:require [fantasia.sim.hex :as hex]
-            [fantasia.sim.tick.trees :as trees]))
+            [fantasia.sim.tick.trees :as trees]
+            [fantasia.sim.jobs :as jobs]))
 
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
@@ -65,5 +66,8 @@
           :recent-max 30
           :traces []
           :trace-max 250}
-        world' (trees/spawn-initial-trees! base-world tree-density)]
-    world'))
+        world' (trees/spawn-initial-trees! base-world tree-density)
+        world'' (-> world'
+                     (assoc-in [:tiles "0,0"] {:terrain :ground :structure :warehouse :resource nil})
+                     (jobs/create-stockpile! [0 0] :food 200))]
+    world''))

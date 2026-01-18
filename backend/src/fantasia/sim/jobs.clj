@@ -7,6 +7,7 @@
    :job/sleep 90
    :job/chop-tree 60
    :job/haul 50
+   :job/deliver-food 45
    :job/build-wall 40})
 
 (defn create-job [job-type target]
@@ -166,6 +167,24 @@
       (update-in [:agents agent-id] dissoc :asleep?)
       (assoc-in [:agents agent-id :needs :sleep] 1.0)))
 
+(defn complete-deliver-food! [world job agent-id]
+  (let [agent (get-in world [:agents agent-id])
+        target (:target job)
+        food-in-inventory (get-in agent [:inventory :food] 0)]
+    (if (pos? food-in-inventory)
+      (let [[w' delivered] (jobs/take-from-stockpile! world target :food 100)
+            space-remaining (jobs/stockpile-space-remaining w' target)
+            to-store (min food-in-inventory space-remaining)
+            w'' (if (pos? to-store)
+                  (jobs/add-to-stockpile! w' target :food to-store)
+                  w')
+            new-inventory (- food-in-inventory to-store)]
+        (-> w''
+            (assoc-in [:agents agent-id :inventory :food] new-inventory)
+            (cond-> (zero? new-inventory)
+              (update-in [:agents agent-id :inventory] dissoc :food))))
+      world)))
+
 (defn complete-job! [world agent-id]
   (if-let [job-id (get-in world [:agents agent-id :current-job])]
     (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))
@@ -178,6 +197,7 @@
         :job/haul (complete-haul! world job agent-id)
         :job/eat (complete-eat! world job agent-id)
         :job/sleep (complete-sleep! world agent-id)
+        :job/deliver-food (complete-deliver-food! world job agent-id)
         world)
       world)
     world))
@@ -263,7 +283,25 @@
         world
         (:agents world)))
 
+(defn generate-deliver-food-jobs! [world]
+  (let [entries (:items world)
+        jobs-to-add
+        (->> entries
+             (mapcat (fn [[tile-key items]]
+                       (let [pos (parse-key-pos tile-key)]
+                         (for [[res qty] items
+                               :when (and (= res :food) (pos? qty))
+                               :let [nearest (find-nearest-stockpile-with-space world pos :food)]
+                               :when nearest]
+                           (let [[sp-pos _] nearest]
+                             (assoc (create-job :job/deliver-food sp-pos)
+                                    :from-pos pos :to-pos sp-pos :resource :food :qty qty)))))))]
+    (reduce (fn [w job] (update w :jobs conj job))
+            world
+            jobs-to-add)))
+
 (defn auto-generate-jobs! [world]
   (-> world
       (generate-need-jobs!)
-      (generate-haul-jobs-for-items! 5)))
+      (generate-haul-jobs-for-items! 5)
+      (generate-deliver-food-jobs!)))
