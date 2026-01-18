@@ -100,4 +100,46 @@ describe("TickControls", () => {
 
     expect(screen.getByText("⏸ Pause")).toBeInTheDocument();
   });
+
+  it("invokes onToggleRun callback when play/pause button is clicked", async () => {
+    const user = userEvent.setup();
+    const onToggleRun = vi.fn();
+
+    render(
+      <TickControls
+        onTick={() => {}}
+        onReset={() => {}}
+        onPlaceShrine={() => {}}
+        onSetMouthpiece={() => {}}
+        canPlaceShrine={false}
+        canSetMouthpiece={false}
+        isRunning={false}
+        onToggleRun={onToggleRun}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "▶ Play" }));
+    expect(onToggleRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("invokes onToggleRun callback when running and pause button is clicked", async () => {
+    const user = userEvent.setup();
+    const onToggleRun = vi.fn();
+
+    render(
+      <TickControls
+        onTick={() => {}}
+        onReset={() => {}}
+        onPlaceShrine={() => {}}
+        onSetMouthpiece={() => {}}
+        canPlaceShrine={false}
+        canSetMouthpiece={false}
+        isRunning={true}
+        onToggleRun={onToggleRun}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "⏸ Pause" }));
+    expect(onToggleRun).toHaveBeenCalledTimes(1);
+  });
 });

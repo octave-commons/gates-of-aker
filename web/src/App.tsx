@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
- import {
+  import {
       AgentCard,
       AgentList,
       AttributionPanel,
@@ -15,6 +15,7 @@ import { WSClient, WSMessage } from "./ws";
       TraceFeed,
       BuildControls,
       JobQueuePanel,
+      TreeSpreadControls,
     } from "./components";
 import { Agent, Trace, hasPos } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
@@ -34,18 +35,25 @@ export function App() {
    const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
 
    const [buildMode, setBuildMode] = useState(false);
-   const [stockpileMode, setStockpileMode] = useState(false);
+    const [stockpileMode, setStockpileMode] = useState(false);
+    const [fps, setFps] = useState(60);
 
   const [fireToPatron, setFireToPatron] = useState(0.8);
   const [lightningToStorm, setLightningToStorm] = useState(0.75);
   const [stormToDeity, setStormToDeity] = useState(0.85);
 
-  const [worldWidth, setWorldWidth] = useState(20);
-  const [worldHeight, setWorldHeight] = useState(20);
+  const [spreadProbability, setSpreadProbability] = useState(0.30);
+  const [minInterval, setMinInterval] = useState(20);
+  const [maxInterval, setMaxInterval] = useState(160);
 
-  const [tracesCollapsed, setTracesCollapsed] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
+  const [worldWidth, setWorldWidth] = useState(128);
+  const [worldHeight, setWorldHeight] = useState(128);
+  const [treeDensity, setTreeDensity] = useState(0.05);
+
+   const [tracesCollapsed, setTracesCollapsed] = useState(false);
+   const [jobsCollapsed, setJobsCollapsed] = useState(false);
+   const [isInitializing, setIsInitializing] = useState(false);
+   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -115,11 +123,15 @@ export function App() {
           });
         }
         if (m.op === "jobs") {
-          setSnapshot((prev: any) => {
-            if (!prev) return prev;
-            return { ...prev, jobs: m.jobs };
-          });
-        }
+           setSnapshot((prev: any) => {
+             if (!prev) return prev;
+             return { ...prev, jobs: m.jobs };
+           });
+         }
+        if (m.op === "runner_state") {
+           setIsRunning(m.running);
+           setFps(m.fps);
+         }
        },
       (s) => setStatus(s)
     );
@@ -176,8 +188,8 @@ export function App() {
 
     const createNewSnapshot = () => {
       const defaultSeed = Math.floor(Math.random() * 1000000);
-      console.log("Creating new snapshot with seed:", defaultSeed);
-      client.send({ op: "reset", seed: defaultSeed });
+      console.log("Creating new snapshot with seed:", defaultSeed, "tree density:", treeDensity);
+      client.send({ op: "reset", seed: defaultSeed, tree_density: treeDensity });
     };
 
     // Initialize snapshot when component mounts
@@ -193,19 +205,27 @@ export function App() {
 
   const toggleRun = () => {
     if (isRunning) {
-      client.sendStopRun();
+      client.send({ op: "stop_run" });
       setIsRunning(false);
     } else {
-      client.sendStartRun();
+      client.send({ op: "start_run" });
       setIsRunning(true);
     }
   };
 
+  const setFpsValue = (value: number) => {
+    client.sendSetFps(value);
+    setFps(value);
+  };
+
   const sendTick = (n: number) => client.send({ op: "tick", n });
-  const reset = (seed: number, bounds?: { w: number; h: number }) => {
-    const payload: { op: string; seed: number; bounds?: { w: number; h: number } } = { op: "reset", seed };
+  const reset = (seed: number, bounds?: { w: number; h: number }, treeDensity?: number) => {
+    const payload: { op: string; seed: number; bounds?: { w: number; h: number }; tree_density?: number } = { op: "reset", seed };
     if (bounds) {
       payload.bounds = bounds;
+    }
+    if (treeDensity !== undefined) {
+      payload.tree_density = treeDensity;
     }
     client.send(payload);
   };
@@ -236,13 +256,17 @@ export function App() {
     });
   };
 
+  const applyTreeSpreadLevers = () => {
+    client.sendSetTreeSpreadLevers(clamp01(spreadProbability), minInterval, maxInterval);
+  };
+
   const setMouthpieceToSelected = () => {
     if (selectedAgentId == null) return;
     client.send({ op: "appoint_mouthpiece", agent_id: selectedAgentId });
   };
 
   const applyWorldSize = () => {
-    reset(1, { w: worldWidth, h: worldHeight });
+    reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
   };
 
   const recentEvents = snapshot?.["recent-events"] ?? snapshot?.recentEvents ?? snapshot?.recent_events ?? [];
@@ -367,7 +391,7 @@ export function App() {
         <StatusBar status={status} />
         <TickControls
            onTick={sendTick}
-           onReset={() => reset(1)}
+           onReset={() => reset(1, undefined, treeDensity)}
            onPlaceShrine={placeShrineAtSelected}
            onSetMouthpiece={setMouthpieceToSelected}
            canPlaceShrine={!!selectedCell}
@@ -377,50 +401,94 @@ export function App() {
          />
 
         <BuildControls
-           onPlaceWallGhost={client.sendPlaceWallGhost}
-           onPlaceStockpile={client.sendPlaceStockpile}
+           onPlaceWallGhost={(pos) => client.sendPlaceWallGhost(pos)}
+           onPlaceStockpile={(pos, resource, maxQty) => client.sendPlaceStockpile(pos, resource, maxQty)}
            onToggleBuildMode={() => setBuildMode(!buildMode)}
            buildMode={buildMode}
            selectedCell={selectedCell}
          />
 
-        <JobQueuePanel jobs={jobs} />
-
-         <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-          <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+          <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>FPS Control</h3>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12 }}>Width:</label>
+            <label style={{ fontSize: 12 }}>
+              {fps} FPS:
+            </label>
             <input
-              type="number"
-              min={0}
-              max={1200}
-              value={worldWidth}
+              type="range"
+              min={1}
+              max={120}
+              value={fps}
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10);
-                if (!isNaN(val)) setWorldWidth(val);
+                if (!isNaN(val)) setFpsValue(val);
               }}
-              style={{ width: 60 }}
+              style={{ flex: 1 }}
             />
-            <label style={{ fontSize: 12 }}>Height:</label>
-            <input
-              type="number"
-              min={0}
-              max={1200}
-              value={worldHeight}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val)) setWorldHeight(val);
-              }}
-              style={{ width: 60 }}
-            />
-            <button
-              onClick={applyWorldSize}
-              style={{ padding: "4px 8px", fontSize: 12 }}
-            >
-              Apply
-            </button>
           </div>
         </div>
+
+         <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />
+
+         <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+           <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
+           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+             <label style={{ fontSize: 12 }}>Width:</label>
+             <input
+               type="number"
+               min={0}
+               max={1200}
+               value={worldWidth}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value, 10);
+                 if (!isNaN(val)) setWorldWidth(val);
+               }}
+               style={{ width: 60 }}
+             />
+             <label style={{ fontSize: 12 }}>Height:</label>
+             <input
+               type="number"
+               min={0}
+               max={1200}
+               value={worldHeight}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value, 10);
+                 if (!isNaN(val)) setWorldHeight(val);
+               }}
+               style={{ width: 60 }}
+             />
+             <button
+               onClick={applyWorldSize}
+               style={{ padding: "4px 8px", fontSize: 12 }}
+             >
+               Apply
+             </button>
+           </div>
+         </div>
+
+         <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+           <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Tree Density</h3>
+           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+             <label style={{ fontSize: 12 }}>
+               {(treeDensity * 100).toFixed(1)}%:
+             </label>
+             <input
+               type="range"
+               min={0}
+               max={0.20}
+               step={0.01}
+               value={treeDensity}
+               onChange={(e) => {
+                 const val = parseFloat(e.target.value);
+                 if (!isNaN(val)) setTreeDensity(val);
+               }}
+               style={{ flex: 1 }}
+             />
+           </div>
+           <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>
+             ~{Math.floor(worldWidth * worldHeight * treeDensity)} trees expected
+           </div>
+         </div>
 
         <LeverControls
           tick={tick}
@@ -431,6 +499,16 @@ export function App() {
           onLightningChange={setLightningToStorm}
           onStormChange={setStormToDeity}
           onApply={applyLevers}
+        />
+
+        <TreeSpreadControls
+          spreadProbability={spreadProbability}
+          minInterval={minInterval}
+          maxInterval={maxInterval}
+          onSpreadProbabilityChange={setSpreadProbability}
+          onMinIntervalChange={setMinInterval}
+          onMaxIntervalChange={setMaxInterval}
+          onApply={applyTreeSpreadLevers}
         />
 
         <SelectedPanel

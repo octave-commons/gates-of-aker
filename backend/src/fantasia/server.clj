@@ -54,6 +54,27 @@
   (doseq [ch @*clients]
     (ws-send! ch msg)))
 
+(defn start-runner! []
+  (when-not (:running? @*runner)
+    (let [fut (future
+                (swap! *runner assoc :running? true)
+                (try
+                  (while (:running? @*runner)
+                    (let [o (last (sim/tick! 1))]
+                      (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                      (when-let [ev (:event o)]
+                        (broadcast! {:op "event" :data ev}))
+                      (doseq [tr (:traces o)]
+                        (broadcast! {:op "trace" :data tr})))
+                    (Thread/sleep (long (:ms @*runner))))
+                  (finally
+                    (swap! *runner assoc :running? false :future nil))))]
+      (swap! *runner assoc :future fut))))
+
+(defn stop-runner! []
+  (swap! *runner assoc :running? false)
+  true)
+
 (defn handle-ws [req]
   (http/with-channel req ch
     (swap! *clients conj ch)
@@ -77,7 +98,8 @@
                   (broadcast! {:op "trace" :data tr}))))
 
             "reset"
-            (let [opts {:seed (long (or (:seed msg) 1))}
+            (let [opts {:seed (long (or (:seed msg) 1))
+                        :tree-density (or (:tree_density msg) 0.05)}
                   opts (if (:bounds msg)
                          (assoc opts :bounds (:bounds msg))
                          opts)]
@@ -114,28 +136,17 @@
                   (swap! sim/*state jobs/assign-job! job agent-id)
                   (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))}))))
 
-            (ws-send! ch {:op "error" :message "unknown op"})))))))
+            "start_run"
+            (do
+              (start-runner!)
+              (broadcast! {:op "runner_state" :running true :fps (int (/ 1000 (:ms @*runner)))}))
 
-(defn start-runner! []
-  (when-not (:running? @*runner)
-    (let [fut (future
-                (swap! *runner assoc :running? true)
-                (try
-                  (while (:running? @*runner)
-                    (let [o (last (sim/tick! 1))]
-                      (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                      (when-let [ev (:event o)]
-                        (broadcast! {:op "event" :data ev}))
-                      (doseq [tr (:traces o)]
-                        (broadcast! {:op "trace" :data tr})))
-                    (Thread/sleep (long (:ms @*runner))))
-                  (finally
-                    (swap! *runner assoc :running? false :future nil))))]
-      (swap! *runner assoc :future fut))))
+            "stop_run"
+            (do
+              (stop-runner!)
+              (broadcast! {:op "runner_state" :running false :fps (int (/ 1000 (:ms @*runner)))}))
 
-(defn stop-runner! []
-  (swap! *runner assoc :running? false)
-  true)
+             (ws-send! ch {:op "error" :message "unknown op"})))))))
 
 (def app
   (ring/ring-handler
@@ -150,17 +161,18 @@
         {:get (fn [_] (json-resp 200 (sim/get-state)))
          :options (fn [_] (json-resp 200 {:ok true}))}]
 
-        ["/sim/reset"
-         {:post (fn [req]
-                  (let [b (read-json-body req)
-                        seed (long (or (:seed b) 1))
-                        opts {:seed seed}
-                        opts (if (:bounds b)
-                               (assoc opts :bounds (:bounds b))
-                               opts)]
-                    (sim/reset-world! opts)
-                    (json-resp 200 {:ok true :seed seed})))
-          :options (fn [_] (json-resp 200 {:ok true}))}]
+         ["/sim/reset"
+          {:post (fn [req]
+                   (let [b (read-json-body req)
+                         seed (long (or (:seed b) 1))
+                         tree-density (or (:tree_density b) 0.05)
+                         opts {:seed seed :tree-density tree-density}
+                         opts (if (:bounds b)
+                                (assoc opts :bounds (:bounds b))
+                                opts)]
+                     (sim/reset-world! opts)
+                     (json-resp 200 {:ok true :seed seed :tree_density tree-density})))
+           :options (fn [_] (json-resp 200 {:ok true}))}]
 
        ["/sim/tick"
         {:post (fn [req]

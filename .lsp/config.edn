@@ -1,0 +1,2 @@
+{:clj-kondo {:config-paths [".clj-kondo"]
+              :custom-linters []}}

@@ -252,10 +252,14 @@
                   food-hungry (get thresholds :food-hungry 0.3)
                   sleep-tired (get thresholds :sleep-tired 0.3)
                   pos (:pos agent)
-                  food-pos (or (first (keep (fn [[k items]] (when (get items :food) (parse-key-pos k))) (:items w))) pos)]
+                  agent-id (:id agent)
+                  food-pos (or (first (keep (fn [[k items]] (when (get items :fruit) (parse-key-pos k))) (:items w))) pos)
+                  has-eat-job? (some #(and (= (:type %) :job/eat) (= (:target %) food-pos)) (:jobs w))
+                  has-sleep-job? (some #(and (= (:type %) :job/sleep) (= (:target %) pos)) (:jobs w))
+                  already-has-job? (some #(= (:worker-id %) agent-id) (:jobs w))]
               (cond-> w
-                (< food food-hungry) (update :jobs conj (create-job :job/eat food-pos))
-                (< sleep sleep-tired) (update :jobs conj (create-job :job/sleep pos)))))
+                (and (< food food-hungry) (not has-eat-job?) (not already-has-job?)) (update :jobs conj (create-job :job/eat food-pos))
+                (and (< sleep sleep-tired) (not has-sleep-job?) (not already-has-job?)) (update :jobs conj (create-job :job/sleep pos)))))
         world
         (:agents world)))
 

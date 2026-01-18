@@ -13,3 +13,4 @@ export { EventCard } from "./EventCard";
 export { EventFeed } from "./EventFeed";
 export { TraceFeed } from "./TraceFeed";
 export { JobQueuePanel } from "./JobQueuePanel";
+export { TreeSpreadControls } from "./TreeSpreadControls";

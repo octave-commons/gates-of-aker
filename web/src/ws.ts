@@ -1,16 +1,17 @@
 export type WSMessage =
-   | { op: "hello"; state: any }
-   | { op: "tick"; data: any }
-   | { op: "trace"; data: any }
-   | { op: "reset"; state: any }
-   | { op: "levers"; levers: any }
-   | { op: "shrine"; shrine: any }
-   | { op: "mouthpiece"; mouthpiece: any }
-   | { op: "tiles"; tiles: any }
-   | { op: "stockpiles"; stockpiles: any }
-   | { op: "jobs"; jobs: any }
-   | { op: "error"; message: string }
-   | { op: string; [k: string]: any };
+    | { op: "hello"; state: any }
+    | { op: "tick"; data: any }
+    | { op: "trace"; data: any }
+    | { op: "reset"; state: any }
+    | { op: "levers"; levers: any }
+    | { op: "shrine"; shrine: any }
+    | { op: "mouthpiece"; mouthpiece: any }
+    | { op: "tiles"; tiles: any }
+    | { op: "stockpiles"; stockpiles: any }
+    | { op: "jobs"; jobs: any }
+    | { op: "runner_state"; running: boolean; fps: number }
+    | { op: "error"; message: string }
+    | { op: string; [k: string]: any };
 
 export class WSClient {
   private ws: WebSocket | null = null;
@@ -57,12 +58,25 @@ export class WSClient {
       this.send({ op: "assign_job", job_type: jobType, target_pos: targetPos, agent_id: agentId });
     }
 
-    sendStartRun() {
-      this.send({ op: "start_run" });
-    }
+     sendStartRun() {
+       this.send({ op: "start_run" });
+     }
 
-    sendStopRun() {
-      this.send({ op: "stop_run" });
+     sendStopRun() {
+       this.send({ op: "stop_run" });
+     }
+
+      sendSetFps(fps: number) {
+        this.send({ op: "set_fps", fps });
+      }
+
+      sendSetTreeSpreadLevers(spreadProbability: number, minInterval: number, maxInterval: number) {
+        this.send({
+          op: "set_tree_spread_levers",
+          spread_probability: spreadProbability,
+          min_interval: minInterval,
+          max_interval: maxInterval,
+        });
+      }
     }
-  }
 

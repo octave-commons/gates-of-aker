@@ -36,7 +36,8 @@
 - Frontend preview: `npm run preview --prefix web` serves the dist bundle locally.
 - Type-check only: `npm exec --prefix web tsc --noEmit` for quick verification without bundling.
 - Clean artifacts: remove `web/node_modules` or `web/dist`; backend currently generates no build artifacts.
-- Watch canvas assets: use browser dev tools + React strict mode double invocations to catch side effects early.
+ - Watch canvas assets: use browser dev tools + React strict mode double invocations to catch side effects early.
+ - PM2 orchestration: Servers are managed by PM2 and automatically restart/recompile on code changes. Wait for `/healthz` to be available before testing changes.
 
 ## Linting & Static Analysis
 - Backend linting: use `clj-kondo --lint src` (install globally or via npx-like `clojure -M:clj-kondo` once alias is added).

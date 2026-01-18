@@ -1,3 +1,23 @@
 {
-  "$schema": "https://opencode.ai/config.json"
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "zai-coding": {
+      "models": {
+        "4.7-free": {
+          "limit": {
+            "context": 150000
+          }
+        }
+      }
+    },
+    "opencode": {
+      "models": {
+        "glm-4.7-free": {
+          "limit": {
+            "context": 150000
+          }
+        }
+      }
+    }
+  }
 }

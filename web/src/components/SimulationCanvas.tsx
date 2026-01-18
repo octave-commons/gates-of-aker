@@ -1,8 +1,14 @@
-import { useEffect, useRef } from "react";
-import type { MouseEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { MouseEvent, WheelEvent } from "react";
 import { Agent, hasPos } from "../types";
 import type { HexConfig } from "../hex";
 import { axialToPixel, pixelToAxial, hexCorner, getMapBoundsInPixels, type AxialCoords } from "../hex";
+
+type CameraState = {
+  offsetX: number;
+  offsetY: number;
+  zoom: number;
+};
 
 type SimulationCanvasProps = {
   snapshot: any;
@@ -15,29 +21,100 @@ type SimulationCanvasProps = {
 const HEX_SIZE = 16;
 const HEX_SPACING = 1;
 
+const ZOOM_MIN = 0.1;
+const ZOOM_MAX = 5.0;
+const ZOOM_STEP = 0.1;
+const PAN_SPEED = 10;
+
 export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAgentId, onCellSelect }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const [camera, setCamera] = useState<CameraState>({
+    offsetX: 0,
+    offsetY: 0,
+    zoom: 1.0,
+  });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<[number, number] | null>(null);
+  const [cameraStart, setCameraStart] = useState<CameraState | null>(null);
+
+  const keysPressed = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
+        keysPressed.current.add(e.code);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysPressed.current.delete(e.code);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const handleCameraMovement = () => {
+      setCamera((prev) => {
+        let newOffsetX = prev.offsetX;
+        let newOffsetY = prev.offsetY;
+        const moveAmount = PAN_SPEED / prev.zoom;
+
+        if (keysPressed.current.has("KeyW")) newOffsetY += moveAmount;
+        if (keysPressed.current.has("KeyS")) newOffsetY -= moveAmount;
+        if (keysPressed.current.has("KeyA")) newOffsetX += moveAmount;
+        if (keysPressed.current.has("KeyD")) newOffsetX -= moveAmount;
+
+        if (newOffsetX !== prev.offsetX || newOffsetY !== prev.offsetY) {
+          return { ...prev, offsetX: newOffsetX, offsetY: newOffsetY };
+        }
+        return prev;
+      });
+      animationFrameId = requestAnimationFrame(handleCameraMovement);
+    };
+
+    animationFrameId = requestAnimationFrame(handleCameraMovement);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !snapshot || !mapConfig) return;
+    const container = containerRef.current;
+    if (!canvas || !container || !snapshot || !mapConfig) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const hasCanvasMethods = typeof ctx.save === "function" && typeof ctx.translate === "function" && typeof ctx.restore === "function";
+    const hasCanvasMethods = typeof ctx.save === "function" && typeof ctx.translate === "function" && typeof ctx.restore === "function" && typeof ctx.scale === "function";
     if (!hasCanvasMethods) {
       return;
     }
 
     const { width: mapWidth, height: mapHeight } = getMapBoundsInPixels(mapConfig.bounds, HEX_SIZE + HEX_SPACING);
-    const padding = HEX_SIZE * 2;
+    const padding = HEX_SIZE * 4;
 
-    canvas.width = mapWidth + padding * 2;
-    canvas.height = mapHeight + padding * 2;
+    const containerRect = container.getBoundingClientRect();
+    canvas.width = containerRect.width;
+    canvas.height = containerRect.height;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-    ctx.translate(padding, padding);
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    ctx.translate(centerX, centerY);
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(camera.offsetX, camera.offsetY);
 
     const size = HEX_SIZE + HEX_SPACING;
     const origin = mapConfig.bounds.origin ?? [0, 0] as AxialCoords;

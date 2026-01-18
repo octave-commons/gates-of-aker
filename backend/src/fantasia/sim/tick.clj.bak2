@@ -6,7 +6,8 @@
              [fantasia.sim.hex :as hex]
              [fantasia.sim.world :as world]
              [fantasia.sim.jobs :as jobs]
-             [fantasia.sim.pathing :as pathing]))
+             [fantasia.sim.pathing :as pathing]
+             [clojure.string :as str]))
 
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
@@ -30,11 +31,11 @@
         hex-map {:kind :hex
                   :layout :pointy
                   :bounds hex-bounds}]
-    {    :seed actual-seed
-     :tick 0
-     :map hex-map
-     :tiles {"10,2" {:terrain :ground :resource :tree}}
-     :shrine nil
+     {    :seed actual-seed
+      :tick 0
+      :map hex-map
+      :tiles {"10,2" {:terrain :ground :resource :tree :last-fruit-drop 0}}
+      :shrine nil
      :cold-snap 0.85
      :jobs []
      :items {}
@@ -74,17 +75,80 @@
   "Process jobs for agents: advance progress if adjacent to target."
   [world]
   (reduce
-    (fn [w agent-id]
-      (if-let [job (jobs/get-agent-job w agent-id)]
-        (let [agent-pos (get-in w [:agents agent-id :pos])
-              job-target (:target job)
-              delta (if (<= (hex/distance agent-pos job-target) 1)
-                      0.2
-                      0.0)]
-          (jobs/advance-job! w agent-id delta))
-        w))
-    world
-    (range (count (:agents world)))))
+     (fn [w agent-id]
+       (if-let [job (jobs/get-agent-job w agent-id)]
+         (let [agent-pos (get-in w [:agents agent-id :pos])
+               job-target (:target job)
+               delta (if (<= (hex/distance agent-pos job-target) 1)
+                       0.2
+                       0.0)]
+           (jobs/advance-job! w agent-id delta))
+         w))
+     world
+     (range (count (:agents world)))))
+
+(defn- parse-tile-key
+   "Parse a tile key string 'q,r' into [q r] coordinate vector."
+   [k]
+   (let [parts (str/split k #",")]
+     [(Integer/parseInt (first parts)) (Integer/parseInt (second parts))]))
+
+(defn spawn-initial-trees!
+  "Spawn initial trees randomly throughout the map. Approximately 5% of tiles get trees."
+  [world]
+  (let [r (rng (:seed world))
+        hex-map (:map world)
+        bounds (:bounds hex-map)
+        spawn-chance 0.05]
+    (if (= (:shape bounds) :rect)
+      (let [w (long (:w bounds 1))
+            h (long (:h bounds 1))
+            origin (:origin bounds [0 0])]
+        (reduce
+          (fn [w' q]
+            (reduce
+              (fn [w'' r]
+                (if (< (rand-int* r 1000) (int (* spawn-chance 1000)))
+                  (let [pos [(+ (first origin) q) (+ (second origin) r)]
+                        tile-key (str (first pos) "," (second pos))]
+                    (assoc-in w'' [:tiles tile-key]
+                              {:terrain :ground :resource :tree :last-fruit-drop 0
+                               :next-spread-tick (+ (:tick w'') 20 (rand-int* r 141))}))
+                  w''))
+              w'
+              (range h)))
+          world
+          (range w)))
+      world)))
+
+  "Process fruit dropping for all trees. Each tree drops fruit randomly every 5-20 turns.
+   Fruits accumulate at the tree position in the :items map."
+  [world]
+  (let [current-tick (:tick world)
+        rng (rng (:seed world))]
+    (reduce-kv
+     (fn [w tile-key tile]
+       (if (= (:resource tile) :tree)
+         (let [last-drop (or (:last-fruit-drop tile) 0)
+               turns-since (- current-tick last-drop)
+               min-interval 5
+               max-interval 20
+               interval-range (+ 1 (- max-interval min-interval))
+               drop-at (+ last-drop min-interval (mod (rand-int* rng 1000000) interval-range))]
+           (if (>= turns-since min-interval)
+             (let [should-drop? (>= turns-since (or (:next-fruit-drop tile) drop-at))]
+               (cond-> w
+                 should-drop?
+                 (as-> w'
+                   (let [pos (parse-tile-key tile-key)]
+                     (-> w'
+                         (jobs/add-item! pos :fruit 1)
+                         (assoc-in [:tiles tile-key :last-fruit-drop] current-tick)
+                         (assoc-in [:tiles tile-key :next-fruit-drop] (+ current-tick min-interval (mod (rand-int* rng 1000000) interval-range))))))))
+             w))
+         w))
+     world
+     (:tiles world))))
 
 (defn move-agent-with-job
    "Move an agent one step. If agent has job, use pathing toward target.
@@ -101,14 +165,15 @@
              agent))))
      (spatial/move-agent world agent)))
 
-(defn tick-once [world]
+ (defn tick-once [world]
     (let [t (inc (:tick world))
-          w1 (assoc world :tick t)
-           w2 (-> w1
-                   (jobs/auto-generate-jobs!)
-                   (jobs/auto-assign-jobs!)
-                   (process-jobs!))
-          agents1 (->> (:agents w2)
+           w1 (assoc world :tick t)
+            w2 (-> w1
+                    (jobs/auto-generate-jobs!)
+                    (jobs/auto-assign-jobs!)
+                    (process-jobs!)
+                    (drop-tree-fruits!))
+           agents1 (->> (:agents w2)
                         (map (fn [a]
                                (agents/update-needs w2
                                                     (move-agent-with-job w2 a))))
