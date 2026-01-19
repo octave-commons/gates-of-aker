@@ -284,11 +284,16 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     for (const [tileKey, stockpile] of Object.entries(stockpiles)) {
       const [q, r] = tileKey.split(",").map(Number) as [number, number];
       const [sx, sy] = axialToPixel([q, r], size);
-      const sp = stockpile as { resource: string; maxQty: number; currentQty: number };
-      const fillLevel = sp.currentQty / sp.maxQty;
+      const spRaw = stockpile as Record<string, unknown>;
+      const normalizeResource = (val: unknown) => (typeof val === "string" ? val.replace(/^:/, "") : "unknown");
+      const resource = normalizeResource(spRaw.resource ?? spRaw[":resource"]);
+      const maxQty = Number(spRaw.maxQty ?? spRaw["max-qty"] ?? 0) || 0;
+      const currentQty = Number(spRaw.currentQty ?? spRaw["current-qty"] ?? 0) || 0;
+      const safeMaxQty = maxQty === 0 ? 1 : maxQty;
+      const fillLevel = Math.min(1, Math.max(0, currentQty / safeMaxQty));
       
-      const stockpileColor = (resource: string) => {
-        switch (resource) {
+      const stockpileColor = (res: string) => {
+        switch (res) {
           case "wood":
             return "#8d6e63";
           case "food":
@@ -298,17 +303,25 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
         }
       };
 
-      ctx.fillStyle = stockpileColor(sp.resource);
+      ctx.fillStyle = stockpileColor(resource);
       ctx.fillRect(sx - HEX_SIZE * 0.4, sy - HEX_SIZE * 0.4, HEX_SIZE * 0.8, HEX_SIZE * 0.8);
       ctx.strokeStyle = "#333";
       ctx.lineWidth = 1;
       ctx.strokeRect(sx - HEX_SIZE * 0.4, sy - HEX_SIZE * 0.4, HEX_SIZE * 0.8, HEX_SIZE * 0.8);
       
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.fillRect(
+        sx - HEX_SIZE * 0.38,
+        sy + HEX_SIZE * 0.24 - HEX_SIZE * 0.15,
+        HEX_SIZE * 0.76 * fillLevel,
+        HEX_SIZE * 0.15
+      );
+
       ctx.fillStyle = "white";
       ctx.font = "8px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(`${sp.currentQty}/${sp.maxQty}`, sx, sy);
+      ctx.fillText(`${currentQty}/${maxQty}`, sx, sy);
     }
 
     if (selectedCell) {

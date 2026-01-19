@@ -7,16 +7,45 @@
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
 
+(def default-agent-stats
+  {:strength 0.4
+   :dexterity 0.4
+   :fortitude 0.4
+   :charisma 0.4})
+
+(def default-agent-needs
+  {:food 0.7
+   :water 0.7
+   :rest 0.7
+   :health 1.0
+   :security 0.6
+   :mood 0.5
+   :warmth 0.6})
+
+(def default-need-thresholds
+  {:food-starve 0.0 :food-hungry 0.3 :food-satisfied 0.8
+   :water-dehydrate 0.0 :water-thirsty 0.3 :water-satisfied 0.8
+   :rest-collapse 0.0 :rest-tired 0.3 :rest-rested 0.8
+   :health-critical 0.0 :health-low 0.4 :health-stable 0.8
+   :security-panic 0.0 :security-unsettled 0.4 :security-safe 0.9
+   :mood-depressed 0.0 :mood-low 0.3 :mood-uplifted 0.8
+   :warmth-freeze 0.0 :warmth-cold 0.3 :warmth-comfort 0.8})
+
 (defn ->agent [id q r role]
    {:id id
     :pos [q r]
     :role role
-    :needs {:warmth 0.6 :food 0.7 :sleep 0.7}
-    :need-thresholds {:food-starve 0.0 :food-hungry 0.3 :food-satisfied 0.8
-                      :sleep-exhausted 0.0 :sleep-tired 0.3 :sleep-rested 0.8}
+    :stats default-agent-stats
+    :needs default-agent-needs
+    :need-thresholds default-need-thresholds
+    :inventories {:personal {:wood 0 :food 0}
+                  :hauling {}
+                  :equipment {}}
+    :status {:alive? true :asleep? false :idle? false}
     :inventory {:wood 0 :food 0}
     :frontier {}
-    :recall {}})
+    :recall {}
+    :events []})
 
 (defn initial-world [opts]
    (let [{:keys [seed bounds tree-density]} opts

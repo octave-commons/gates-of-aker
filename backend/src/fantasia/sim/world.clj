@@ -21,6 +21,8 @@
                      :role (:role a)
                      :needs (:needs a)
                      :recall (:recall a)
+                     :idle? (:idle? a)
+                     :current-job (:current-job a)
                      :current-path (:current-path a)
                      :top-facets (->> (:frontier a)
                                       (sort-by (fn [[_ {:keys [a]}]] (- (double a))))

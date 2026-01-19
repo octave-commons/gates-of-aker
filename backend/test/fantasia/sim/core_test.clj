@@ -68,10 +68,14 @@
 
 (deftest snapshot-summarizes-world
   (let [world (core/initial-world {:seed 10})
-        snap (world/snapshot world {:winter 1.0})]
+        snap (world/snapshot world {:winter 1.0})
+        agent (first (:agents world))
+        agent-snap (first (:agents snap))]
     (is (= (:tick world) (:tick snap)))
     (is (= (:levers world) (:levers snap)))
     (is (vector? (:agents snap)))
+    (is (= (:current-job agent) (:current-job agent-snap)))
+    (is (= (:idle? agent) (:idle? agent-snap)))
     (is (map? (:ledger snap)))))
 
 (deftest tick-once-advances-synthetic-world

@@ -31,10 +31,28 @@
          job))))
 
 (defn assign-job! [world job agent-id]
-  (let [job' (assoc job :worker-id agent-id :state :claimed)]
+  (let [job' (assoc job :worker-id agent-id :state :claimed)
+        job-id (:id job)
+        idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))]
     (-> world
-        (update-in [:agents agent-id] assoc :current-job (:id job'))
-        (update :jobs conj job'))))
+        (update-in [:agents agent-id]
+                   (fn [agent]
+                     (-> agent
+                         (assoc :current-job job-id)
+                         (assoc :idle? false)
+                         (assoc-in [:status :idle?] false))))
+        (update :jobs (fn [jobs]
+                        (if (some? idx)
+                          (assoc jobs idx job')
+                          (conj jobs job')))))))
+
+(defn mark-agent-idle [world agent-id]
+  (update-in world [:agents agent-id]
+             (fn [agent]
+               (-> agent
+                   (dissoc :current-job)
+                   (assoc :idle? true)
+                   (assoc-in [:status :idle?] true)))))
 
 (defn claim-next-job! [world agent-id]
   (let [agent (get-in world [:agents agent-id])
@@ -45,18 +63,23 @@
                         pending)
         job (first sorted)]
     (if job
-      (do (println "[JOB:ASSIGN]"
-                   {:agent-id agent-id
-                    :job-id (:id job)
-                    :type (:type job)
-                    :priority (:priority job)})
-          (assign-job! world job agent-id))
+      (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) (:id job)) i)) (:jobs world)))
+            job (assoc job :state :claimed)]
+        (println "[JOB:ASSIGN]"
+                 {:agent-id agent-id
+                  :job-id (:id job)
+                  :type (:type job)
+                  :priority (:priority job)})
+        (assign-job! (if (some? idx) (assoc-in world [:jobs idx] job) world) job agent-id))
       world)))
 
 (defn auto-assign-jobs! [world]
   (let [result (reduce (fn [w agent]
                         (if (nil? (:current-job agent))
-                          (claim-next-job! w (:id agent))
+                          (let [w' (claim-next-job! w (:id agent))]
+                            (if (= w w')
+                              (mark-agent-idle w (:id agent))
+                              w'))
                           w))
                       world
                       (:agents world))]
@@ -239,24 +262,27 @@
        world)))
 
 (defn complete-job! [world agent-id]
-   (if-let [job-id (get-in world [:agents agent-id] :current-job)]
-    (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))
-          job (get-in world [:jobs idx])
-          world (update-in world [:agents agent-id] dissoc :current-job)
-          world (update world :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))
-      (case (:type job)
-        :job/build-wall (do world)
-        :job/chop-tree (do world)
-        :job/haul (do world)
-        :job/eat (do world)
-        :job/sleep (do world)
-        :job/deliver-food (do world)
-        (do world)
-      world)
-    world)
+   (if-let [job-id (get-in world [:agents agent-id :current-job])]
+      (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))
+            job (get-in world [:jobs idx])
+            world (update-in world [:agents agent-id] dissoc :current-job)
+            world (update world :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))
+            world (case (:type job)
+                    :job/build-wall world
+                    :job/chop-tree world
+                    :job/haul world
+                    :job/eat world
+                    :job/sleep world
+                    :job/deliver-food world
+                    world)
+            reassigned (claim-next-job! world agent-id)]
+        (if (= reassigned world)
+          (mark-agent-idle world agent-id)
+          reassigned))
+      world))
 
 (defn advance-job! [world agent-id delta]
-  (if-let [job-id (get-in world [:agents agent-id] :current-job])]
+  (if-let [job-id (get-in world [:agents agent-id :current-job])]
     (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))
           job (get-in world [:jobs idx])]
       (if job

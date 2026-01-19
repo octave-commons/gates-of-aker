@@ -47,57 +47,34 @@
 ## In Progress 🔄
 
 ### Milestone 3 — Colony Job Loop (IN PROGRESS - BLOCKED)
-**Status:** 🔄 Code written, integration unverified
-**Blocker:** No runtime observability
+**Status:** 🔄 Code written, behaviors incomplete
+**Blockers:** Hauling loop lacks pickups, needs/ecosystem missing, observability partially addressed
 
 **Evidence of code:**
-- `backend/src/fantasia/sim/jobs.clj` - 11940 bytes (308 lines)
+- `backend/src/fantasia/sim/jobs.clj` - 11,940 bytes (391 lines)
   - Job creation (line 13): `create-job` generates jobs with UUID, priority
-  - Job assignment (line 23): `assign-job!` assigns job to agent
-  - Auto-assignment (line 41): `auto-assign-jobs!` assigns jobs to idle agents
-  - Stockpile system (lines 70-109): create, add, consume, find nearest
-  - Job types:
-    - `:job/chop-tree` (line 138-145)
-    - `:job/haul` (line 147-156)
-    - `:job/eat` (line 158-163)
-    - `:job/sleep` (line 165-168)
-    - `:job/build-wall` (line 122-136)
-    - `:job/deliver-food` (line 170-186)
-  - Need-driven job generation (line 266-285): `generate-need-jobs!`
-  - Item-driven job generation (line 249-265): `generate-haul-jobs-for-items!`
-  - Food delivery generation (line 286-301): `generate-deliver-food-jobs!`
-  - Auto-generation orchestrator (line 303-307): `auto-generate-jobs!`
+  - Job assignment (line 33): `assign-job!` assigns job to agent and clears idle flag
+  - Auto-assignment (line 67): `auto-assign-jobs!` assigns jobs to idle agents or marks them `:idle?`
+  - Stockpile + item helpers (lines 85-210)
+  - Job types: build-wall, chop-tree, haul, eat, sleep, deliver-food (lines 122-255)
+  - Need generation (lines 331-367), haul/deliver generation (lines 333-384)
+- Tick loop (`backend/src/fantasia/sim/tick/core.clj` lines 55-80) calls auto-generate/assign/process twice per tick.
+- Movement (`backend/src/fantasia/sim/tick/movement.clj` lines 38-69) respects job targets but never executes pickup/drop flows.
 
-- Integration in `tick.clj`:
-  - Line 120: `(jobs/auto-generate-jobs!)` - generates jobs each tick
-  - Line 121: `(jobs/auto-assign-jobs!)` - assigns jobs to idle agents
-  - Line 122: `(process-jobs!)` - advances job progress when adjacent
-  - Lines 124-126: `move-agent-with-job` calls `pathing/next-step-toward`
+**What's working/verified:**
+- Idle-agent handling + snapshot fields per `spec/2026-01-19-agent-idle-jobs.md`.
+- Logging instrumentation shows job creation/assignment/progress events.
 
-**What's working:**
-- Job system code exists and is complete
-- Pathing algorithms implemented (BFS + A*)
-- Integration calls exist in tick loop
+**What’s still missing:**
+- ❌ Haul/deliver jobs never pick up world items; agents camp at targets, generating spurious jobs.
+- ❌ Needs beyond food/sleep absent (no water/security/mood/health). Agents never die, sleep in place, or reproduce.
+- ❌ No multi-inventory or visual hauling indicator; inventory remains empty.
+- ❌ Building system limited to walls/ghosts; no town center/berry bush/chickens seeded.
+- ❌ UI limited to single combined view; cannot inspect/edit agents or see logs/charts.
 
-**What's NOT working (unverified):**
-- ❌ Jobs are actually being generated
-- ❌ Agents are claiming jobs
-- ❌ Agents are moving toward job targets using pathing
-- ❌ Jobs are advancing when adjacent
-- ❌ Jobs are completing with expected outcomes
-- ❌ World state changes from completion (wood, food, walls)
-
-**Root cause:**
-Zero runtime logging. We can't see:
-- Job creation events
-- Job assignment events
-- Job progress updates
-- Job completion events
-- Pathfinding requests/results
-- Agent position changes
-
-**Next step:**
-See GitHub Issue #15 and `spec/2026-01-18-observability.md` for detailed logging requirements.
+**Next steps:**
+- See `spec/2026-01-19-milestone3-lifecycle.md` for lifecycle overhaul plan covering needs, inventories, building system, and new UI routes.
+- Observability spec (`spec/2026-01-18-observability.md`) remains relevant for log hygiene.
 
 ---
 
@@ -201,7 +178,7 @@ Keep roadmap accurate prevents confusion about what's actually done.
 - Neighbor directions
 - Map structure (`:map` metadata, bounds)
 - Tile structure (`:terrain`, `:structure`, `:resource`, `:biome`)
-- Snapshot payload format
+- Snapshot payload format (includes `:idle?` and `:current-job` fields per agent)
 - WebSocket operation examples
 - Migration notes from square grid
 - Implementation module references
