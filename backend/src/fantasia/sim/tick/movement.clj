@@ -43,9 +43,27 @@
       (let [current-pos (:pos agent)
             job-target (:target job)]
         (if (= current-pos job-target)
-          agent
+          (do (println "[MOVEMENT:AGENT]"
+                       {:agent-id (:id agent)
+                        :current-pos current-pos
+                        :job-target job-target
+                        :moved? false
+                        :reason "Already at job target"})
+              agent)
           (let [next-pos (next-step-toward-simple world current-pos job-target)]
             (if (not= next-pos current-pos)
-              (assoc agent :pos next-pos)
+              (do (println "[MOVEMENT:AGENT]"
+                           {:agent-id (:id agent)
+                            :from current-pos
+                            :to next-pos
+                            :job-type (:type job)
+                            :job-target job-target})
+                  (assoc agent :pos next-pos))
               agent))))
-      (spatial/move-agent world agent)))
+      (let [agent' (spatial/move-agent world agent)]
+        (when (not= (:pos agent') (:pos agent))
+          (println "[MOVEMENT:RANDOM]"
+                   {:agent-id (:id agent)
+                    :from (:pos agent)
+                    :to (:pos agent')}))
+        agent')))
