@@ -9,7 +9,7 @@
 - [[spec/2026-01-17-milestone2-walls-pathing-build-ghosts.md]] - Walls and pathing
 
 ```md
-# Gates of Aker — World Schema (MVP) #gates-of-aker #schema #world
+# Gates of Aker — World Schema (MVP) #gates-of-aker #schema #world #data-structure #backend #authoritative
 
 This document describes the **authoritative backend world map** we will converge toward while building:
 - hex map + walls
@@ -232,7 +232,7 @@ Example:
  :world.event/summary "Bandits from the North raided the market gate."}
 ```
 ```less
-#tags #gates-of-aker #schema #world #aker
+#tags #gates-of-aker #schema #world #aker #data-model #clojure #backend #frontend
 ```
 
 * * *

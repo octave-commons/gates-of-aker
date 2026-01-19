@@ -205,17 +205,17 @@ A hex-map colony where you **build walls**, manage **needs + jobs**, directly co
 Suggested epic breakdown (Obsidian-ready)
 -----------------------------------------
 
-*   **#epic HexMap** → axial coords, render, LOS, wall blocking
+*   **#epic HexMap** → axial coords, render, LOS, wall blocking #geometry #hex-grid #rendering #pathing #walls
 
-*   **#epic ColonyCore** → ghosts/jobs, items, stockpile, needs
+*   **#epic ColonyCore** → ghosts/jobs, items, stockpile, needs #colony-sim #simulation #ai #economy #jobs
 
-*   **#epic ChampionLoop** → day control, agency, sleep/night gate
+*   **#epic ChampionLoop** → day control, agency, sleep/night gate #player-agency #aker #game-loop #input-control
 
-*   **#epic Factions6** → 6 neighbors, settlements, patrol/trade/raid
+*   **#epic Factions6** → 6 neighbors, settlements, patrol/trade/raid #factions #diplomacy #settlements #politics #war
 
-*   **#epic DecksAndSigns** → cards, collision resolution, signs, modifiers
+*   **#epic DecksAndSigns** → cards, collision resolution, signs, modifiers #cards #game-mechanics #collision-resolution #modifiers #signs #day-night
 
-*   **#epic MythLayerIntegration** → event-bus → attribution → unlocks
+*   **#epic MythLayerIntegration** → event-bus → attribution → unlocks #myth-engine #narrative #attribution #simulation #storytelling #events
 
 
 * * *

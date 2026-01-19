@@ -5,11 +5,12 @@
             [fantasia.sim.world :as world]
             [fantasia.sim.jobs :as jobs]
             [fantasia.sim.hex :as hex]
+            [fantasia.sim.pathing]
             [fantasia.sim.tick.initial :as initial]
             [fantasia.sim.tick.trees :as trees]
             [fantasia.sim.tick.movement :as movement]))
 
-(defonce *state (atom (initial/initial-world 1)))
+(def ^:dynamic *state (atom (initial/initial-world 1)))
 
 (defn get-state [] @*state)
 
@@ -28,22 +29,30 @@
   (swap! *state assoc-in [:levers :mouthpiece-agent-id] agent-id))
 
 (defn process-jobs!
-  "Process jobs for agents: advance progress if adjacent to target."
-  [world]
-  (reduce
-     (fn [w agent-id]
-       (if-let [job (jobs/get-agent-job w agent-id)]
-         (let [agent-pos (get-in w [:agents agent-id :pos])
-               job-target (:target job)
-               delta (if (<= (hex/distance agent-pos job-target) 1)
-                       0.2
-                       0.0)]
-           (jobs/advance-job! w agent-id delta))
-         w))
-     world
-     (range (count (:agents world)))))
+   "Process jobs for agents: advance progress if adjacent to target."
+   [world]
+   (reduce
+      (fn [w agent-id]
+        (if-let [job (jobs/get-agent-job w agent-id)]
+          (let [agent-pos (get-in w [:agents agent-id :pos])
+                job-target (:target job)
+                distance (hex/distance agent-pos job-target)
+                delta (if (<= distance 1)
+                        0.2
+                        0.0)]
+            (when (<= distance 1)
+              (println "[JOB:ADJACENT]"
+                       {:agent-id agent-id
+                        :pos agent-pos
+                        :job-target job-target
+                        :distance distance
+                        :eligible true}))
+            (jobs/advance-job! w agent-id delta))
+          w))
+      world
+      (range (count (:agents world)))))
 
-(defn tick-once [world]
+(defn ^:dynamic tick-once [world]
     (let [t (inc (:tick world))
            w1 (assoc world :tick t)
            w2 (-> w1

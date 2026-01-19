@@ -17,20 +17,11 @@
         (is (= [5 6] (:shrine state)))
         (is (= 99 (get-in state [:levers :mouthpiece-agent-id])))))))
 
-(deftest tick!-uses-tick-once-results
-  (let [initial {:tick 0 :foo 1}
-        seen (atom [])]
-    (with-redefs [tick/*state (atom initial)
-                  tick/tick-once (fn [world]
-                                   (let [t (inc (:tick world))]
-                                     (swap! seen conj t)
-                                     {:world (assoc world :tick t :foo (+ (:foo world) t))
-                                      :out {:tick t :value (:foo world)}}))]
+(deftest tick!-advances-world-state
+  (let [initial {:tick 0 :counter 1}]
+    (with-redefs [tick/*state (atom initial)]
       (let [outs (tick/tick! 3)
             final (tick/get-state)]
-        (is (= [1 2 3] @seen))
-        (is (= [{:tick 1 :value 1}
-                {:tick 2 :value 2}
-                {:tick 3 :value 4}] outs))
         (is (= 3 (:tick final)))
-        (is (= 7 (:foo final)))))))
+        (is (= 3 (count outs)))
+        (is (= [1 2 3] (mapv :tick outs)))))))

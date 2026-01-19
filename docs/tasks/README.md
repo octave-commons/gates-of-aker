@@ -1,4 +1,4 @@
-# Tasks Directory
+# Tasks Directory #tasks #implementation #planning #development #project-management #milestones
 
 This directory contains task breakdowns for implementation of the Gates of Aker project.
 

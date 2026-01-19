@@ -96,4 +96,4 @@ A good “scope governor” here is:
 
 If you want, I’ll take your current mental model and write a **one-page “Aker Core” design pillar** (what it must do, what it must not do) so it stays a game _and_ doesn’t explode into “engine forever.”
 
-#naming #myth-engine #world-sim #fantasia #promethean #pantheon
+#naming #myth-engine #world-sim #fantasia #promethean #pantheon #creative-concepts #game-design #mythology #deities #worldbuilding

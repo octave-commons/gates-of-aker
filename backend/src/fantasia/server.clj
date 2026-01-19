@@ -123,22 +123,28 @@
                 (broadcast! {:op "mouthpiece"
                              :mouthpiece (get-in (sim/get-state) [:levers :mouthpiece-agent-id])}))
 
+            "get_agent_path"
+            (if-let [path (sim/get-agent-path! (:agent_id msg))]
+              (broadcast! {:op "agent_path" :agent-id (:agent_id msg) :path path})
+              (broadcast! {:op "error" :message "Agent not found or has no path"}))
+            
             "place_stockpile"
             (do (sim/place-stockpile! (:pos msg) (:resource msg) (:max_qty msg))
                 (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
-
+            
             "place_warehouse"
             (do (sim/place-warehouse! (:pos msg) (:resource msg) (:max_qty msg))
                 (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
 
-            "assign_job"
-            (let [agent-id (:agent_id msg)
-                  job-type (:job_type msg)
-                  target-pos (:target_pos msg)]
-              (when (get-in (sim/get-state) [:agents agent-id])
-                (let [job (jobs/create-job job-type target-pos)]
-                  (swap! sim/*state jobs/assign-job! job agent-id)
-                  (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))}))))
+             "assign_job"
+             (let [agent-id (:agent_id msg)
+                   job-type (:job_type msg)
+                   target-pos (:target_pos msg)]
+               (when (and (get-in (sim/get-state) [:agents agent-id])
+                          target-pos)
+                 (when-let [job (jobs/create-job job-type target-pos)]
+                   (swap! sim/*state jobs/assign-job! job agent-id)
+                   (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))}))))
 
             "start_run"
             (do

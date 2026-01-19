@@ -1,7 +1,7 @@
 (ns fantasia.sim.tick.actions
   (:require [fantasia.sim.hex :as hex]
-            [fantasia.sim.jobs :as jobs])
-  (:require [fantasia.sim.tick.core :as core]))
+            [fantasia.sim.jobs :as jobs]
+            [fantasia.sim.tick.core :as core]))
 
 (defn assign-build-wall-job!
    "Manually assign a build-wall job to an agent at a specific position."

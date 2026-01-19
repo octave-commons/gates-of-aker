@@ -10,7 +10,7 @@
 
 ---
 
-Aker boundary control flow (where cards happen) #aker #cards
+Aker boundary control flow (where cards happen) #aker #cards #day-night #phase-transition #game-loop
 ============================================================
 
 ```mermaid

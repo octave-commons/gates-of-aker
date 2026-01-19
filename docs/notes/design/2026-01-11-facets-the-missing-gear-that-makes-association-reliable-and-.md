@@ -224,4 +224,4 @@ I can draft:
 
 If you want the continuation in the same style, I’ll start from the packet format and walk it through to “tradition tier unlocks” using facet mentions as the atomic unit.
 
-#game-design #fantasia #facets #knowledge-graph #miracles
+#game-design #fantasia #facets #knowledge-graph #miracles #graph-theory #associative-memory #myth-engine #semantic-network

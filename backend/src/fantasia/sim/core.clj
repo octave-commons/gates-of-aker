@@ -6,7 +6,7 @@
 (def ->agent tick/->agent)
 (def initial-world tick/initial-world)
 (def tick-once tick/tick-once)
-(def ^:private *state tick/*state)
+(def *state tick/*state)
 (def get-state tick/get-state)
 (def reset-world! tick/reset-world!)
 (def set-levers! tick/set-levers!)

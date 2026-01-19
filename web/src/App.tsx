@@ -17,7 +17,7 @@ import { WSClient, WSMessage } from "./ws";
       JobQueuePanel,
       TreeSpreadControls,
     } from "./components";
-import { Agent, Trace, hasPos } from "./types";
+import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -29,10 +29,15 @@ export function App() {
   const [snapshot, setSnapshot] = useState<any>(null);
   const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
   const [traces, setTraces] = useState<Trace[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<any[]>([]);
+    const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
 
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
-   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+
+  const getAgentPath = (agentId: number): PathPoint[] => {
+    return agentPaths[agentId] ?? [];
+  };
 
    const [buildMode, setBuildMode] = useState(false);
     const [stockpileMode, setStockpileMode] = useState(false);
@@ -116,13 +121,20 @@ export function App() {
              return { ...prev, tiles: m.tiles };
            });
          }
-        if (m.op === "stockpiles") {
-          setSnapshot((prev: any) => {
-            if (!prev) return prev;
-            return { ...prev, stockpiles: m.stockpiles };
-          });
-        }
-        if (m.op === "jobs") {
+         if (m.op === "stockpiles") {
+           setSnapshot((prev: any) => {
+             if (!prev) return prev;
+             return { ...prev, stockpiles: m.stockpiles };
+           });
+         }
+         if (m.op === "agent_path") {
+           setSnapshot((prev: any) => {
+             if (!prev) return prev;
+             const agentPath = { [m.agent_id]: m.path };
+             return { ...prev, agentPath };
+           });
+         }
+         if (m.op === "jobs") {
            setSnapshot((prev: any) => {
              if (!prev) return prev;
              return { ...prev, jobs: m.jobs };
@@ -336,6 +348,7 @@ export function App() {
           mapConfig={mapConfig}
           selectedCell={selectedCell}
           selectedAgentId={selectedAgentId}
+          agentPaths={agentPaths}
           onCellSelect={handleCellSelect}
         />
         {selectedCell && (

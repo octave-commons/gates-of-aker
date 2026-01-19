@@ -52,7 +52,7 @@
     (is (map? (:tiles world)))
     (is (= 12 (count ids)))
     (is (= (set (range 12)) (set ids)))
-    (is (every? #(spatial/in-bounds? (:map world) (:pos %)) (:agents world)))))
+    (is (every? #(spatial/in-bounds? world (:pos %)) (:agents world)))))
 
 
 

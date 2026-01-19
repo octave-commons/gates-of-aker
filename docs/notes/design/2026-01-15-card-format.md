@@ -46,8 +46,8 @@ Deck A — 12 playable “cards”
 
     *   **Moon**: “Nightmare Twist” (convert to paranoia: Spread +1 but Confidence -1)
 
-*   **Aftermath hooks:** creates candidate events like _tip-offs_, _secret meetings_, _panic buying_, _accusations_
-    #herald #night #belief
+* **Aftermath hooks:** creates candidate events like _tip-offs_, _secret meetings_, _panic buying_, _accusations_
+    #herald #night #belief #psychology #narrative #dreams
 
 
 2) Public Proclamation
@@ -75,8 +75,8 @@ Deck A — 12 playable “cards”
 
     *   **Moon**: undermines witnesses / injects doubt
 
-*   **Aftermath hooks:** _duels, trials, petitions, riots, recruitment drives_
-    #herald #day #public
+* **Aftermath hooks:** _duels, trials, petitions, riots, recruitment drives_
+    #herald #day #public #politics #propaganda #social-dynamics
 
 
 3) Whisper Network
@@ -103,8 +103,8 @@ Choose **one** mode:
 
 *   **Counters:** rivals can contest the same edge; Sun can sanction channels; Moon can corrupt them
 
-*   **Aftermath hooks:** _trade swings, ambushes, diplomacy openings, misinformation spirals_
-    #herald #always #routes
+* **Aftermath hooks:** _trade swings, ambushes, diplomacy openings, misinformation spirals_
+    #herald #always #routes #network #communication #logistics
 
 
 * * *
@@ -159,8 +159,8 @@ Choose **one** mode:
 
     *   **Herald**: leak counter-evidence / stir rival forums
 
-*   **Aftermath hooks:** _bureaucratic momentum, rival petitions, coups, legitimacy spikes_
-    #sun #day #institutions
+* **Aftermath hooks:** _bureaucratic momentum, rival petitions, coups, legitimacy spikes_
+    #sun #day #institutions #bureaucracy #authority #governance
 
 
 6) Seal of Sanction
@@ -180,8 +180,8 @@ Choose **one** mode:
 
 *   **Counters:** Moon can forge/steal; Herald can leak contradictions; rivals can contest in court
 
-*   **Aftermath hooks:** _forgery plots, audit arcs, smugglers adapting, legal escalation_
-    #sun #always #legitimacy
+* **Aftermath hooks:** _forgery plots, audit arcs, smugglers adapting, legal escalation_
+    #sun #always #legitimacy #authority #verification #trust
 
 
 * * *
@@ -207,8 +207,8 @@ Choose **one** mode:
 
     *   **Herald** triangulates via witnesses + message edges
 
-*   **Aftermath hooks:** _kidnaps, secret rites, heists, shadow diplomacy_
-    #moon #night #stealth
+* **Aftermath hooks:** _kidnaps, secret rites, heists, shadow diplomacy_
+    #moon #night #stealth #covert-operations #espionage #infiltration
 
 
 8) Quiet Step
@@ -230,8 +230,8 @@ Choose **one** mode:
 
 *   **Counters:** Sun can force testimony and “pin” blame; Herald can reconstruct timelines
 
-*   **Aftermath hooks:** _vendettas, investigations, hidden alliances, blackmail arcs_
-    #moon #day #covert
+* **Aftermath hooks:** _vendettas, investigations, hidden alliances, blackmail arcs_
+    #moon #day #covert #espionage #sabotage #deception
 
 
 9) Mask & Doubt
@@ -251,8 +251,8 @@ Choose **one** mode:
 
 *   **Counters:** Sun issues sealed verdict; Herald floods corroboration; rivals hunt the source
 
-*   **Aftermath hooks:** _schisms, witch-hunts, propaganda wars, dueling witnesses_
-    #moon #always #misinfo
+* **Aftermath hooks:** _schisms, witch-hunts, propaganda wars, dueling witnesses_
+    #moon #always #misinfo #propaganda #disinformation #social-conflict
 
 
 * * *
@@ -276,8 +276,8 @@ Choose **one** mode:
 
 *   **Counterplay:** Moon finds loopholes; Sun adjudicates interpretation; Herald leaks betrayal early
 
-*   **Aftermath hooks:** _breach crises, hostage clauses, trade booms, diplomatic webs_
-    #lesser #contract #herald
+* **Aftermath hooks:** _breach crises, hostage clauses, trade booms, diplomatic webs_
+    #lesser #contract #herald #agreements #diplomacy #binding
 
 
 11) Public Relief
@@ -297,8 +297,8 @@ Choose **one** mode:
 
 *   **Counterplay:** Moon steals/frames it; Herald amplifies credit (or spreads “it was stolen”)
 
-*   **Aftermath hooks:** _dependency politics, relief corruption plots, gratitude factions_
-    #lesser #sun #stability
+* **Aftermath hooks:** _dependency politics, relief corruption plots, gratitude factions_
+    #lesser #sun #stability #social-welfare #economy #public-policy
 
 
 12) Warden’s Reckoning
@@ -338,8 +338,8 @@ Herald — Night: **Translation Dream**
 
 *   **Effect:** two cultures treat one concept as equivalent (“your oath-god = our oath-god”) ⇒ enables new diplomacy/ritual edges
 
-*   **Counter:** Sun rejects as heresy; Moon twists into schism
-    #herald #syncretism
+* **Counter:** Sun rejects as heresy; Moon twists into schism
+    #herald #syncretism #cultural-exchange #religion #diplomacy
 
 
 Herald — Day: **Market Parley**
@@ -349,8 +349,8 @@ Herald — Day: **Market Parley**
 
 *   **Effect:** force a negotiation at a market node; converts hostility into a tradable term (truce-for-goods, ransom, passage)
 
-*   **Counter:** Moon sabotages talks; Sun demands formal charter
-    #herald #trade
+* **Counter:** Moon sabotages talks; Sun demands formal charter
+    #herald #trade #economics #negotiation #commerce
 
 
 Herald — Always: **Leak Proof**
@@ -360,8 +360,8 @@ Herald — Always: **Leak Proof**
 
 *   **Effect:** reveal one hidden edge (secret meeting, forged seal, bribery) to a chosen audience
 
-*   **Counter:** Moon masks source; Sun weaponizes in court
-    #herald #exposure
+* **Counter:** Moon masks source; Sun weaponizes in court
+    #herald #exposure #investigation #information-warfare #secrets
 
 
 Sun — Night: **Vigil Oath**
@@ -371,8 +371,8 @@ Sun — Night: **Vigil Oath**
 
 *   **Effect:** tomorrow, one cohort gets `Discipline +1` but `Mercy -1` (tight control, harsher outcomes)
 
-*   **Counter:** Herald shifts crowds elsewhere; Moon incites backlash
-    #sun #discipline
+* **Counter:** Herald shifts crowds elsewhere; Moon incites backlash
+    #sun #discipline #control #military #order
 
 
 Sun — Day: **Public Trial**
@@ -382,8 +382,8 @@ Sun — Day: **Public Trial**
 
 *   **Effect:** converts a conflict into a trial event chain (testimony → verdict → enforcement)
 
-*   **Counter:** Moon corrupts witnesses; Herald floods counter-testimony
-    #sun #trial
+* **Counter:** Moon corrupts witnesses; Herald floods counter-testimony
+    #sun #trial #justice #legal #evidence #court
 
 
 Sun — Always: **Canon Ledger**
@@ -393,8 +393,8 @@ Sun — Always: **Canon Ledger**
 
 *   **Effect:** lock one claim as “canon” for Sun-aligned groups unless overturned by a major scandal/proof event
 
-*   **Counter:** Moon aims for scandal; Herald aims for contradiction
-    #sun #canon
+* **Counter:** Moon aims for scandal; Herald aims for contradiction
+    #sun #canon #tradition #history #legitimacy #orthodoxy
 
 
 Moon — Night: **Night Market**
@@ -404,8 +404,8 @@ Moon — Night: **Night Market**
 
 *   **Effect:** spawn a temporary shadow market node that reroutes scarcity (relief with strings)
 
-*   **Counter:** Sun raids; Herald advertises/booby-traps supply lines
-    #moon #blackmarket
+* **Counter:** Sun raids; Herald advertises/booby-traps supply lines
+    #moon #blackmarket #economics #crime #underground #shadow-economy
 
 
 Moon — Day: **False Flag**
@@ -415,8 +415,8 @@ Moon — Day: **False Flag**
 
 *   **Effect:** one hostile act is attributed to a third party (creates war/feud candidates)
 
-*   **Counter:** Herald leaks truth; Sun investigates officially
-    #moon #deception
+* **Counter:** Herald leaks truth; Sun investigates officially
+    #moon #deception #espionage #manipulation #psychological-warfare
 
 
 Moon — Always: **Blackmail Thread**
@@ -426,5 +426,5 @@ Moon — Always: **Blackmail Thread**
 
 *   **Effect:** convert one secret edge into leverage (demand, silence, forced alliance)
 
-*   **Counter:** Sun grants amnesty; Herald publicizes early
-    #moon #leverage
+* **Counter:** Sun grants amnesty; Herald publicizes early
+    #moon #leverage #manipulation #blackmail #coercion #social-pressure

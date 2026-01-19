@@ -537,4 +537,4 @@ I can extend the DSL with one more layer that’ll matter soon:
 * a tiny “Charter DSL” for **membership gates** like “must be of the faith *and* pass a secular competency test *and* hold citizenship”
 * and a `compile-group` step that turns predicates into fast fns (while keeping authored macros)
 
-#game-design #fantasia #clojure #dsl #institutions
+#game-design #fantasia #clojure #dsl #institutions #macro #metaprogramming #social-sim #belief-systems #organizations #groups

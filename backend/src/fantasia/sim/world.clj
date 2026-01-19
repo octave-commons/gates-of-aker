@@ -4,35 +4,36 @@
 
 (defn snapshot
    "Produce a UI-friendly snapshot of world state + attribution map."
-   [world attribution]
-   {:tick (:tick world)
-    :shrine (:shrine world)
-    :levers (:levers world)
-    :map (:map world)
-    :tiles (:tiles world)
-    :recent-events (:recent-events world)
-    :attribution attribution
-    :jobs (:jobs world)
-    :items (:items world)
-    :stockpiles (:stockpiles world)
-    :agents (mapv (fn [a]
-                   {:id (:id a)
-                    :pos (:pos a)
-                    :role (:role a)
-                    :needs (:needs a)
-                    :recall (:recall a)
-                    :top-facets (->> (:frontier a)
-                                     (sort-by (fn [[_ {:keys [a]}]] (- (double a))))
-                                     (take 8)
-                                     (mapv (fn [[k v]] {:facet k :a (:a v)})))})
-                 (:agents world))
-   :ledger (into {}
-                 (map (fn [[[et claim] v]]
-                        [(str (name et) "/" (name claim))
-                         {:buzz (:buzz v)
-                          :tradition (:tradition v)
-                          :mentions (:mentions v)}])
-                      (:ledger world)))} )
+    [world attribution]
+    {:tick (:tick world)
+     :shrine (:shrine world)
+     :levers (:levers world)
+     :map (:map world)
+     :tiles (:tiles world)
+     :recent-events (:recent-events world)
+     :attribution attribution
+     :jobs (:jobs world)
+     :items (:items world)
+     :stockpiles (:stockpiles world)
+     :agents (mapv (fn [a]
+                    {:id (:id a)
+                     :pos (:pos a)
+                     :role (:role a)
+                     :needs (:needs a)
+                     :recall (:recall a)
+                     :current-path (:current-path a)
+                     :top-facets (->> (:frontier a)
+                                      (sort-by (fn [[_ {:keys [a]}]] (- (double a))))
+                                      (take 8)
+                                      (mapv (fn [[k v]] {:facet k :a (:a v)})))})
+                  (:agents world))
+    :ledger (into {}
+                  (map (fn [[[et claim] v]]
+                         [(str (name et) "/" (name claim))
+                          {:buzz (:buzz v)
+                           :tradition (:tradition v)
+                           :mentions (:mentions v)}])
+                       (:ledger world)))} )
 
 (defn update-ledger
   "Apply decay + mentions to the ledger and return {:ledger ledger2 :attr {...}}"

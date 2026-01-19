@@ -186,4 +186,4 @@ My top picks based on what you said
 
 If you tell me whether you want the name to feel more **mythic** or more **systems/academic**, I’ll lock a final 3 and propose matching module names that rhyme with **Promethean** + **Pantheon**.
 
-#naming #polis #hermes #apollo #artemis #social-sim #knowledge-graph #fantasia
+#naming #polis #hermes #apollo #artemis #social-sim #knowledge-graph #fantasia #mythology #gods #deities #role-design #system-design

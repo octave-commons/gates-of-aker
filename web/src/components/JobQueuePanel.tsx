@@ -82,10 +82,11 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
             const color = jobTypeColors[jobType] ?? "#999";
             const typeName = jobTypeNames[jobType] ?? String(jobType).replace(":job/", "");
             const progress = (job.progress ?? 0) / (job.required ?? 1);
+            const uniqueKey = job.id ? `${job.id}-${idx}` : `idx-${idx}`;
             
             return (
               <div 
-                key={job.id ?? idx}
+                key={uniqueKey}
                 style={{
                   backgroundColor: "#f9f9f9",
                   borderLeft: `4px solid ${color}`,

@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { SimulationCanvas } from "../SimulationCanvas";
 import type { HexConfig } from "../../hex";
 
+const HEX_SIZE = 16;
+const HEX_SPACING = 1;
+
 const snapshot = {
   shrine: [0, 0],
   agents: [
@@ -25,6 +28,8 @@ const mapConfig: HexConfig = {
   },
 };
 
+const agentPaths: Record<number, Array<[number, number]>> = {};
+
 describe("SimulationCanvas", () => {
   it("maps clicks to cells and surfaces agent hits", () => {
     const onCellSelect = vi.fn();
@@ -35,6 +40,7 @@ describe("SimulationCanvas", () => {
         mapConfig={mapConfig}
         selectedCell={null}
         selectedAgentId={null}
+        agentPaths={agentPaths}
         onCellSelect={onCellSelect}
       />
     );
@@ -62,6 +68,7 @@ describe("SimulationCanvas", () => {
         mapConfig={mapConfig}
         selectedCell={[5, 5]}
         selectedAgentId={9}
+        agentPaths={agentPaths}
         onCellSelect={onCellSelect}
       />
     );
@@ -81,6 +88,7 @@ describe("SimulationCanvas", () => {
         mapConfig={mapConfig}
         selectedCell={null}
         selectedAgentId={null}
+        agentPaths={agentPaths}
         onCellSelect={onCellSelect}
       />
     );
@@ -113,6 +121,7 @@ describe("SimulationCanvas", () => {
         mapConfig={mapConfig}
         selectedCell={null}
         selectedAgentId={null}
+        agentPaths={agentPaths}
         onCellSelect={onCellSelect}
       />
     );
@@ -132,6 +141,7 @@ describe("SimulationCanvas", () => {
         mapConfig={mapConfig}
         selectedCell={null}
         selectedAgentId={null}
+        agentPaths={agentPaths}
         onCellSelect={onCellSelect}
       />
     );
@@ -139,17 +149,12 @@ describe("SimulationCanvas", () => {
     const canvas = screen.getByTestId("simulation-canvas") as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
 
-    const padding = 32;
-
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const screenX = padding / scaleX + rect.left;
-    const screenY = padding / scaleY + rect.top;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
 
     fireEvent.click(canvas, {
-      clientX: screenX,
-      clientY: screenY,
+      clientX: rect.left + centerX,
+      clientY: rect.top + centerY,
       target: canvas,
     });
 
@@ -165,6 +170,7 @@ describe("SimulationCanvas", () => {
         mapConfig={mapConfig}
         selectedCell={null}
         selectedAgentId={null}
+        agentPaths={agentPaths}
         onCellSelect={onCellSelect}
       />
     );
@@ -172,22 +178,18 @@ describe("SimulationCanvas", () => {
     const canvas = screen.getByTestId("simulation-canvas") as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
 
-    const size = 16;
-    const padding = 32;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    const size = HEX_SIZE + HEX_SPACING;
     const SQRT3 = Math.sqrt(3);
 
-    const internalX = padding + size * SQRT3 * 0.1;
-    const internalY = padding + size * 1.5 * 0.1;
-
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const screenX = internalX / scaleX + rect.left;
-    const screenY = internalY / scaleY + rect.top;
+    const internalX = size * SQRT3 * 0.1;
+    const internalY = size * 1.5 * 0.1;
 
     fireEvent.click(canvas, {
-      clientX: screenX,
-      clientY: screenY,
+      clientX: rect.left + centerX + internalX,
+      clientY: rect.top + centerY + internalY,
       target: canvas,
     });
 
@@ -204,6 +206,7 @@ describe("SimulationCanvas", () => {
         mapConfig={mapConfig}
         selectedCell={null}
         selectedAgentId={null}
+        agentPaths={agentPaths}
         onCellSelect={onCellSelect}
       />
     );
@@ -211,22 +214,18 @@ describe("SimulationCanvas", () => {
     const canvas = screen.getByTestId("simulation-canvas") as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
 
-    const size = 16;
-    const padding = 32;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    const size = HEX_SIZE + HEX_SPACING;
     const SQRT3 = Math.sqrt(3);
 
-    const internalX = padding + size * SQRT3 + 5;
-    const internalY = padding + 5;
-
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const screenX = internalX / scaleX + rect.left;
-    const screenY = internalY / scaleY + rect.top;
+    const internalX = size * SQRT3;
+    const internalY = size * 1.5 * 0;
 
     fireEvent.click(canvas, {
-      clientX: screenX,
-      clientY: screenY,
+      clientX: rect.left + centerX + internalX,
+      clientY: rect.top + centerY + internalY,
       target: canvas,
     });
 

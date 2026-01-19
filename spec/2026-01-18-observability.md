@@ -1,4 +1,4 @@
-# Observability & Debugging Spec: Job System and Pathing
+# Observability & Debugging Spec: Job System and Pathing #debugging #logging #testing #jobs #pathing #colony-sim #observability
 
 ## Context
 

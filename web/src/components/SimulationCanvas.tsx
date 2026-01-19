@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { MouseEvent, WheelEvent } from "react";
+import type { MouseEvent } from "react";
 import { Agent, hasPos, PathPoint } from "../types";
 import type { HexConfig } from "../hex";
 import { axialToPixel, pixelToAxial, hexCorner, getMapBoundsInPixels, type AxialCoords } from "../hex";
@@ -97,6 +97,36 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     animationFrameId = requestAnimationFrame(handleCameraMovement);
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const handleWheel = (event: globalThis.WheelEvent) => {
+        event.preventDefault();
+        if (!snapshot || !mapConfig || !canvasRef.current) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        const worldX = (mouseX - centerX) / camera.zoom - camera.offsetX;
+        const worldY = (mouseY - centerY) / camera.zoom - camera.offsetY;
+
+        const zoomDelta = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+        const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, camera.zoom + zoomDelta));
+
+        const newOffsetX = worldX - (mouseX - centerX) / newZoom;
+        const newOffsetY = worldY - (mouseY - centerY) / newZoom;
+
+        setCamera({ ...camera, zoom: newZoom, offsetX: newOffsetX, offsetY: newOffsetY });
+      };
+      canvas.addEventListener("wheel", handleWheel, { passive: false });
+      return () => canvas.removeEventListener("wheel", handleWheel);
+    }
+  }, [camera, snapshot, mapConfig]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -376,30 +406,6 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     onCellSelect(cell, hit ? hit.id : null);
   };
 
-  const handleWheel = (event: WheelEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    if (!canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
-    const worldX = (mouseX - centerX) / camera.zoom - camera.offsetX;
-    const worldY = (mouseY - centerY) / camera.zoom - camera.offsetY;
-
-    const zoomDelta = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-    const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, camera.zoom + zoomDelta));
-
-    const newOffsetX = worldX - (mouseX - centerX) / newZoom;
-    const newOffsetY = worldY - (mouseY - centerY) / newZoom;
-
-    setCamera({ ...camera, zoom: newZoom, offsetX: newOffsetX, offsetY: newOffsetY });
-  };
-
   const handleMouseDown = (event: MouseEvent<HTMLCanvasElement>) => {
     if (event.button === 1) {
       event.preventDefault();
@@ -441,7 +447,6 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
         ref={canvasRef}
         style={{ display: "block", width: "100%", height: "100%", cursor: isDragging ? "grabbing" : "crosshair" }}
         onClick={handleClick}
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

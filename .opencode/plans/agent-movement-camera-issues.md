@@ -191,17 +191,26 @@ After Phase 1 is working, verify:
 Testing both camera controls and agent movement after deployment.
 
 ## Definition of Done
-- [ ] Camera responds smoothly to WASD keyboard input
-- [ ] Camera zooms with mouse wheel centered on cursor
-- [ ] Camera pans with middle-click drag
-- [ ] Agents are visible on the canvas
-- [ ] Agents move when tick advances
-- [ ] Agent movement is visible and smooth
-- [ ] Selected agent shows path visualization
+- [x] Camera responds smoothly to WASD keyboard input
+- [x] Camera zooms with mouse wheel centered on cursor
+- [x] Camera pans with middle-click drag
+- [x] Agents are visible on the canvas
+- [x] Agents move when tick advances
+- [x] Agent movement is visible and smooth
+- [x] Selected agent shows path visualization
 
 ## Story Points
 - Phase 1 (Camera): 2 story points (simple dependency fix) ✅ COMPLETED
-- Phase 2 (Agent debug): 3 story points (investigation + potential fixes)
-- Phase 3 (Verification): 1 story point (testing)
+- Phase 2 (Agent debug): 3 story points (investigation + potential fixes) ✅ COMPLETED
+- Phase 3 (Verification): 1 story point (testing) ✅ COMPLETED
 
-**Total**: 6 story points
+**Total**: 6 story points - ALL COMPLETED
+
+## Commit
+- Commit: 60d528f
+- GitHub Issue: #17
+- Files changed:
+  - backend/src/fantasia/sim/jobs.clj
+  - backend/src/fantasia/sim/tick/movement.clj
+  - web/src/components/SimulationCanvas.tsx
+  - .opencode/plans/agent-movement-camera-issues.md (new spec file)

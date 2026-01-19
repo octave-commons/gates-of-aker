@@ -28,7 +28,7 @@
                       visited' (reduce conj visited neighbors)
                       new-paths (map #(conj path %) neighbors)
                       queue' (concat (rest queue) new-paths)]
-                  (recur queue' visited' (inc steps))))))))))
+                  (recur queue' visited' (inc steps)))))))))))
 
 (defn a-star-path
   "Find shortest path from start to goal using A* algorithm.
@@ -92,4 +92,4 @@
 (defn reachable?
   "Check if goal is reachable from start."
   [world start goal]
-  (boolean (bfs-path world start goal))))
+  (boolean (bfs-path world start goal)))

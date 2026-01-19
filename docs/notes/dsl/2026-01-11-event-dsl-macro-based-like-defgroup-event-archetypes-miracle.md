@@ -485,4 +485,4 @@ I can add a sibling DSL for **event *instances*** (scenario scripting / authored
 * `(defevent winter-pyre-0007 ...)` to drop a historical miracle into world gen
 * and a `compile->facet-signature` helper so any raw sim event can be normalized even without a matched archetype
 
-#game-design #fantasia #clojure #dsl #events #miracles
+#game-design #fantasia #clojure #dsl #events #miracles #macro #metaprogramming #myth-engine #narrative #storytelling

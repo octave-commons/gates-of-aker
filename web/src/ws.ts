@@ -67,10 +67,17 @@ export class WSClient {
      }
 
       sendSetFps(fps: number) {
-        this.send({ op: "set_fps", fps });
+        this.send({
+          op: "set_fps",
+          fps,
+        });
       }
 
-      sendSetTreeSpreadLevers(spreadProbability: number, minInterval: number, maxInterval: number) {
+       sendGetAgentPath(agentId: number) {
+         this.send({ op: "get_agent_path", agent_id: agentId });
+       }
+
+       sendSetTreeSpreadLevers(spreadProbability: number, minInterval: number, maxInterval: number) {
         this.send({
           op: "set_tree_spread_levers",
           spread_probability: spreadProbability,
