@@ -14,12 +14,17 @@
   [ecs-world cold-snap]
   (let [needs-instance (c/->Needs 0.6 0.7 0.7)
         needs-type (be/get-component-type needs-instance)
-        agent-ids (be/get-all-entities-with-component ecs-world needs-type)]
+        agent-ids (be/get-all-entities-with-component ecs-world needs-type)
+        cold-snap (or cold-snap 0.5)]
     (reduce (fn [acc agent-id]
-              (let [needs (be/get-component acc agent-id needs-type)
-                    warmth (clamp01 (- (:warmth needs) (* 0.03 cold-snap)))
-                    food (clamp01 (- (:food needs) 0.01))
-                    sleep (clamp01 (- (:sleep needs) 0.008))]
+              (let [needs (or (be/get-component acc agent-id needs-type)
+                              (c/->Needs 0.6 0.7 0.7))
+                    warmth-val (double (or (:warmth needs) 0.6))
+                    food-val (double (or (:food needs) 0.7))
+                    sleep-val (double (or (:sleep needs) 0.7))
+                    warmth (clamp01 (- warmth-val (* 0.03 cold-snap)))
+                    food (clamp01 (- food-val 0.01))
+                    sleep (clamp01 (- sleep-val 0.008))]
                 (be/add-component acc agent-id (c/->Needs warmth food sleep))))
             ecs-world
             agent-ids)))
