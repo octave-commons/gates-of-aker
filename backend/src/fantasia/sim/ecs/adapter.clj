@@ -3,33 +3,40 @@
             [fantasia.sim.ecs.core]
             [fantasia.sim.ecs.components]))
 
+(def component-types
+  "Lazy-loaded map of component types for efficient queries."
+  (delay
+    {:position (be/get-component-type (fantasia.sim.ecs.components/->Position 0 0))
+     :needs (be/get-component-type (fantasia.sim.ecs.components/->Needs 0.6 0.7 0.7))
+     :inventory (be/get-component-type (fantasia.sim.ecs.components/->Inventory 0 0))
+     :role (be/get-component-type (fantasia.sim.ecs.components/->Role :priest))
+     :frontier (be/get-component-type (fantasia.sim.ecs.components/->Frontier {}))
+     :recall (be/get-component-type (fantasia.sim.ecs.components/->Recall {}))
+     :job-assignment (be/get-component-type (fantasia.sim.ecs.components/->JobAssignment nil 0.0))
+     :path (be/get-component-type (fantasia.sim.ecs.components/->Path [] 0))
+     :tile (be/get-component-type (fantasia.sim.ecs.components/->Tile :ground nil nil nil))
+     :stockpile (be/get-component-type (fantasia.sim.ecs.components/->Stockpile {}))
+     :wall-ghost (be/get-component-type (fantasia.sim.ecs.components/->WallGhost nil))
+     :agent (be/get-component-type (fantasia.sim.ecs.components/->Agent "test"))
+     :tile-index (be/get-component-type (fantasia.sim.ecs.components/->TileIndex "0,0"))}))
+
+(defn get-comp
+  "Helper to get component from entity by type key."
+  [world entity-id type-key]
+  (let [comp-type (get @component-types type-key)]
+    (be/get-component world entity-id comp-type)))
+
 (defn ecs->agent-map
   "Convert agent entity to old-style map format."
   [ecs-world agent-id]
-  (let [pos-arg (fantasia.sim.ecs.components/->Position [0 0]))
-        pos-type (be/get-component-type pos-arg)
-        position (be/get-component ecs-world agent-id pos-type)
-        role-arg (fantasia.sim.ecs.components/->Role [:priest]))
-        role-type (be/get-component-type role-arg)
-        role (be/get-component ecs-world agent-id role-type)
-        needs-arg (fantasia.sim.ecs.components/->Needs [0.6 0.7 0.7]))
-        needs-type (be/get-component-type needs-arg)
-        needs (be/get-component ecs-world agent-id needs-type)
-        inv-arg (fantasia.sim.ecs.components/->Inventory [0 0]))
-        inv-type (be/get-component-type inv-arg)
-        inventory (be/get-component ecs-world agent-id inv-type)
-        front-arg (fantasia.sim.ecs.components/->Frontier [{}]))
-        front-type (be/get-component-type front-arg)
-        frontier (be/get-component ecs-world agent-id front-type)
-        rec-arg (fantasia.sim.ecs.components/->Recall [{}]))
-        rec-type (be/get-component-type rec-arg)
-        recall (be/get-component ecs-world agent-id rec-type)
-        job-arg (fantasia.sim.ecs.components/->JobAssignment [nil 0.0]))
-        job-type (be/get-component-type job-arg)
-        job-assignment (be/get-component ecs-world agent-id job-type)
-        path-arg (fantasia.sim.ecs.components/->Path [[]]))
-        path-type (be/get-component-type path-arg)
-        path (be/get-component ecs-world agent-id path-type)]
+  (let [position (get-comp ecs-world agent-id :position)
+        role (get-comp ecs-world agent-id :role)
+        needs (get-comp ecs-world agent-id :needs)
+        inventory (get-comp ecs-world agent-id :inventory)
+        frontier (get-comp ecs-world agent-id :frontier)
+        recall (get-comp ecs-world agent-id :recall)
+        job-assignment (get-comp ecs-world agent-id :job-assignment)
+        path (get-comp ecs-world agent-id :path)]
     {:id agent-id
      :pos [(:q position) (:r position)]
      :role (:type role)
@@ -49,12 +56,8 @@
 (defn ecs->tile-map
   "Convert tile entity to old-style map format."
   [ecs-world tile-id]
-  (let [pos-arg (fantasia.sim.ecs.components/->Position 0 0)
-        pos-type (be/get-component-type pos-arg)
-        position (be/get-component ecs-world tile-id pos-type)
-        tile-arg (fantasia.sim.ecs.components/->Tile :ground nil nil nil))
-        tile-type (be/get-component-type tile-arg)
-        tile (be/get-component ecs-world tile-id tile-type)]
+  (let [position (get-comp ecs-world tile-id :position)
+        tile (get-comp ecs-world tile-id :tile)]
     {:pos [(:q position) (:r position)]
      :terrain (:terrain tile)
      :biome (:biome tile)
@@ -65,9 +68,7 @@
   "Convert all tile entities to old-style map format keyed by position."
   [ecs-world]
   (reduce (fn [acc tile-id]
-              (let [pos-arg (fantasia.sim.ecs.components/->Position 0 0)
-                    pos-type (be/get-component-type pos-arg)
-                    position (be/get-component ecs-world tile-id pos-type)
+              (let [position (get-comp ecs-world tile-id :position)
                     tile-key (str (:q position) "," (:r position))
                     tile-data (ecs->tile-map ecs-world tile-id)]
                 (assoc acc tile-key tile-data)))
@@ -77,14 +78,11 @@
 (defn ecs->stockpiles-map
   "Convert stockpile entities to old-style map format."
   [ecs-world]
-  (let [stockpile-arg (fantasia.sim.ecs.components/->Stockpile {})
-        stockpile-type (be/get-component-type stockpile-arg)]
+  (let [stockpile-type (get @component-types :stockpile)]
     (reduce (fn [acc entity-id]
-              (let [stockpile (be/get-component ecs-world entity-id stockpile-type)
-                    idx-arg (fantasia.sim.ecs.components/->TileIndex "0,0"))
-                    idx-type (be/get-component-type idx-arg)
-                    index (be/get-component ecs-world entity-id idx-type)]
-                (assoc acc (:tile-key index) (:contents stockpile))))
+              (let [stockpile (get-comp ecs-world entity-id :stockpile)
+                    index (get-comp ecs-world entity-id :tile-index)]
+                (assoc acc (:entity-id index) (:contents stockpile))))
             {}
             (be/get-all-entities-with-component ecs-world stockpile-type))))
 

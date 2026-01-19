@@ -62,7 +62,7 @@
         tile-idx-type (component-class tile-idx-instance)
         tile-entities (be/get-all-entities-with-component system tile-idx-type)]
     (first (filter #(let [idx (be/get-component system % tile-idx-type)]
-                       (= (:tile-key idx) tile-key))
+                       (= (:entity-id idx) tile-key))
                   tile-entities))))
 
 (defn assign-job-to-agent [system entity-id job-id]
