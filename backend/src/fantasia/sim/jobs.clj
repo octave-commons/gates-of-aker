@@ -13,7 +13,6 @@
 (defn create-job [job-type target]
    (let [target-pos (cond
                      (sequential? target) target
-                     (number? target) [target 0]
                      :else [0 0])]
      (when target-pos
        (let [job {:id (random-uuid)
@@ -240,24 +239,24 @@
        world)))
 
 (defn complete-job! [world agent-id]
-  (if-let [job-id (get-in world [:agents agent-id :current-job])]
+   (if-let [job-id (get-in world [:agents agent-id] :current-job)]
     (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))
           job (get-in world [:jobs idx])
           world (update-in world [:agents agent-id] dissoc :current-job)
-          world (update world :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))]
+          world (update world :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))
       (case (:type job)
-        :job/build-wall (complete-build-wall! world job)
-        :job/chop-tree (complete-chop-tree! world job)
-        :job/haul (complete-haul! world job agent-id)
-        :job/eat (complete-eat! world job agent-id)
-        :job/sleep (complete-sleep! world agent-id)
-        :job/deliver-food (complete-deliver-food! world job agent-id)
-        world)
+        :job/build-wall (do world)
+        :job/chop-tree (do world)
+        :job/haul (do world)
+        :job/eat (do world)
+        :job/sleep (do world)
+        :job/deliver-food (do world)
+        (do world)
       world)
-    world))
+    world)
 
 (defn advance-job! [world agent-id delta]
-  (if-let [job-id (get-in world [:agents agent-id :current-job])]
+  (if-let [job-id (get-in world [:agents agent-id] :current-job])]
     (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))
           job (get-in world [:jobs idx])]
       (if job

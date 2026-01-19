@@ -60,6 +60,7 @@
                    (jobs/auto-generate-jobs!)
                    (jobs/auto-assign-jobs!)
                    (process-jobs!)
+                   (jobs/auto-assign-jobs!)
                    (trees/drop-tree-fruits!))
          agents1 (->> (:agents w2)
                       (map (fn [a]
