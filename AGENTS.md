@@ -63,14 +63,27 @@
 - Add `.editorconfig` if formatting drift becomes a problem; otherwise cite this section in reviews.
 - Document any temporary style deviations inline so future automation can encode them.
 
+## Logging Control
+- Backend uses `fantasia.dev.logging` with environment-based log levels via `LOG_LEVEL` env var.
+- Frontend uses controlled console logging via `VITE_LOG_LEVEL` env var, automatically applied during tests.
+- Available log levels (both stacks): `error`, `warn`, `info`, `debug` (default: `warn`).
+- Setting log level:
+  - Backend: `LOG_LEVEL=debug clojure -X:test` or export before running
+  - Frontend: `VITE_LOG_LEVEL=debug npm test` or set in `.env` file
+- Coverage reporting is configured to show summaries by default, not verbose file-by-file output.
+- Frontend test scripts:
+  - `npm test` - run tests with default logging (warn+)
+  - `npm run test:quiet` - run tests with minimal output
+  - `npm run test:debug` - run tests with full debug logging
+  - `npm run test:coverage` - run tests with summary coverage report
+  - `npm run test:coverage:verbose` - run tests with detailed coverage output
+
 ## Testing & Single-Test Guidance
-- Automated tests are not yet checked in for either backend or frontend; prioritize adding meaningful suites before feature work when possible.
-- Backend test harness: plan to add `:test` alias using `io.github.cognitect-labs/test-runner` or Kaocha; until then rely on REPL-driven development.
-- Backend full run example (post-alias): `clojure -X:test :patterns '[:all]'`.
-- Backend single test example: `clojure -X:test :only 'fantasia.sim.core-test/tick-advances-world'` (namespace/var naming shown for consistency).
-- When no runner is configured, simulate single checks via `(clojure.test/test-var #'fantasia.sim.core-test/tick-advances-world)` inside a REPL.
-- Frontend pending test stack: expect Vitest + React Testing Library; until added, treat manual UI interaction plus snapshot logging as the "test".
-- Frontend single test example (after adding Vitest): `npm exec --prefix web vitest run src/App.test.tsx --runInBand`.
+- Backend test harness: `clojure -X:test` for full suite or use test runner patterns.
+- Backend full run example: `clojure -X:test :patterns '[:all]'`.
+- Backend single test example: `clojure -X:test :only 'fantasia.sim.core-test/tick-advances-world'`.
+- Frontend test scripts: `npm test`, `npm run test:watch`, `npm run test:coverage`.
+- Frontend single test example: `npm test -- App.test.tsx`.
 - Use deterministic seeds where possible (`sim/reset` accepts `:seed`) to make manual repro scripts reliable.
 - Record reproduction steps in `/docs/notes` when bugs require multi-stage setups.
 - Do not skip adding tests once the harness exists; include at least one targeted test for every defect fix.
@@ -98,8 +111,8 @@
 - CLI entry points should live in a `-main` function with `:gen-class`; parse CLI args with `clojure.tools.cli` if they expand.
 - For serialization, keep `json/generate-string` usage centralized; avoid building JSON strings manually.
 - Validate inbound numeric ranges (0.0–1.0) before storing them in world state; clamp values when they originate from UI levers.
-- Use `let` bindings for clarity, especially before nested threads; avoid one-letter locals unless inside trivial map destructuring.
-- Keep logging to `println` for now; if you add a logging lib, wrap it so existing output format remains stable.
+  - Use `let` bindings for clarity, especially before nested threads; avoid one-letter locals unless inside trivial map destructuring.
+  - Use `fantasia.dev/logging` functions (log-error, log-warn, log-info, log-debug) instead of direct `println` for controllable output.
 
 ## Frontend (TypeScript + React) Style Guide
 - Modules use ES modules with explicit extensions: third-party imports first, internal absolute/relative imports second.
@@ -130,7 +143,8 @@
 - Naming: kebab-case for files (Clojure namespaces), camelCase for TS variables, SCREAMING_SNAKE_CASE reserved for constants.
 - Imports: absolute first (stdlib), third-party libs, then relative paths; leave a blank line between groups.
 - Error handling: catch exceptions at IO boundaries, return informative JSON payloads, and surface user-friendly messages in UI banners.
-- Logging: prefer structured maps/JSON on backend, `console.info` with concise context on frontend.
+- Logging: use `fantasia.dev.logging` on backend (log-error, log-warn, log-info, log-debug), controlled via `LOG_LEVEL` env var.
+- Frontend logging: console methods are automatically controlled during tests via `VITE_LOG_LEVEL` env var; no changes needed in application code.
 - Configuration: prefer env vars or CLI flags; do not hardcode secrets or ports beyond the documented 3000/5173 defaults.
 - Data contracts: keep server + UI payloads in sync; document field names when adding new ops to `/docs/notes`.
 - Concurrency: guard shared atoms with `swap!`; avoid manual locking.

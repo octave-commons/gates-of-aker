@@ -8,8 +8,11 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:quiet": "vitest run --silent",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:verbose": "vitest run --coverage --reporter=verbose",
+    "test:debug": "VITE_LOG_LEVEL=debug vitest run",
     "compose:up": "docker compose up --build -d",
     "compose:down": "docker compose down",
     "test:e2e": "npm run compose:up && node e2e/compose.e2e.mjs; npm run compose:down || npm run compose:down"

@@ -204,21 +204,33 @@
          to-pos (or (:to-pos job) (:target job))
          hauling (get-in agent [:inventories :hauling] {})
          inv (:inventory agent {})
-         merged (merge-with + hauling inv)
-         items-hauled (vec (filter (comp pos? second) merged))]
+          merged (if (seq hauling)
+                   hauling
+                   inv)
+
+         items-hauled (vec (filter (comp pos? second) merged))
+         tile-key (str (first to-pos) "," (second to-pos))
+         stockpile (get-in world [:stockpiles tile-key])
+         add-fn (fn [w pos res qty]
+                  (if (and stockpile (= res (:resource stockpile)))
+                    (add-to-stockpile! w pos res qty)
+                    (add-item! w pos res qty)))]
+
+
      (when (seq items-hauled)
        (println "[JOB:COMPLETE]"
                 {:type :job/haul
                  :target to-pos
                  :outcome (format "Hauled %d item types to %s" (count items-hauled) (pr-str to-pos))}))
-     (-> (reduce (fn [w [res qty]]
-                   (if (pos? qty)
-                     (add-item! w to-pos res qty)
-                     w))
-                 world
-                 (seq merged))
-         (assoc-in [:agents agent-id :inventories :hauling] {})
-         (update-in [:agents agent-id] dissoc :inventory))))
+      (-> (reduce (fn [w [res qty]]
+                    (if (pos? qty)
+                      (add-fn w to-pos res qty)
+                      w))
+                  world
+                  (seq merged))
+          (assoc-in [:agents agent-id :inventories :hauling] {})
+          (update-in [:agents agent-id] dissoc :inventory))))
+
 
 (defn complete-eat! [world job agent-id]
    (let [target (:target job)

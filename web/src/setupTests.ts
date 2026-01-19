@@ -1,12 +1,44 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 
 afterEach(() => {
   cleanup();
 });
 
 const noop = () => {};
+const originalLog = console.log;
+const originalWarn = console.warn;
+const originalError = console.error;
+const originalInfo = console.info;
+const originalDebug = console.debug;
+
+const logLevel = import.meta.env.VITE_LOG_LEVEL || 'warn';
+const logLevels = { error: 0, warn: 1, info: 2, debug: 3 };
+const currentLevel = logLevels[logLevel as keyof typeof logLevels] || 1;
+
+function shouldLog(level: number): boolean {
+  return level <= currentLevel;
+}
+
+global.console = {
+  ...console,
+  log: (...args: unknown[]) => {
+    if (shouldLog(2)) originalLog('[LOG]', ...args);
+  },
+  warn: (...args: unknown[]) => {
+    if (shouldLog(1)) originalWarn('[WARN]', ...args);
+  },
+  error: (...args: unknown[]) => {
+    if (shouldLog(0)) originalError('[ERROR]', ...args);
+  },
+  info: (...args: unknown[]) => {
+    if (shouldLog(2)) originalInfo('[INFO]', ...args);
+  },
+  debug: (...args: unknown[]) => {
+    if (shouldLog(3)) originalDebug('[DEBUG]', ...args);
+  },
+};
 
 if (typeof HTMLCanvasElement !== "undefined") {
   HTMLCanvasElement.prototype.getContext = (function getContext(this: HTMLCanvasElement, contextId: string) {
