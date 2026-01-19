@@ -1,9 +1,11 @@
+import { memo } from "react";
+
 type EventCardProps = {
   event: any;
   compact?: boolean;
 };
 
-export function EventCard({ event, compact = false }: EventCardProps) {
+export const EventCard = memo(function EventCard({ event, compact = false }: EventCardProps) {
   if (!event) return null;
 
   const { id, type, tick, pos, impact, witnessScore, witnesses } = event;
@@ -79,4 +81,4 @@ export function EventCard({ event, compact = false }: EventCardProps) {
       )}
     </div>
   );
-}
+});

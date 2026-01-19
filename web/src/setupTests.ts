@@ -75,3 +75,28 @@ if (typeof HTMLCanvasElement !== "undefined") {
     },
   });
 }
+
+if (typeof AudioContext !== "undefined") {
+  const mockAudioContext = {
+    createOscillator: () => ({
+      type: "sine",
+      frequency: { value: 440 },
+      connect: noop,
+      disconnect: noop,
+      start: noop,
+      stop: noop,
+      onended: null,
+    }),
+    createGain: () => ({
+      gain: { value: 0.3 },
+      connect: noop,
+      disconnect: noop,
+    }),
+    destination: {},
+    state: "running",
+    resume: noop,
+    currentTime: 0,
+  };
+
+  (globalThis as any).AudioContext = vi.fn(() => mockAudioContext);
+}

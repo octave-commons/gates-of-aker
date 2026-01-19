@@ -3,9 +3,15 @@
 
 (defrecord Position [q r])
 
-(defrecord Needs [warmth food sleep])
-
-(defrecord Inventory [wood food])
+(defrecord Needs
+  [warmth food sleep
+   water health security mood
+   hunger-axis    ;; Maps to :food for backward compat
+   security-axis  ;; New axis for danger/safety queries
+   rest-axis      ;; Maps to :sleep for backward compat
+   warmth-axis   ;; Maps to :warmth for backward compat
+   health-axis    ;; New axis
+   mood-axis])  ;; New axis
 
 (defrecord Role [type])
 
@@ -26,3 +32,5 @@
 (defrecord Agent [name])
 
 (defrecord TileIndex [entity-id])
+
+(defrecord Inventory [wood food])

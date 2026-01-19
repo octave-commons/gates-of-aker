@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Agent } from "../types";
 import { AgentCard } from "./AgentCard";
+import { CONFIG } from "../config/constants";
 
 type AgentListProps = {
   agents: Agent[];
@@ -43,11 +44,11 @@ export function AgentList({ agents, jobs = [], collapsible = false }: AgentListP
         </div>
         
         {!isCollapsed && (
-          <div style={{ 
-            maxHeight: 220, 
-            overflowY: "auto", 
-            border: "1px solid #ccc", 
-            borderRadius: 8, 
+          <div style={{
+            maxHeight: CONFIG.ui.AGENT_LIST_MAX_HEIGHT,
+            overflowY: "auto",
+            border: "1px solid #ccc",
+            borderRadius: 8,
             padding: 8,
             marginTop: 8
           }}>

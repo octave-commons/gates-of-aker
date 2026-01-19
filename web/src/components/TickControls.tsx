@@ -1,4 +1,7 @@
-type TickControlsProps = {
+import { useState } from "react";
+import { toggleMute, isMuted, playTone } from "../audio";
+
+ type TickControlsProps = {
    onTick: (amount: number) => void;
    onReset: () => void;
    onPlaceShrine: () => void;
@@ -19,9 +22,26 @@ type TickControlsProps = {
    isRunning,
    onToggleRun,
  }: TickControlsProps) {
+  const [localMuted, setLocalMuted] = useState(isMuted());
+
+  const handleToggleMute = () => {
+    const newState = toggleMute();
+    setLocalMuted(newState);
+    playTone(440, 0.1);
+  };
+
+  const handleToggleRun = () => {
+    onToggleRun();
+    if (isRunning) {
+      playTone(293.66, 0.15);
+    } else {
+      playTone(392.00, 0.15);
+    }
+  };
+
    return (
      <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-       <button onClick={onToggleRun} title="Spacebar">
+       <button onClick={handleToggleRun} title="Spacebar">
          {isRunning ? "⏸ Pause" : "▶ Play"}
        </button>
        <button onClick={() => onTick(1)}>Tick</button>
@@ -33,7 +53,11 @@ type TickControlsProps = {
        <button onClick={onSetMouthpiece} disabled={!canSetMouthpiece}>
          Set mouthpiece = agent
        </button>
+       <button onClick={handleToggleMute} title={localMuted ? "Unmute" : "Mute"}>
+         {localMuted ? "🔇" : "🔊"}
+       </button>
      </div>
    );
  }
+
 

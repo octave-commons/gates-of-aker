@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Agent, hasPos } from "../types";
 
 type AgentCardProps = {
@@ -14,7 +15,7 @@ const jobTypeNames: Record<string, string> = {
   ":job/build-wall": "Building"
 };
 
-export function AgentCard({ agent, compact = false, currentJob }: AgentCardProps) {
+export const AgentCard = memo(function AgentCard({ agent, compact = false, currentJob }: AgentCardProps) {
   const topFacets = (agent["top-facets"] ?? agent.topFacets ?? []);
   const facetNames = topFacets.map((f: any) => f.facet).filter(Boolean);
   const needs = (agent as any).needs ?? {};
@@ -151,4 +152,4 @@ export function AgentCard({ agent, compact = false, currentJob }: AgentCardProps
       )}
     </div>
   );
-}
+});

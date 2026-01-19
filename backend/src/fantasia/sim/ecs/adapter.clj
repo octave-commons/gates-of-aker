@@ -7,7 +7,7 @@
   "Lazy-loaded map of component types for efficient queries."
   (delay
     {:position (be/get-component-type (fantasia.sim.ecs.components/->Position 0 0))
-     :needs (be/get-component-type (fantasia.sim.ecs.components/->Needs 0.6 0.7 0.7))
+     :needs (be/get-component-type (fantasia.sim.ecs.components/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
      :inventory (be/get-component-type (fantasia.sim.ecs.components/->Inventory 0 0))
      :role (be/get-component-type (fantasia.sim.ecs.components/->Role :priest))
      :frontier (be/get-component-type (fantasia.sim.ecs.components/->Frontier {}))

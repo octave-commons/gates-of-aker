@@ -3,6 +3,9 @@ import type { MouseEvent } from "react";
 import { Agent, hasPos, PathPoint } from "../types";
 import type { HexConfig } from "../hex";
 import { axialToPixel, pixelToAxial, hexCorner, getMapBoundsInPixels, type AxialCoords } from "../hex";
+import { hexToFrequency, playTone } from "../audio";
+import { colorForRole } from "../utils";
+import { CONFIG } from "../config/constants";
 
 type CameraState = {
   offsetX: number;
@@ -18,14 +21,6 @@ type SimulationCanvasProps = {
   agentPaths: Record<number, PathPoint[]>;
   onCellSelect: (cell: [number, number], agentId: number | null) => void;
 };
-
-const HEX_SIZE = 16;
-const HEX_SPACING = 1;
-
-const ZOOM_MIN = 0.1;
-const ZOOM_MAX = 5.0;
-const ZOOM_STEP = 0.1;
-const PAN_SPEED = 10;
 
 export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAgentId, agentPaths, onCellSelect }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -78,7 +73,7 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
         setCamera((prev) => {
           let newOffsetX = prev.offsetX;
           let newOffsetY = prev.offsetY;
-          const moveAmount = PAN_SPEED / prev.zoom;
+          const moveAmount = CONFIG.canvas.PAN_SPEED / prev.zoom;
 
           if (keys.includes("KeyW")) newOffsetY += moveAmount;
           if (keys.includes("KeyS")) newOffsetY -= moveAmount;
@@ -115,8 +110,8 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
         const worldX = (mouseX - centerX) / camera.zoom - camera.offsetX;
         const worldY = (mouseY - centerY) / camera.zoom - camera.offsetY;
 
-        const zoomDelta = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-        const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, camera.zoom + zoomDelta));
+        const zoomDelta = event.deltaY > 0 ? -CONFIG.canvas.ZOOM_STEP : CONFIG.canvas.ZOOM_STEP;
+        const newZoom = Math.max(CONFIG.canvas.ZOOM_MIN, Math.min(CONFIG.canvas.ZOOM_MAX, camera.zoom + zoomDelta));
 
         const newOffsetX = worldX - (mouseX - centerX) / newZoom;
         const newOffsetY = worldY - (mouseY - centerY) / newZoom;
@@ -140,8 +135,8 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       return;
     }
 
-    const { width: mapWidth, height: mapHeight } = getMapBoundsInPixels(mapConfig.bounds, HEX_SIZE + HEX_SPACING);
-    const padding = HEX_SIZE * 4;
+    const { width: mapWidth, height: mapHeight } = getMapBoundsInPixels(mapConfig.bounds, CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING);
+    const padding = CONFIG.canvas.HEX_SIZE * 4;
 
     const containerRect = container.getBoundingClientRect();
     canvas.width = containerRect.width;
@@ -157,7 +152,7 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(camera.offsetX, camera.offsetY);
 
-    const size = HEX_SIZE + HEX_SPACING;
+    const size = CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING;
     const origin = mapConfig.bounds.origin ?? [0, 0] as AxialCoords;
     const { bounds } = mapConfig;
 
@@ -181,10 +176,10 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     }
 
     const biomeColors: Record<string, string> = {
-      forest: "#2e7d32",
-      village: "#8d6e63",
-      field: "#9e9e24",
-      rocky: "#616161"
+      forest: CONFIG.colors.BIOME.forest,
+      village: CONFIG.colors.BIOME.village,
+      field: CONFIG.colors.BIOME.field,
+      rocky: CONFIG.colors.BIOME.rocky
     };
 
     ctx.globalAlpha = 0.4;
@@ -198,7 +193,7 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       const [px, py] = axialToPixel(hex, size);
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
-        const [cx, cy] = hexCorner([px, py], HEX_SIZE, i);
+        const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE, i);
         if (i === 0) {
           ctx.moveTo(cx, cy);
         } else {
@@ -214,31 +209,31 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       }
       ctx.stroke();
 
-       if (tile?.resource === "tree") {
-         ctx.fillStyle = "#2e7d32";
-         ctx.beginPath();
-         ctx.arc(px, py, HEX_SIZE * 0.4, 0, Math.PI * 2);
-         ctx.fill();
-       }
-       if (tile?.resource === "grain") {
-         ctx.fillStyle = "#ffeb3b";
-         ctx.beginPath();
-         ctx.arc(px, py, HEX_SIZE * 0.25, 0, Math.PI * 2);
-         ctx.fill();
-       }
-       if (tile?.resource === "rock") {
-         ctx.fillStyle = "#757575";
-         ctx.beginPath();
-         ctx.rect(px - HEX_SIZE * 0.3, py - HEX_SIZE * 0.3, HEX_SIZE * 0.6, HEX_SIZE * 0.5);
-         ctx.fill();
-       }
-       if (tile?.structure === "wall-ghost") {
-         ctx.strokeStyle = "#ffae00";
-         ctx.lineWidth = 2;
-         ctx.setLineDash([4, 2]);
+        if (tile?.resource === "tree") {
+          ctx.fillStyle = CONFIG.colors.RESOURCE.tree;
+          ctx.beginPath();
+          ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (tile?.resource === "grain") {
+          ctx.fillStyle = CONFIG.colors.RESOURCE.grain;
+          ctx.beginPath();
+          ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (tile?.resource === "rock") {
+          ctx.fillStyle = CONFIG.colors.RESOURCE.rock;
+          ctx.beginPath();
+          ctx.rect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.5);
+          ctx.fill();
+        }
+        if (tile?.structure === "wall-ghost") {
+          ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallGhost;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 2]);
          ctx.beginPath();
          for (let i = 0; i < 6; i++) {
-           const [cx, cy] = hexCorner([px, py], HEX_SIZE - 4, i);
+           const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE - 4, i);
            if (i === 0) {
              ctx.moveTo(cx, cy);
            } else {
@@ -250,23 +245,23 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
          ctx.setLineDash([]);
          ctx.lineWidth = 1;
        }
-       if (tile?.structure === "wall") {
-         ctx.fillStyle = "#666";
-         ctx.beginPath();
-         for (let i = 0; i < 6; i++) {
-           const [cx, cy] = hexCorner([px, py], HEX_SIZE - 3, i);
-           if (i === 0) {
-             ctx.moveTo(cx, cy);
-           } else {
-             ctx.lineTo(cx, cy);
-           }
-         }
-         ctx.closePath();
-         ctx.fill();
-         ctx.strokeStyle = "#444";
-         ctx.lineWidth = 1;
-         ctx.stroke();
-       }
+        if (tile?.structure === "wall") {
+          ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE - 3, i);
+            if (i === 0) {
+              ctx.moveTo(cx, cy);
+            } else {
+              ctx.lineTo(cx, cy);
+            }
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
      }
     ctx.globalAlpha = 1;
     ctx.strokeStyle = "#111";
@@ -274,9 +269,9 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     if (Array.isArray(snapshot.shrine) && snapshot.shrine.length === 2) {
       const [sq, sr] = snapshot.shrine as AxialCoords;
       const [sx, sy] = axialToPixel([sq, sr], size);
-      ctx.fillStyle = "#ffae00";
+      ctx.fillStyle = CONFIG.colors.SHRINE;
       ctx.beginPath();
-      ctx.arc(sx, sy, HEX_SIZE * 0.5, 0, Math.PI * 2);
+      ctx.arc(sx, sy, CONFIG.canvas.HEX_SIZE * 0.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -293,28 +288,28 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       const fillLevel = Math.min(1, Math.max(0, currentQty / safeMaxQty));
       
       const stockpileColor = (res: string) => {
-        switch (res) {
-          case "wood":
-            return "#8d6e63";
-          case "food":
-            return "#ff9800";
-          default:
-            return "#9e9e9e";
-        }
-      };
+         switch (res) {
+           case "wood":
+             return CONFIG.colors.RESOURCE.wood;
+           case "food":
+             return CONFIG.colors.RESOURCE.food;
+           default:
+             return CONFIG.colors.RESOURCE.unknown;
+         }
+       };
 
-      ctx.fillStyle = stockpileColor(resource);
-      ctx.fillRect(sx - HEX_SIZE * 0.4, sy - HEX_SIZE * 0.4, HEX_SIZE * 0.8, HEX_SIZE * 0.8);
+       ctx.fillStyle = stockpileColor(resource);
+      ctx.fillRect(sx - CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER, sy - CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER, CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER * 2, CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER * 2);
       ctx.strokeStyle = "#333";
       ctx.lineWidth = 1;
-      ctx.strokeRect(sx - HEX_SIZE * 0.4, sy - HEX_SIZE * 0.4, HEX_SIZE * 0.8, HEX_SIZE * 0.8);
-      
+      ctx.strokeRect(sx - CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER, sy - CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER, CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER * 2, CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_SIZE_MULTIPLIER * 2);
+
       ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
       ctx.fillRect(
-        sx - HEX_SIZE * 0.38,
-        sy + HEX_SIZE * 0.24 - HEX_SIZE * 0.15,
-        HEX_SIZE * 0.76 * fillLevel,
-        HEX_SIZE * 0.15
+        sx - CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_OFFSET_MULTIPLIER,
+        sy + CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_FILL_BAR_OFFSET - CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILE_FILL_BAR_HEIGHT,
+        CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILLE_BAR_WIDTH_MULTIPLIER * fillLevel,
+        CONFIG.canvas.HEX_SIZE * CONFIG.ui.STOCKPILE_FILL_BAR_HEIGHT
       );
 
       ctx.fillStyle = "white";
@@ -327,11 +322,11 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     if (selectedCell) {
       const [selQ, selR] = selectedCell;
       const [sx, sy] = axialToPixel([selQ, selR], size);
-      ctx.strokeStyle = "#ff6b00";
+      ctx.strokeStyle = CONFIG.colors.SELECTION;
       ctx.lineWidth = 2;
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
-        const [cx, cy] = hexCorner([sx, sy], HEX_SIZE - 2, i);
+        const [cx, cy] = hexCorner([sx, sy], CONFIG.canvas.HEX_SIZE - 2, i);
         if (i === 0) {
           ctx.moveTo(cx, cy);
         } else {
@@ -361,15 +356,16 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       const agentId = agent.id;
       const path = agentPaths[agentId] ?? [];
       ctx.beginPath();
-      ctx.fillStyle = colorForRole(agent.role);
-      ctx.arc(ax, ay, HEX_SIZE * 0.35, 0, Math.PI * 2);
+      const agentColor = colorForRole(agent.role);
+      ctx.fillStyle = agentColor;
+      ctx.arc(ax, ay, CONFIG.canvas.HEX_SIZE * 0.35, 0, Math.PI * 2);
       ctx.fill();
 
       if (agent.id === selectedAgentId) {
         ctx.beginPath();
-        ctx.strokeStyle = "#ffae00";
+        ctx.strokeStyle = CONFIG.colors.SHRINE;
         ctx.lineWidth = 2;
-        ctx.arc(ax, ay, HEX_SIZE * 0.55, 0, Math.PI * 2);
+        ctx.arc(ax, ay, CONFIG.canvas.HEX_SIZE * 0.55, 0, Math.PI * 2);
         ctx.stroke();
         ctx.lineWidth = 1;
 
@@ -408,7 +404,7 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
     const worldX = (x - centerX) / camera.zoom - camera.offsetX;
     const worldY = (y - centerY) / camera.zoom - camera.offsetY;
 
-    const [q, r] = pixelToAxial(worldX, worldY, HEX_SIZE + HEX_SPACING);
+    const [q, r] = pixelToAxial(worldX, worldY, CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING);
     const cell: AxialCoords = [q, r];
 
     const hit = (snapshot.agents ?? []).find((a: Agent) => {
@@ -417,6 +413,14 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       return aq === cell[0] && ar === cell[1];
     });
     onCellSelect(cell, hit ? hit.id : null);
+
+    if (hit) {
+      const color = colorForRole(hit.role);
+      const frequency = hexToFrequency(color);
+      playTone(frequency, 0.15);
+    } else {
+      playTone(330, 0.05);
+    }
   };
 
   const handleMouseDown = (event: MouseEvent<HTMLCanvasElement>) => {

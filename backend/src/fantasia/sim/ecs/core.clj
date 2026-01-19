@@ -18,7 +18,7 @@
                       (be/add-component entity-id (c/->Agent (str "agent-" id)))
                       (be/add-component entity-id (c/->Position q r))
                       (be/add-component entity-id (c/->Role role))
-                      (be/add-component entity-id (c/->Needs 0.6 0.7 0.7))
+                       (be/add-component entity-id (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
                       (be/add-component entity-id (c/->Inventory 0 0))
                       (be/add-component entity-id (c/->Frontier {}))
                       (be/add-component entity-id (c/->Recall {})))]
@@ -75,7 +75,7 @@
 
 (defn update-agent-needs [system entity-id warmth food sleep]
   "Update needs component for an agent."
-  (be/add-component system entity-id (c/->Needs warmth food sleep)))
+  (be/add-component system entity-id (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)))
 
 (defn update-agent-inventory [system entity-id wood food]
   "Update inventory component for an agent."

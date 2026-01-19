@@ -289,12 +289,12 @@
             world (update-in world [:agents agent-id] dissoc :current-job)
             world (update world :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))
             world (case (:type job)
-                    :job/build-wall world
-                    :job/chop-tree world
-                    :job/haul world
-                    :job/eat world
-                    :job/sleep world
-                    :job/deliver-food world
+                    :job/build-wall (complete-build-wall! world job)
+                    :job/chop-tree (complete-chop-tree! world job)
+                    :job/haul (complete-haul! world job agent-id)
+                    :job/eat (complete-eat! world job agent-id)
+                    :job/sleep (complete-sleep! world agent-id)
+                    :job/deliver-food (complete-deliver-food! world job agent-id)
                     world)
             reassigned (claim-next-job! world agent-id)]
         (if (= reassigned world)
@@ -368,8 +368,14 @@
                                :let [nearest (find-nearest-stockpile-with-space world pos res)]
                                :when nearest]
                            (let [[sp-pos _] nearest]
-                             (assoc (create-job :job/haul sp-pos)
-                                    :from-pos pos :to-pos sp-pos :resource res :qty threshold)))))))]
+                             (assoc (create-job :job/haul pos)
+                                    :from-pos pos :to-pos sp-pos :resource res :qty threshold
+                                    :state :pickup :stage :pickup)))))))]
+    (when (seq jobs-to-add)
+      (println "[JOB:GENERATE]"
+               {:type :job/haul
+                :count (count jobs-to-add)
+                :tick (:tick world)}))
     (reduce (fn [w job] (update w :jobs conj job))
             world
             jobs-to-add)))
@@ -411,8 +417,26 @@
             world
             jobs-to-add)))
 
+(defn generate-chop-jobs! [world]
+  (let [tree-tiles (keep (fn [[k tile]]
+                           (when (= (:resource tile) :tree)
+                             [(parse-key-pos k) tile]))
+                         (:tiles world))
+        jobs-to-add (map (fn [[pos _]]
+                           (create-job :job/chop-tree pos))
+                         tree-tiles)]
+    (when (seq jobs-to-add)
+      (println "[JOB:GENERATE]"
+               {:type :job/chop-tree
+                :count (count jobs-to-add)
+                :tick (:tick world)}))
+    (reduce (fn [w job] (update w :jobs conj job))
+            world
+            jobs-to-add)))
+
 (defn auto-generate-jobs! [world]
   (-> world
       (generate-need-jobs!)
+      (generate-chop-jobs!)
       (generate-haul-jobs-for-items! 5)
       (generate-deliver-food-jobs!)))

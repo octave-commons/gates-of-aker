@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
+import { playTone } from "./audio";
   import {
       AgentCard,
       AgentList,
@@ -19,9 +20,8 @@ import { WSClient, WSMessage } from "./ws";
     } from "./components";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
-
-const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
-const fmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
+import { clamp01, fmt, colorForRole } from "./utils";
+import { CONFIG } from "./config/constants";
 
 export function App() {
   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
@@ -53,7 +53,7 @@ export function App() {
 
   const [worldWidth, setWorldWidth] = useState<number | null>(null);
   const [worldHeight, setWorldHeight] = useState<number | null>(null);
-  const [treeDensity, setTreeDensity] = useState(0.05);
+  const [treeDensity, setTreeDensity] = useState<number>(CONFIG.data.DEFAULT_TREE_DENSITY);
 
    const [tracesCollapsed, setTracesCollapsed] = useState(false);
    const [jobsCollapsed, setJobsCollapsed] = useState(false);
@@ -90,18 +90,19 @@ export function App() {
         if (m.op === "tick") {
           setTick(m.data?.tick ?? 0);
           setSnapshot(m.data?.snapshot ?? null);
+          playTone(440, 0.08);
         }
         if (m.op === "trace") {
           const incoming = m.data as Trace;
           setTraces((prev) => {
             const next = [...prev, incoming];
-            return next.slice(Math.max(0, next.length - 250));
+            return next.slice(Math.max(0, next.length - CONFIG.data.MAX_TRACES));
           });
         }
         if (m.op === "event") {
           setEvents((prev) => {
             const next = [...prev, m.data];
-            return next.slice(Math.max(0, next.length - 50));
+            return next.slice(Math.max(0, next.length - CONFIG.data.MAX_EVENTS));
           });
         }
         if (m.op === "reset") {
@@ -173,34 +174,26 @@ export function App() {
           );
           
           if (hasData) {
-            console.log("Loaded existing snapshot:", { tick: state.tick, agents: state.agents?.length });
-            // Use existing state
-            setTick(state.tick ?? 0);
-            setSnapshot(state);
-            if (state.map) {
-              setMapConfig(state.map as HexConfig);
-            }
-          } else {
-            console.log("Existing state is empty, creating new snapshot");
-            // Create new snapshot with default seed
-            createNewSnapshot();
-          }
-        } else {
-          console.warn("Failed to fetch state, creating new snapshot");
-          // If fetch fails, create new snapshot
-          createNewSnapshot();
-        }
-      } catch (error) {
-        console.warn("Error fetching existing state, creating new one:", error);
-        createNewSnapshot();
+             setTick(state.tick ?? 0);
+             setSnapshot(state);
+             if (state.map) {
+               setMapConfig(state.map as HexConfig);
+             }
+           } else {
+             createNewSnapshot();
+           }
+         } else {
+           createNewSnapshot();
+         }
+       } catch (error) {
+         createNewSnapshot();
       } finally {
         setIsInitializing(false);
       }
     };
 
     const createNewSnapshot = () => {
-      const defaultSeed = Math.floor(Math.random() * 1000000);
-      console.log("Creating new snapshot with seed:", defaultSeed, "tree density:", treeDensity);
+      const defaultSeed = Math.floor(Math.random() * CONFIG.data.DEFAULT_SEED_RANGE);
       client.send({ op: "reset", seed: defaultSeed, tree_density: treeDensity });
     };
 
@@ -210,7 +203,7 @@ export function App() {
       if (!snapshot && status === "open") {
         initializeSnapshot();
       }
-    }, 1500); // Wait 1.5 seconds for WebSocket "hello" message
+    }, CONFIG.ui.INITIALIZATION_TIMEOUT); // Wait for WebSocket "hello" message
 
     return () => clearTimeout(timeoutId);
     }, [client, snapshot, status]);
@@ -459,31 +452,31 @@ export function App() {
 
          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
-           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12 }}>Width:</label>
-              <input
-                type="number"
-                min={0}
-                max={1200}
-                value={worldWidth ?? 0}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val)) setWorldWidth(val);
-                }}
-                style={{ width: 60 }}
-              />
-              <label style={{ fontSize: 12 }}>Height:</label>
-              <input
-                type="number"
-                min={0}
-                max={1200}
-                value={worldHeight ?? 0}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val)) setWorldHeight(val);
-                }}
-                style={{ width: 60 }}
-              />
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+             <label style={{ fontSize: 12 }}>Width:</label>
+               <input
+                 type="number"
+                 min={0}
+                 max={CONFIG.data.MAX_WORLD_WIDTH}
+                 value={worldWidth ?? 0}
+                 onChange={(e) => {
+                   const val = parseInt(e.target.value, 10);
+                   if (!isNaN(val)) setWorldWidth(val);
+                 }}
+                 style={{ width: 60 }}
+               />
+               <label style={{ fontSize: 12 }}>Height:</label>
+               <input
+                 type="number"
+                 min={0}
+                 max={CONFIG.data.MAX_WORLD_HEIGHT}
+                 value={worldHeight ?? 0}
+                 onChange={(e) => {
+                   const val = parseInt(e.target.value, 10);
+                   if (!isNaN(val)) setWorldHeight(val);
+                 }}
+                 style={{ width: 60 }}
+               />
              <button
                onClick={applyWorldSize}
                style={{ padding: "4px 8px", fontSize: 12 }}
@@ -499,12 +492,12 @@ export function App() {
              <label style={{ fontSize: 12 }}>
                {(treeDensity * 100).toFixed(1)}%:
              </label>
-             <input
-               type="range"
-               min={0}
-               max={0.20}
-               step={0.01}
-               value={treeDensity}
+              <input
+                type="range"
+                min={0}
+                max={CONFIG.data.MAX_TREE_DENSITY}
+                step={0.01}
+                value={treeDensity}
                onChange={(e) => {
                  const val = parseFloat(e.target.value);
                  if (!isNaN(val)) setTreeDensity(val);

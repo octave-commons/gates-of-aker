@@ -1,0 +1,62 @@
+export const CONFIG = {
+  canvas: {
+    HEX_SIZE: 16,
+    HEX_SPACING: 1,
+    ZOOM_MIN: 0.1,
+    ZOOM_MAX: 5.0,
+    ZOOM_STEP: 0.1,
+    PAN_SPEED: 10,
+  },
+  data: {
+    MAX_TRACES: 250,
+    MAX_EVENTS: 50,
+    MAX_TREE_DENSITY: 0.20,
+    DEFAULT_TREE_DENSITY: 0.05,
+    DEFAULT_SEED_RANGE: 1000000,
+    MAX_WORLD_WIDTH: 1200,
+    MAX_WORLD_HEIGHT: 1200,
+  },
+  ui: {
+    INITIALIZATION_TIMEOUT: 1500,
+    AGENT_LIST_MAX_HEIGHT: 220,
+    STOCKPILE_FILL_BAR_HEIGHT: 0.15,
+    STOCKPILLE_FILL_BAR_OFFSET: 0.24,
+    STOCKPILLE_BAR_WIDTH_MULTIPLIER: 0.76,
+    STOCKPILLE_OFFSET_MULTIPLIER: 0.38,
+    STOCKPILLE_SIZE_MULTIPLIER: 0.4,
+  },
+  audio: {
+    MASTER_GAIN: 0.3,
+    MIN_FREQUENCY: 200,
+    MAX_FREQUENCY: 800,
+    GAIN_RAMP_TIME: 0.01,
+  },
+  colors: {
+    BIOME: {
+      forest: "#2e7d32",
+      village: "#8d6e63",
+      field: "#9e9e24",
+      rocky: "#616161",
+    },
+    RESOURCE: {
+      tree: "#2e7d32",
+      grain: "#ffeb3b",
+      rock: "#757575",
+      wood: "#8d6e63",
+      food: "#ff9800",
+      unknown: "#9e9e9e",
+    },
+    STRUCTURE: {
+      wallGhost: "#ffae00",
+      wall: "#666",
+      wallStroke: "#444",
+    },
+    ROLE: {
+      priest: "#d7263d",
+      knight: "#3366ff",
+      default: "#111",
+    },
+    SELECTION: "#ff6b00",
+    SHRINE: "#ffae00",
+  },
+} as const;

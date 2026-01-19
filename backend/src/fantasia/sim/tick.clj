@@ -17,7 +17,7 @@
 (def place-shrine! core/place-shrine!)
 (def appoint-mouthpiece! core/appoint-mouthpiece!)
 (def tick! core/tick!)
-(def process-jobs! core/process-jobs!)
+
 (def move-agent-with-job movement/move-agent-with-job)
 (def assign-build-wall-job! actions/assign-build-wall-job!)
 (def place-wall-ghost! actions/place-wall-ghost!)

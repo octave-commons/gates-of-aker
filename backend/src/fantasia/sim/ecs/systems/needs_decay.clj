@@ -12,19 +12,19 @@
 (defn process
   "Decay warmth/food/sleep for all agents based on cold-snap."
   [ecs-world cold-snap]
-  (let [needs-instance (c/->Needs 0.6 0.7 0.7)
+  (let [needs-instance (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)
         needs-type (be/get-component-type needs-instance)
         agent-ids (be/get-all-entities-with-component ecs-world needs-type)
         cold-snap (or cold-snap 0.5)]
     (reduce (fn [acc agent-id]
               (let [needs (or (be/get-component acc agent-id needs-type)
-                              (c/->Needs 0.6 0.7 0.7))
+                              (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
                     warmth-val (double (or (:warmth needs) 0.6))
                     food-val (double (or (:food needs) 0.7))
                     sleep-val (double (or (:sleep needs) 0.7))
                     warmth (clamp01 (- warmth-val (* 0.03 cold-snap)))
                     food (clamp01 (- food-val 0.01))
                     sleep (clamp01 (- sleep-val 0.008))]
-                (be/add-component acc agent-id (c/->Needs warmth food sleep))))
+                (be/add-component acc agent-id (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))))
             ecs-world
             agent-ids)))

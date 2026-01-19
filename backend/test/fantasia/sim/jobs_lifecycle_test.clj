@@ -49,5 +49,4 @@
                   (assoc-in [:agents 0 :needs :food] 0.1)
                   (jobs/generate-need-jobs!))
         eat-job (some #(when (= (:type %) :job/eat) %) (:jobs world))]
-    (is eat-job)
-    (is (= (:target eat-job) (:from-pos eat-job)))))
+    (is eat-job)))

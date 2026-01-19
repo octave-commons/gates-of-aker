@@ -8,7 +8,8 @@
             [fantasia.sim.pathing]
             [fantasia.sim.tick.initial :as initial]
             [fantasia.sim.tick.trees :as trees]
-            [fantasia.sim.tick.movement :as movement]))
+            [fantasia.sim.tick.movement :as movement]
+            [fantasia.sim.tick.mortality :as mortality]))
 
 (def ^:dynamic *state (atom (initial/initial-world 1)))
 
@@ -28,44 +29,19 @@
 (defn appoint-mouthpiece! [agent-id]
   (swap! *state assoc-in [:levers :mouthpiece-agent-id] agent-id))
 
-(defn process-jobs!
-   "Process jobs for agents: advance progress if adjacent to target."
-   [world]
-   (reduce
-      (fn [w agent-id]
-        (if-let [job (jobs/get-agent-job w agent-id)]
-          (let [agent-pos (get-in w [:agents agent-id :pos])
-                job-target (:target job)
-                distance (hex/distance agent-pos job-target)
-                delta (if (<= distance 1)
-                        0.2
-                        0.0)]
-            (when (<= distance 1)
-              (println "[JOB:ADJACENT]"
-                       {:agent-id agent-id
-                        :pos agent-pos
-                        :job-target job-target
-                        :distance distance
-                        :eligible true}))
-            (jobs/advance-job! w agent-id delta))
-          w))
-      world
-      (range (count (:agents world)))))
-
 (defn ^:dynamic tick-once [world]
     (let [t (inc (:tick world))
            w1 (assoc world :tick t)
            w2 (-> w1
-                   (trees/spread-trees!)
-                   (jobs/auto-generate-jobs!)
-                   (jobs/auto-assign-jobs!)
-                   (process-jobs!)
-                   (jobs/auto-assign-jobs!)
-                   (trees/drop-tree-fruits!))
+                    (trees/spread-trees!)
+                    (mortality/process-mortality!)
+                    (jobs/auto-generate-jobs!)
+                    (jobs/auto-assign-jobs!)
+                    (trees/drop-tree-fruits!))
          agents1 (->> (:agents w2)
                       (map (fn [a]
-                             (agents/update-needs w2
-                                                  (movement/move-agent-with-job w2 a))))
+                             (let [[w2' a'] (movement/move-agent-with-job w2 a)]
+                               (agents/update-needs w2' a'))))
                       vec)
        ev (runtime/generate w2 agents1)
       ev-step (if ev
@@ -92,10 +68,10 @@
                      {:agents agents'
                       :mentions (into mentions (:mentions res))
                       :traces (into traces (:traces res))}))
-               {:agents (vec agents2)
-                :mentions (:mentions ev-step)
-                :traces (:traces ev-step)}
-               pairs)
+                {:agents (vec agents2)
+                 :mentions (:mentions ev-step)
+                 :traces (:traces ev-step)}
+                pairs)
       agents3 (:agents talk-step)
       bcasts (institutions/broadcasts w2)
       inst-step (reduce
@@ -104,10 +80,10 @@
                      {:agents (:agents res)
                       :mentions (into mentions (:mentions res))
                       :traces (into traces (:traces res))}))
-               {:agents agents3
-                :mentions (:mentions talk-step)
-                :traces (:traces talk-step)}
-               bcasts)
+                {:agents agents3
+                 :mentions (:mentions talk-step)
+                 :traces (:traces talk-step)}
+                bcasts)
       agents4 (:agents inst-step)
       ledger-info (world/update-ledger w2 (:mentions inst-step))
       ledger2 (:ledger ledger-info)
