@@ -6,8 +6,12 @@
 (defn move-agent-along-path
   "Move agent one step along its path waypoints."
   [ecs-world agent-id]
-  (let [path-component (be/get-component ecs-world agent-id c/Path)
-        position (be/get-component ecs-world agent-id c/Position)
+  (let [path-instance (c/->Path [] 0)
+        path-type (be/get-component-type path-instance)
+        position-instance (c/->Position 0 0)
+        position-type (be/get-component-type position-instance)
+        path-component (be/get-component ecs-world agent-id path-type)
+        position (be/get-component ecs-world agent-id position-type)
         current-index (:current-index path-component)
         waypoints (:waypoints path-component)]
     (when (< current-index (count waypoints))
@@ -15,13 +19,17 @@
             ecs-world' (be/add-component ecs-world agent-id (c/->Position q r))
             new-index (inc current-index)]
         (if (= new-index (count waypoints))
-          (be/remove-component ecs-world' agent-id c/Path)
+          (let [path-inst (c/->Path [] 0)
+                path-type (be/get-component-type path-inst)]
+            (be/remove-component ecs-world' agent-id path-type))
           (be/add-component ecs-world' agent-id (c/->Path waypoints new-index)))))))
 
-(defn process-movement
+(defn process
   "Process movement for all agents with Path or JobAssignment."
   [ecs-world]
-  (let [agents-with-path (be/get-all-entities-with-component ecs-world c/Path)]
+  (let [path-instance (c/->Path [] 0)
+        path-type (be/get-component-type path-instance)
+        agents-with-path (be/get-all-entities-with-component ecs-world path-type)]
     (reduce (fn [acc agent-id]
               (move-agent-along-path acc agent-id))
             ecs-world
