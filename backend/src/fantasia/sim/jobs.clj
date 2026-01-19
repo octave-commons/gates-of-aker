@@ -11,14 +11,18 @@
    :job/build-wall 40})
 
 (defn create-job [job-type target]
-  {:id (random-uuid)
-   :type job-type
-   :target target
-   :worker-id nil
-   :progress 0.0
-   :required 1.0
-   :state :pending
-   :priority (get job-priorities job-type 50)})
+   (let [target-pos (cond
+                     (sequential? target) target
+                     (number? target) [target 0]
+                     :else [0 0])]
+     {:id (random-uuid)
+      :type job-type
+      :target target-pos
+      :worker-id nil
+      :progress 0.0
+      :required 1.0
+      :state :pending
+      :priority (get job-priorities job-type 50)}))
 
 (defn assign-job! [world job agent-id]
   (let [job' (assoc job :worker-id agent-id :state :claimed)]
@@ -145,15 +149,15 @@
       world)))
 
 (defn complete-haul! [world job agent-id]
-  (let [agent (get-in world [:agents agent-id])
-        to-pos (:target job)
-        inv (:inventory agent {})]
-    (reduce (fn [w [res qty]]
-              (if (pos? qty)
-                (add-item! w to-pos res qty)
-                w))
-            world
-            (seq inv))))
+   (let [agent (get-in world [:agents agent-id])
+         to-pos (or (:to-pos job) (:target job))
+         inv (:inventory agent {})]
+     (reduce (fn [w [res qty]]
+               (if (pos? qty)
+                 (add-item! w to-pos res qty)
+                 w))
+             world
+             (seq inv))))
 
 (defn complete-eat! [world job agent-id]
   (let [target (:target job)

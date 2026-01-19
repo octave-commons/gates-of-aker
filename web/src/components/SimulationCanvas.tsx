@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, WheelEvent } from "react";
-import { Agent, hasPos } from "../types";
+import { Agent, hasPos, PathPoint } from "../types";
 import type { HexConfig } from "../hex";
 import { axialToPixel, pixelToAxial, hexCorner, getMapBoundsInPixels, type AxialCoords } from "../hex";
 
@@ -15,6 +15,7 @@ type SimulationCanvasProps = {
   mapConfig: HexConfig | null;
   selectedCell: [number, number] | null;
   selectedAgentId: number | null;
+  agentPaths: Record<number, PathPoint[]>;
   onCellSelect: (cell: [number, number], agentId: number | null) => void;
 };
 
@@ -26,7 +27,7 @@ const ZOOM_MAX = 5.0;
 const ZOOM_STEP = 0.1;
 const PAN_SPEED = 10;
 
-export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAgentId, onCellSelect }: SimulationCanvasProps) {
+export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAgentId, agentPaths, onCellSelect }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -314,6 +315,8 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       if (!hasPos(agent)) continue;
       const [aq, ar] = agent.pos as AxialCoords;
       const [ax, ay] = axialToPixel([aq, ar], size);
+      const agentId = agent.id;
+      const path = agentPaths[agentId] ?? [];
       ctx.beginPath();
       ctx.fillStyle = colorForRole(agent.role);
       ctx.arc(ax, ay, HEX_SIZE * 0.35, 0, Math.PI * 2);
@@ -326,11 +329,26 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
         ctx.arc(ax, ay, HEX_SIZE * 0.55, 0, Math.PI * 2);
         ctx.stroke();
         ctx.lineWidth = 1;
+
+        if (path.length > 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = "rgba(100, 200, 255, 0.5)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.moveTo(ax, ay);
+          for (let i = 1; i < path.length; i++) {
+            const [pq, pr] = path[i];
+            const [px, py] = axialToPixel([pq, pr], size);
+            ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     }
 
     ctx.restore();
-  }, [snapshot, mapConfig, selectedCell, selectedAgentId]);
+  }, [snapshot, mapConfig, selectedCell, selectedAgentId, camera]);
 
   const handleClick = (event: MouseEvent<HTMLCanvasElement>) => {
     if (!snapshot || !mapConfig) return;
