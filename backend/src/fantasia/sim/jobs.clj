@@ -202,19 +202,23 @@
 (defn complete-haul! [world job agent-id]
    (let [agent (get-in world [:agents agent-id])
          to-pos (or (:to-pos job) (:target job))
+         hauling (get-in agent [:inventories :hauling] {})
          inv (:inventory agent {})
-         items-hauled (vec (filter (comp pos? second) inv))]
+         merged (merge-with + hauling inv)
+         items-hauled (vec (filter (comp pos? second) merged))]
      (when (seq items-hauled)
        (println "[JOB:COMPLETE]"
                 {:type :job/haul
                  :target to-pos
                  :outcome (format "Hauled %d item types to %s" (count items-hauled) (pr-str to-pos))}))
-     (reduce (fn [w [res qty]]
-               (if (pos? qty)
-                 (add-item! w to-pos res qty)
-                 w))
-             world
-             (seq inv))))
+     (-> (reduce (fn [w [res qty]]
+                   (if (pos? qty)
+                     (add-item! w to-pos res qty)
+                     w))
+                 world
+                 (seq merged))
+         (assoc-in [:agents agent-id :inventories :hauling] {})
+         (update-in [:agents agent-id] dissoc :inventory))))
 
 (defn complete-eat! [world job agent-id]
    (let [target (:target job)
@@ -243,22 +247,27 @@
          target (:target job)
          food-in-inventory (get-in agent [:inventory :food] 0)]
      (if (pos? food-in-inventory)
-       (let [[w' delivered] (take-from-stockpile! world target :food 100)
-             space-remaining (stockpile-space-remaining w' target)
-             to-store (min food-in-inventory space-remaining)
-             w'' (if (pos? to-store)
-                   (add-to-stockpile! w' target :food to-store)
-                   w')
-             new-inventory (- food-in-inventory to-store)]
-         (when (pos? to-store)
-           (println "[JOB:COMPLETE]"
-                    {:type :job/deliver-food
-                     :target target
-                     :outcome (format "Delivered %d food to stockpile at %s" to-store (pr-str target))}))
-         (-> w''
-             (assoc-in [:agents agent-id :inventory :food] new-inventory)
-             (cond-> (zero? new-inventory)
-               (update-in [:agents agent-id :inventory] dissoc :food))))
+        (let [[w' delivered] (take-from-stockpile! world target :food 100)
+              space-remaining (stockpile-space-remaining w' target)
+              to-store (min food-in-inventory space-remaining)
+              w'' (if (pos? to-store)
+                    (add-to-stockpile! w' target :food to-store)
+                    w')
+              new-inventory (- food-in-inventory to-store)]
+          (when (pos? to-store)
+            (println "[JOB:COMPLETE]"
+                     {:type :job/deliver-food
+                      :target target
+                      :outcome (format "Delivered %d food to stockpile at %s" to-store (pr-str target))}))
+          (let [w-final (-> w''
+                             (assoc-in [:agents agent-id :inventories :hauling :food] new-inventory)
+                             (assoc-in [:agents agent-id :inventory :food] new-inventory))]
+            (if (zero? new-inventory)
+              (-> w-final
+                  (update-in [:agents agent-id :inventories :hauling] dissoc :food)
+                  (update-in [:agents agent-id :inventory] dissoc :food))
+              w-final)))
+
        world)))
 
 (defn complete-job! [world agent-id]
@@ -319,16 +328,21 @@
 (defn pickup-items! [world agent-id pos resource qty]
   (let [[w' consumed] (consume-items! world pos resource qty)]
     (if (pos? consumed)
-      (update-in w' [:agents agent-id :inventory resource] (fnil + 0) consumed)
+      (-> w'
+          (update-in [:agents agent-id :inventories :hauling resource] (fnil + 0) consumed)
+          (update-in [:agents agent-id :inventory resource] (fnil + 0) consumed))
       w')))
 
 (defn drop-items! [world agent-id]
   (let [agent (get-in world [:agents agent-id])
         pos (:pos agent)
-        inv (:inventory agent {})]
+        hauling (get-in agent [:inventories :hauling] {})
+        inv (:inventory agent {})
+        merged (merge-with + hauling inv)]
     (-> (reduce (fn [w [res qty]] (add-item! w pos res qty))
                 world
-                (seq inv))
+                (seq merged))
+        (assoc-in [:agents agent-id :inventories :hauling] {})
         (update-in [:agents agent-id] dissoc :inventory))))
 
 (defn generate-haul-jobs-for-items! [world threshold]
