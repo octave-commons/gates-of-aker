@@ -180,7 +180,6 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
 
     const biomeColors: Record<string, string> = {
       forest: CONFIG.colors.BIOME.forest,
-      village: CONFIG.colors.BIOME.village,
       field: CONFIG.colors.BIOME.field,
       rocky: CONFIG.colors.BIOME.rocky
     };
@@ -322,6 +321,23 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
             ctx.fill();
             ctx.fillStyle = "#8d6e63";
             ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.18, py + CONFIG.canvas.HEX_SIZE * 0.18, CONFIG.canvas.HEX_SIZE * 0.36, CONFIG.canvas.HEX_SIZE * 0.18);
+          }
+
+          if (tile?.structure === "farm") {
+            ctx.fillStyle = CONFIG.colors.STRUCTURE.farm;
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.4);
+            ctx.strokeStyle = "#827717";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.4);
+            ctx.strokeStyle = "#9e9d24";
+            ctx.beginPath();
+            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.15);
+            ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.15);
+            ctx.moveTo(px, py - CONFIG.canvas.HEX_SIZE * 0.15);
+            ctx.lineTo(px, py + CONFIG.canvas.HEX_SIZE * 0.15);
+            ctx.moveTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.15);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.15);
+            ctx.stroke();
           }
 
           if (tile?.structure === "quarry") {

@@ -52,22 +52,26 @@
 
 (def biome-definitions
   "Map of biome type keyword to biome metadata."
-  {:forest {:base-color "#2e7d32"
-            :resource :tree
-            :spawn-prob 0.3
-            :description "Dense forest with abundant trees"}
-   :village {:base-color "#8d6e63"
-             :resource nil
-             :spawn-prob 0.0
-             :description "Settlement area"}
-   :field {:base-color "#9e9e24"
-           :resource :grain
-           :spawn-prob 0.25
-           :description "Open fields with grain crops"}
-   :rocky {:base-color "#616161"
-           :resource :rock
-           :spawn-prob 0.2
-           :description "Rocky terrain with stone resources"}})
+   {:forest {:base-color "#2e7d32"
+             :resource :tree
+             :spawn-prob 0.3
+             :fertility 0.55
+             :description "Dense forest with abundant trees"}
+    :field {:base-color "#9e9e24"
+            :resource :grain
+            :spawn-prob 0.25
+            :fertility 0.9
+            :description "Open fields with grain crops"}
+    :rocky {:base-color "#616161"
+            :resource :rock
+            :spawn-prob 0.2
+            :fertility 0.15
+            :description "Rocky terrain with stone resources"}})
+
+(defn biome-fertility
+  "Return a fertility value (0-1) for a biome type."
+  [biome-type]
+  (double (or (get-in biome-definitions [biome-type :fertility]) 0.3)))
 
 (def ore-types
   [:ore-iron :ore-copper :ore-tin :ore-gold :ore-silver :ore-aluminum :ore-lead])
@@ -88,7 +92,6 @@
          [oq or] (or origin [0 0])
          perm (build-perm (:seed world))
          scale 0.08
-         village-scale 0.14
          center [(+ oq (quot w 2)) (+ or (quot h 2))]
          max-dist (max 1 (long (/ (max w h) 2)))
          coords (for [q (range oq (+ oq w))
@@ -105,10 +108,7 @@
                         bias-dist (min 1.0 (/ (double (hex/distance center [q r])) max-dist))
                         field-bias (* 0.18 (- 1.0 bias-dist))
                         value (+ noise field-bias)
-                        village-noise (simplex2d perm (* q village-scale) (* r village-scale))
-                        village? (and (> village-noise 0.55) (< bias-dist 0.85))
                         biome (cond
-                                village? :village
                                 (< value -0.25) :rocky
                                 (< value 0.05) :forest
                                 (< value 0.45) :field

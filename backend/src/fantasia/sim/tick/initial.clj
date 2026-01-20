@@ -101,11 +101,11 @@
 (defn- scatter-fruit! [world rng]
   (let [hex-map (:map world)
         total-tiles (bounds-tile-count hex-map)
-        desired (max 24 (long (Math/ceil (* total-tiles 0.015))))
+        desired (max 12 (long (Math/ceil (* total-tiles 0.006))))
         positions (loop [acc #{}
                          attempts 0]
-                    (if (or (>= (count acc) desired)
-                            (>= attempts (* desired 6)))
+                     (if (or (>= (count acc) desired)
+                             (>= attempts (* desired 6)))
                       acc
                       (recur (conj acc (hex/rand-pos rng hex-map)) (inc attempts))))]
     (reduce (fn [w pos] (jobs/add-item! w pos :fruit 1)) world positions)))
@@ -113,7 +113,7 @@
 (defn initial-world [opts]
    (let [{:keys [seed bounds tree-density]} opts
           actual-seed (or seed 1)
-          tree-density (or tree-density 0.05)
+          tree-density (or tree-density 0.08)
           rand-gen (rng actual-seed)
          hex-bounds (hex/normalize-bounds bounds {:shape :rect :w 128 :h 128})
          hex-map {:kind :hex
@@ -161,7 +161,7 @@
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)
           world-with-trees (trees/spawn-initial-trees! world-with-resources tree-density)
             world-with-fruit (scatter-fruit! world-with-trees rand-gen)
-            campfire-pos (biomes/rand-pos-in-biome rand-gen hex-map :village (:tiles world-with-fruit))
+             campfire-pos (biomes/rand-pos-in-biome rand-gen hex-map :field (:tiles world-with-fruit))
            [q r] campfire-pos
            campfire-key (tile-key q r)
             world-with-campfire (-> world-with-fruit

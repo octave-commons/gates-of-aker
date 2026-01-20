@@ -34,7 +34,6 @@ export const CONFIG = {
   colors: {
     BIOME: {
       forest: "#2e7d32",
-      village: "#8d6e63",
       field: "#9e9e24",
       rocky: "#616161",
     },
@@ -56,6 +55,7 @@ export const CONFIG = {
       lumberyard: "#6d4c41",
       orchard: "#f57c00",
       granary: "#fbc02d",
+      farm: "#c0ca33",
       quarry: "#757575",
     },
     ROLE: {

@@ -6,7 +6,7 @@ describe('BuildingPalette', () => {
   it('renders palette title', () => {
     render(
       <BuildingPalette
-        onPlaceBuilding={vi.fn()}
+        onQueueBuild={vi.fn()}
         selectedCell={null}
       />
     );
@@ -17,7 +17,7 @@ describe('BuildingPalette', () => {
   it('shows selected cell feedback', () => {
     render(
       <BuildingPalette
-        onPlaceBuilding={vi.fn()}
+        onQueueBuild={vi.fn()}
         selectedCell={[5, 3]}
       />
     );
@@ -29,27 +29,27 @@ describe('BuildingPalette', () => {
     const mockOnPlaceBuilding = vi.fn();
     render(
       <BuildingPalette
-        onPlaceBuilding={mockOnPlaceBuilding}
+        onQueueBuild={mockOnPlaceBuilding}
         selectedCell={[5, 3]}
       />
     );
 
-    // Should show ready to place message after clicking a building
+    // Should show ready to queue message after clicking a building
     const buildingIcons = screen.getAllByTitle(/:/);
     expect(buildingIcons.length).toBeGreaterThan(0);
     
     // Click first building
     fireEvent.click(buildingIcons[0]);
     
-    // Should show a place button
-    const placeButtons = screen.getAllByText(/^Place /);
-    expect(placeButtons.length).toBeGreaterThan(0);
+    // Should show a queue button
+    const queueButtons = screen.getAllByText(/^Queue /);
+    expect(queueButtons.length).toBeGreaterThan(0);
   });
 
   it('shows no cell selected message when no cell selected', () => {
     render(
       <BuildingPalette
-        onPlaceBuilding={vi.fn()}
+        onQueueBuild={vi.fn()}
         selectedCell={null}
       />
     );

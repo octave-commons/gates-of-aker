@@ -28,6 +28,7 @@
 (def place-tree! actions/place-tree!)
 (def place-wolf! actions/place-wolf!)
 (def place-bear! actions/place-bear!)
+(def queue-build-job! actions/queue-build-job!)
 (def spawn-initial-trees! trees/spawn-initial-trees!)
 (def spread-trees! trees/spread-trees!)
 (def drop-tree-fruits! trees/drop-tree-fruits!)

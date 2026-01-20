@@ -175,6 +175,28 @@
              w' (reduce (fn [acc job] (update acc :jobs conj job)) w jobs)]
          w')
        w))
+    world
+    (structure-providers world)))
+
+(defn generate-provider-farm-jobs! [world]
+  (reduce
+   (fn [w provider]
+     (if (= (:job-type provider) :job/farm)
+       (let [open (provider-open-slots w provider)
+             stockpile-key (vector (first (:pos provider)) (second (:pos provider)))
+             stockpile (get-in w [:stockpiles stockpile-key])
+             space (when stockpile (- (:max-qty stockpile) (:current-qty stockpile)))
+             jobs (if (pos? (or space 0))
+                    (->> (range open)
+                         (map (fn [_]
+                                (assoc (jobs/create-job :job/farm (:pos provider))
+                                       :resource :grain
+                                       :provider-pos (:pos provider)
+                                       :building-pos (:pos provider)))))
+                    [])
+             w' (reduce (fn [acc job] (update acc :jobs conj job)) w jobs)]
+         w')
+       w))
    world
    (structure-providers world)))
 
@@ -308,6 +330,7 @@
 (defn generate-provider-jobs! [world]
   (-> world
       (generate-provider-harvest-jobs!)
+      (generate-provider-farm-jobs!)
       (generate-provider-mine-jobs!)
       (generate-provider-builder-jobs!)
       (generate-provider-improve-jobs!)

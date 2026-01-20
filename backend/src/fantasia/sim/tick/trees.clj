@@ -20,6 +20,8 @@
   [[q r]]
   [q r])
 
+(declare valid-empty-neighbors)
+
 (defn- make-tree-tile
   "Construct a fresh tree tile map for the given tick and rng.
   `tick` is used to seed scheduled values so they are deterministic per world tick." 
@@ -42,30 +44,64 @@
                                          (make-tree-tile (:tick world) rng)))
         world)))
 
+(defn- seed-initial-trees!
+  "Seed trees randomly throughout the map using a fixed spawn chance." 
+  [world rng spawn-chance]
+  (let [hex-map (:map world)
+        bounds (:bounds hex-map)]
+    (if (= (:shape bounds) :rect)
+      (let [w (long (:w bounds 1))
+            h (long (:h bounds 1))
+            origin (:origin bounds [0 0])]
+        (reduce
+         (fn [w' q]
+           (reduce
+            (fn [w'' r]
+              (try-place-tree w'' [(+ (first origin) q) (+ (second origin) r)] rng spawn-chance))
+            w'
+            (range h)))
+         world
+         (range w)))
+      world)))
+
+(defn- grow-initial-trees!
+  "Run short growth passes to create clustered, organic tree placement." 
+  [world rng passes spread-probability]
+  (loop [idx 0
+         w world]
+    (if (>= idx passes)
+      w
+      (let [tree-keys (keep (fn [[k tile]] (when (= (:resource tile) :tree) k)) (:tiles w))]
+        (recur
+         (inc idx)
+         (reduce
+          (fn [w' tile-key]
+            (if (< (rand-int* rng 1000) (int (* spread-probability 1000)))
+              (let [pos (parse-tile-key tile-key)
+                    neighbors (valid-empty-neighbors w' pos)]
+                (if (seq neighbors)
+                  (let [new-pos (rand-nth neighbors)
+                        new-key (tile-key-for new-pos)]
+                    (assoc-in w' [:tiles new-key]
+                              (merge (get-in w' [:tiles new-key]) (make-tree-tile (:tick w') rng))))
+                  w'))
+              w'))
+          w
+          tree-keys))))))
+
 (defn spawn-initial-trees!
   "Spawn initial trees randomly throughout the map. Approximately `tree-density`
   fraction of tiles get trees by default. Keeps original arities for callers."
   ([world]
-   (spawn-initial-trees! world 0.05))
+   (spawn-initial-trees! world 0.08))
   ([world tree-density]
-   (let [rng (rng (:seed world))
-         hex-map (:map world)
-         bounds (:bounds hex-map)
-         spawn-chance tree-density]
-     (if (= (:shape bounds) :rect)
-       (let [w (long (:w bounds 1))
-             h (long (:h bounds 1))
-             origin (:origin bounds [0 0])]
-         (reduce
-          (fn [w' q]
-            (reduce
-             (fn [w'' r]
-               (try-place-tree w'' [(+ (first origin) q) (+ (second origin) r)] rng spawn-chance))
-             w'
-             (range h)))
-          world
-          (range w)))
-       world))))
+   (let [r (rng (:seed world))
+         spawn-chance tree-density
+         growth-passes 3
+         growth-probability 0.35]
+     (-> world
+         (seed-initial-trees! r spawn-chance)
+         (grow-initial-trees! r growth-passes growth-probability)))))
 
 ;; --- Spread trees -----------------------------------------------------------
 (defn- next-spread-tick
@@ -113,9 +149,9 @@
   [world]
   (let [current-tick (:tick world)
         r (rng (:seed world))
-        min-interval 20
-        max-interval 160
-        spread-probability 0.30]
+        min-interval 60
+        max-interval 240
+        spread-probability 0.18]
     (reduce-kv
      (fn [w tile-key tile]
        (if (= (:resource tile) :tree)
@@ -125,22 +161,29 @@
      (:tiles world))))
 
 ;; --- Drop fruit -------------------------------------------------------------
+(defn- next-fruit-drop
+  "Schedule a next fruit drop between min and max intervals." 
+  [base-tick rng min-interval max-interval]
+  (+ base-tick min-interval (rand-int* rng (inc (- max-interval min-interval)))))
+
 (defn- should-drop-fruit?
   "Return true when the tree should drop fruit on this tick." 
   [tile current-tick rng]
   (let [last-drop (or (:last-fruit-drop tile) 0)
         turns-since (- current-tick last-drop)
-        min-interval 5
-        max-interval 20
-        interval-range (+ 1 (- max-interval min-interval))
-        drop-at (+ last-drop min-interval (mod (rand-int* rng 1000000) interval-range))]
+        min-interval 18
+        max-interval 45
+        scheduled (or (:next-fruit-drop tile)
+                      (next-fruit-drop last-drop rng min-interval max-interval))]
     (and (>= turns-since min-interval)
-         (>= turns-since (or (:next-fruit-drop tile) drop-at)))))
+         (>= current-tick scheduled))))
 
 (defn- perform-drop
   "Add one fruit at a nearby tile and update tile timings." 
   [w tile-key tile current-tick rng]
   (let [pos (parse-tile-key tile-key)
+        min-interval 18
+        max-interval 45
         neighbors (->> (hex/neighbors pos)
                        (filter #(hex/in-bounds? (:map w) %))
                        vec)
@@ -150,7 +193,8 @@
     (-> w
         (jobs/add-item! drop-pos :fruit 1)
         (assoc-in [:tiles tile-key :last-fruit-drop] current-tick)
-        (assoc-in [:tiles tile-key :next-fruit-drop] (+ current-tick 5 (mod (rand-int* rng 1000000) 16))))))
+        (assoc-in [:tiles tile-key :next-fruit-drop]
+                  (next-fruit-drop current-tick rng min-interval max-interval)))))
 
 (defn drop-tree-fruits!
   "Process fruit dropping for all trees. Fruits accumulate at tree positions in :items." 

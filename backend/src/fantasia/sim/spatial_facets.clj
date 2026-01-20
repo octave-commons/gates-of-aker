@@ -150,6 +150,8 @@
     ["orchard" "fruit" "food" "sweet" "trees" "harvest" "resource"])
   (register-entity-facets! :granary
     ["granary" "grain" "food" "storage" "harvest" "safety" "resource"])
+  (register-entity-facets! :farm
+    ["farm" "grain" "field" "food" "harvest" "soil" "fertility" "resource"])
   (register-entity-facets! :quarry
     ["quarry" "stone" "rock" "resource" "work" "mining" "industry"])
   (register-entity-facets! :warehouse
@@ -183,6 +185,7 @@
           (= structure :lumberyard) (get-entity-facets :lumberyard)
           (= structure :orchard) (get-entity-facets :orchard)
           (= structure :granary) (get-entity-facets :granary)
+          (= structure :farm) (get-entity-facets :farm)
           (= structure :quarry) (get-entity-facets :quarry)
           (= structure :warehouse) (get-entity-facets :warehouse)
           (= structure :statue/dog) (get-entity-facets :statue/dog)

@@ -1,5 +1,6 @@
 (ns fantasia.sim.jobs-lifecycle-test
   (:require [clojure.test :refer [deftest is testing]]
+            [fantasia.sim.biomes :as biomes]
             [fantasia.sim.jobs :as jobs]
             [fantasia.sim.tick.initial :as initial]))
 
@@ -106,3 +107,21 @@
         world (jobs/generate-house-jobs! world)
         house-job (some #(when (= (:type %) :job/build-house) %) (:jobs world))]
     (is house-job)))
+
+(deftest farm-job-yields-grain-by-fertility
+  (let [farm-pos [0 0]
+        world (-> (initial/initial-world {:seed 2})
+                  (assoc :jobs [])
+                  (assoc :jobs-by-id {})
+                  (assoc :items {})
+                  (assoc :stockpiles {farm-pos {:resource :grain :max-qty 10 :current-qty 0}})
+                  (update-in [:tiles farm-pos] merge {:terrain :ground :structure :farm :resource nil :level 1 :biome :field}))
+        job (assoc (jobs/create-job :job/farm farm-pos) :resource :grain)
+        agent-id 0
+        world' (-> world
+                   (update :jobs conj job)
+                   (jobs/assign-job! job agent-id)
+                   (jobs/advance-job! agent-id 1.0))
+        expected (max 1 (long (Math/round (* (biomes/biome-fertility :field) 3))))
+        stockpile (get-in world' [:stockpiles farm-pos])]
+    (is (= expected (:current-qty stockpile)))))

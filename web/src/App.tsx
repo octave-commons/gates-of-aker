@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { WSClient, WSMessage } from "./ws";
 import { playDeathTone, playTone, markUserInteraction } from "./audio";
 import {
-  AgentCard,
   AgentList,
   RawJSONFeedPanel,
   SelectedPanel,
@@ -12,6 +11,7 @@ import {
   BuildControls,
   BuildingPalette,
   JobQueuePanel,
+  ResourceTotalsPanel,
   WorldInfoPanel,
   ThoughtsPanel,
 } from "./components";
@@ -382,8 +382,8 @@ export function App() {
      client.send({ op: "place_shrine", pos: selectedCell });
    };
 
-   const handlePlaceBuilding = (type: string, pos: [number, number], config?: any) => {
-     client.sendPlaceBuilding(type, pos, config);
+   const handleQueueBuild = (type: string, pos: [number, number], config?: { stockpile?: { resource?: string; max_qty?: number } }) => {
+     client.sendQueueBuild(type, pos, config?.stockpile);
    };
 
    const mouthpieceId = useMemo(() => {
@@ -403,6 +403,19 @@ export function App() {
     return snapshot.calendar;
   }, [snapshot?.calendar]);
 
+  const stockpileTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    const stockpiles = snapshot?.stockpiles ?? {};
+    const normalizeResource = (val: unknown) => (typeof val === "string" ? val.replace(/^:/, "") : "unknown");
+    for (const stockpile of Object.values(stockpiles)) {
+      const spRaw = stockpile as Record<string, unknown>;
+      const resource = normalizeResource(spRaw.resource ?? spRaw[":resource"]);
+      const currentQty = Number(spRaw.currentQty ?? spRaw["current-qty"] ?? 0) || 0;
+      totals[resource] = (totals[resource] ?? 0) + currentQty;
+    }
+    return totals;
+  }, [snapshot?.stockpiles]);
+
   const selectedTile = useMemo(() => {
     try {
       if (!selectedCell || !snapshot?.tiles) return null;
@@ -412,6 +425,11 @@ export function App() {
       return null;
     }
   }, [selectedCell, snapshot?.tiles]);
+
+  const selectedTileItems = useMemo(() => {
+    if (!selectedCell || !snapshot?.items) return {};
+    return snapshot.items[`${selectedCell[0]},${selectedCell[1]}`] ?? {};
+  }, [selectedCell, snapshot?.items]);
 
   const selectedTileAgents = useMemo(() => {
     try {
@@ -506,73 +524,14 @@ export function App() {
           focusPos={focusPos}
           focusTrigger={focusTrigger}
         />
-        {selectedCell && (
-          <div style={{
-            position: "absolute",
-            bottom: 16,
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "rgba(255, 255, 255, 0.95)",
-            border: "1px solid #aaa",
-            borderRadius: 8,
-            padding: 12,
-            minWidth: 300,
-            maxWidth: 500,
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
-          }}>
-            <div style={{ fontWeight: "bold", marginBottom: 8 }}>
-              Selected Cell: {selectedCell[0]}, {selectedCell[1]}
-            </div>
-            {selectedTile && (
-               <div style={{ marginBottom: 8 }}>
-                 <div><strong>Resource:</strong> {selectedTile.resource ?? "none"}</div>
-                 {selectedTile.resource === ":tree" && (
-                   <button
-                     onClick={() => {
-                       const idleAgents = agents.filter((a: any) => !a.current_job);
-                       if (idleAgents.length > 0) {
-                         client.sendAssignJob(":job/chop-tree", selectedCell, idleAgents[0].id);
-                       }
-                     }}
-                     style={{ marginTop: 4, padding: "4px 8px", fontSize: 12 }}
-                   >
-                     Assign Chop Job
-                   </button>
-                 )}
-                 {selectedTile.structure === ":wall-ghost" && (
-                   <button
-                     onClick={() => {
-                       const idleAgents = agents.filter((a: any) => !a.current_job);
-                       if (idleAgents.length > 0) {
-                         client.sendAssignJob(":job/build-wall", selectedCell, idleAgents[0].id);
-                       }
-                     }}
-                     style={{ marginTop: 4, padding: "4px 8px", fontSize: 12 }}
-                   >
-                     Assign Build Job
-                   </button>
-                 )}
-               </div>
-             )}
-            {selectedTileAgents.length > 0 && (
-              <div>
-                <div><strong>Agents ({selectedTileAgents.length}):</strong></div>
-                {selectedTileAgents.map((agent: Agent) => (
-                  <AgentCard key={agent.id} agent={agent} onSelect={focusOnAgent} />
-                ))}
-              </div>
-            )}
-            {!selectedTile && selectedTileAgents.length === 0 && (
-              <div style={{ opacity: 0.6 }}>No entities in this cell</div>
-            )}
-          </div>
-        )}
       </div>
 
       <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
         <StatusBar status={status} tickHealth={tickHealth} />
 
         <WorldInfoPanel calendar={calendar} />
+
+        <ResourceTotalsPanel totals={stockpileTotals} />
 
         {/* Time controls */}
         <TickControls
@@ -611,6 +570,9 @@ export function App() {
         <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, maxHeight: 320, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)" }}>
           <SelectedPanel
             selectedCell={selectedCell}
+            selectedTile={selectedTile}
+            selectedTileItems={selectedTileItems}
+            selectedTileAgents={selectedTileAgents}
             selectedAgentId={selectedAgentId}
             selectedAgent={selectedAgent}
             mouthpieceId={mouthpieceId}
@@ -631,10 +593,10 @@ export function App() {
        </div>
 
        <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
-         <BuildingPalette
-           onPlaceBuilding={handlePlaceBuilding}
-           selectedCell={selectedCell}
-         />
+          <BuildingPalette
+            onQueueBuild={handleQueueBuild}
+            selectedCell={selectedCell}
+          />
 
          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>

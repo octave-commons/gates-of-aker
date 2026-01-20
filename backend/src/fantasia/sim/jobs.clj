@@ -1,7 +1,8 @@
 (ns fantasia.sim.jobs
-  (:require [fantasia.sim.hex :as hex]
-            [clojure.set :as set]
-            [clojure.string :as str]))
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
+            [fantasia.sim.biomes :as biomes]
+            [fantasia.sim.hex :as hex]))
 
 (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
@@ -17,6 +18,7 @@
    :job/harvest-fruit 58
    :job/harvest-grain 58
    :job/harvest-stone 58
+   :job/farm 58
    :job/smelt 57
    :job/build-house 55
    :job/improve 52
@@ -47,16 +49,17 @@
   {:lumberyard {:job-type :job/harvest-wood :max-jobs 3}
    :orchard {:job-type :job/harvest-fruit :max-jobs 2}
    :granary {:job-type :job/harvest-grain :max-jobs 2}
+   :farm {:job-type :job/farm :max-jobs 2}
    :quarry {:job-type :job/mine :max-jobs 3}
    :workshop {:job-type :job/builder :max-jobs 2}
    :improvement-hall {:job-type :job/improve :max-jobs 1}
    :smelter {:job-type :job/smelt :max-jobs 1}})
 
 (def improvable-structures
-  #{:lumberyard :orchard :granary :quarry :workshop :smelter :warehouse})
+  #{:lumberyard :orchard :granary :farm :quarry :workshop :smelter :warehouse})
 
 (def build-structure-options
-  [:stockpile :lumberyard :orchard :granary :quarry :warehouse :smelter :improvement-hall :workshop])
+  [:stockpile :lumberyard :orchard :granary :farm :quarry :warehouse :smelter :improvement-hall :workshop])
 
 (def unique-structures
   #{:workshop :smelter :improvement-hall})
@@ -76,6 +79,7 @@
                   :priority (get job-priorities job-type 50)}]
          job))))
 
+
 (defn- add-job-to-world! [world job]
   (let [job-id (:id job)]
     (-> world
@@ -92,6 +96,11 @@
     (-> world
         (update :jobs (fn [js] (mapv #(if (= (:id %) job-id) job %) js)))
         (assoc-in [:jobs-by-id job-id] job))))
+
+(defn enqueue-job! [world job]
+  (if job
+    (add-job-to-world! world job)
+    world))
 
 (defn get-job-by-id [world job-id]
   (get-in world [:jobs-by-id job-id]))
@@ -162,6 +171,7 @@
     :lumberyard :log
     :orchard :fruit
     :granary :grain
+    :farm :grain
     :quarry :rock
     nil))
 
@@ -170,7 +180,7 @@
     :log :lumberyard
     :fruit :orchard
     :berry :orchard
-    :grain :granary
+    :grain :farm
     :rock :quarry
     nil))
 
@@ -457,6 +467,19 @@
            (add-item! world pos resource qty)))
        world)))
 
+(defn- farm-yield
+  [tile]
+  (let [fertility (biomes/biome-fertility (:biome tile))]
+    (max 1 (long (Math/round (* fertility 3))))))
+
+(defn complete-farm! [world job]
+  (let [[q r] (:target job)
+        k (tile-key q r)
+        tile (get-in world [:tiles k])]
+    (if (and tile (= (:structure tile) :farm))
+      (harvest-resource! world :grain (:target job) (farm-yield tile))
+      world)))
+
 (defn complete-harvest-job! [world job agent-id]
    (let [resource (:resource job)
          target (:target job)
@@ -540,9 +563,10 @@
             world' (create-stockpile! world target resource max-qty)]
         world')
 
-       (:lumberyard :orchard :granary :quarry :warehouse :smelter :improvement-hall :workshop)
-       (let [resource (stockpile-for-structure structure)
-             max-qty 120
+       (:lumberyard :orchard :granary :farm :quarry :warehouse :smelter :improvement-hall :workshop)
+       (let [stockpile-resource (stockpile-for-structure structure)
+             resource (or stockpile-resource (:resource stockpile-config))
+             max-qty (or (:max-qty stockpile-config) 120)
              world' (assoc-in world [:tiles k]
                               {:terrain :ground :structure structure :resource nil :level 1})
              world' (if resource
@@ -682,9 +706,10 @@
                     :job/builder (complete-build-structure! world job)
                     :job/improve (complete-improve! world job)
                     :job/mine (complete-mine! world job)
-                    :job/smelt (complete-smelt! world job)
-                    :job/chop-tree (complete-chop-tree! world job)
-                    :job/harvest-wood (complete-harvest-job! world job agent-id)
+                     :job/smelt (complete-smelt! world job)
+                     :job/chop-tree (complete-chop-tree! world job)
+                     :job/farm (complete-farm! world job)
+                     :job/harvest-wood (complete-harvest-job! world job agent-id)
                     :job/harvest-fruit (complete-harvest-job! world job agent-id)
                     :job/harvest-grain (complete-harvest-job! world job agent-id)
                     :job/harvest-stone (complete-harvest-job! world job agent-id)

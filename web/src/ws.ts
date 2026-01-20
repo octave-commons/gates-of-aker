@@ -71,12 +71,20 @@ export class WSClient {
    }
 
    sendPlaceBuilding(type: string, pos: [number, number], config?: any) {
-     const msg: any = { op: `place_${type}`, pos };
-     if (config) {
-       Object.assign(msg, config);
-     }
-     this.send(msg);
-   }
+      const msg: any = { op: `place_${type}`, pos };
+      if (config) {
+        Object.assign(msg, config);
+      }
+      this.send(msg);
+    }
+
+    sendQueueBuild(structure: string, pos: [number, number], stockpile?: { resource?: string; max_qty?: number }) {
+      const msg: any = { op: "queue_build", structure, pos };
+      if (stockpile) {
+        msg.stockpile = stockpile;
+      }
+      this.send(msg);
+    }
 
     sendAssignJob(jobType: string, targetPos: [number, number], agentId: number) {
       this.send({ op: "assign_job", job_type: jobType, target_pos: targetPos, agent_id: agentId });
@@ -110,4 +118,3 @@ export class WSClient {
         });
       }
     }
-

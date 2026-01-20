@@ -1,6 +1,6 @@
 ---
 description: Expert in creating and managing OpenCode agent skills (SKILL.md files)
-mode: subagent
+mode:primary 
 tools:
   webfetch: true
   read: true

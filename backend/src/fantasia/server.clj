@@ -44,6 +44,30 @@
     (catch Exception _
       nil)))
 
+(defn- normalize-structure [value]
+  (cond
+    (keyword? value) value
+    (string? value) (case value
+                      "statue_dog" :statue/dog
+                      "statue/dog" :statue/dog
+                      "improvement_hall" :improvement-hall
+                      "improvement-hall" :improvement-hall
+                      (keyword value))
+    :else nil))
+
+(defn- normalize-stockpile [stockpile]
+  (when (map? stockpile)
+    (let [resource (:resource stockpile)
+          resource (cond
+                     (keyword? resource) resource
+                     (string? resource) (keyword resource)
+                     :else nil)
+          max-qty (or (:max-qty stockpile)
+                      (:max_qty stockpile)
+                      (:maxQty stockpile))]
+      (when resource
+        {:resource resource :max-qty max-qty}))))
+
 (defonce *clients (atom #{}))
 (defonce *runner (atom {:running? false :future nil :ms 66 :tick-ms 0}))
 
@@ -113,7 +137,7 @@
 
             "reset"
             (let [opts {:seed (long (or (:seed msg) 1))
-                        :tree-density (or (:tree_density msg) 0.05)}
+                        :tree-density (or (:tree_density msg) 0.08)}
                   opts (if (:bounds msg)
                          (assoc opts :bounds (:bounds msg))
                          opts)]
@@ -170,6 +194,17 @@
             (do (sim/place-bear! (:pos msg))
                 (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
 
+            "queue_build"
+            (let [structure (normalize-structure (:structure msg))
+                  stockpile (normalize-stockpile (:stockpile msg))]
+              (when (and structure (:pos msg))
+                (sim/queue-build-job! structure (:pos msg) stockpile)
+                (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))})
+                (when (= structure :wall)
+                  (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+                (when (= structure :shrine)
+                  (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))))
+
              "assign_job"
              (let [agent-id (:agent_id msg)
                    job-type (:job_type msg)
@@ -215,7 +250,7 @@
           {:post (fn [req]
                    (let [b (read-json-body req)
                          seed (long (or (:seed b) 1))
-                         tree-density (or (:tree_density b) 0.05)
+                         tree-density (or (:tree_density b) 0.08)
                          opts {:seed seed :tree-density tree-density}
                          opts (if (:bounds b)
                                 (assoc opts :bounds (:bounds b))

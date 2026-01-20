@@ -1,0 +1,3 @@
+- Reduced tree spread cadence and fruit drop frequency to ease ground fruit load.
+- Increased initial tree density and added clustered growth passes for organic placement.
+- Lowered initial scatter fruit count so agents rely less on wild fruit.

@@ -57,7 +57,7 @@ Unique identifiers (UUIDs) representing anything in the simulation:
 - Resources (trees, ore deposits)
 - Items (carried wood, food rations)
 - Jobs (task entities for agents)
-- Zones (village, field, forest biome)
+- Zones (field, forest, rocky biome)
 
 #### Components
 Pure data maps attached to entities. Each component represents one aspect:

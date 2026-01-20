@@ -2,14 +2,20 @@ import React, { useState } from "react";
 
 export type BuildingType = 
   | "shrine"
-  | "wall" 
+  | "campfire"
+  | "house"
+  | "wall"
   | "stockpile"
   | "warehouse"
-  | "campfire"
-  | "statue_dog"
-  | "tree"
-  | "wolf"
-  | "bear";
+  | "lumberyard"
+  | "orchard"
+  | "granary"
+  | "farm"
+  | "quarry"
+  | "workshop"
+  | "smelter"
+  | "improvement_hall"
+  | "statue_dog";
 
 interface BuildingConfig {
   id: BuildingType;
@@ -23,7 +29,7 @@ interface BuildingConfig {
 }
 
 interface BuildingPaletteProps {
-  onPlaceBuilding: (
+  onQueueBuild: (
     type: BuildingType,
     pos: [number, number],
     config?: any
@@ -36,11 +42,27 @@ const BUILDING_CONFIGS: BuildingConfig[] = [
   {
     id: "shrine",
     name: "Shrine",
-    description: "Sacred site that channels divine energy. One per world.",
+    description: "Sacred site that anchors the mythic focus of the colony.",
     icon: "⛩️",
     color: "#ffae00",
     requiresSelection: true,
     maxCount: 1,
+  },
+  {
+    id: "campfire",
+    name: "Campfire",
+    description: "Community gathering place providing warmth and light.",
+    icon: "🔥",
+    color: "#ff6b00",
+    requiresSelection: true,
+  },
+  {
+    id: "house",
+    name: "House",
+    description: "Shelter for a family with warmth and rest.",
+    icon: "🏠",
+    color: "#8d6e63",
+    requiresSelection: true,
   },
   {
     id: "wall",
@@ -53,7 +75,7 @@ const BUILDING_CONFIGS: BuildingConfig[] = [
   {
     id: "stockpile",
     name: "Stockpile",
-    description: "Storage area for resources (wood, food, fruit).",
+    description: "Storage area for resources and provisions.",
     icon: "📦",
     color: "#8d6e63",
     requiresSelection: true,
@@ -62,17 +84,74 @@ const BUILDING_CONFIGS: BuildingConfig[] = [
   {
     id: "warehouse",
     name: "Warehouse",
-    description: "Large storage facility with built-in stockpile.",
+    description: "Large storage facility with a configurable stockpile.",
     icon: "🏭",
+    color: "#757575",
+    requiresSelection: true,
+    configurable: true,
+  },
+  {
+    id: "lumberyard",
+    name: "Lumberyard",
+    description: "Processes nearby trees into logs for building.",
+    icon: "🪓",
+    color: "#6d4c41",
+    requiresSelection: true,
+  },
+  {
+    id: "orchard",
+    name: "Orchard",
+    description: "Tended grove for fruit harvesting.",
+    icon: "🍎",
+    color: "#f57c00",
+    requiresSelection: true,
+  },
+  {
+    id: "granary",
+    name: "Granary",
+    description: "Stores harvested grain for the colony.",
+    icon: "🌾",
+    color: "#fbc02d",
+    requiresSelection: true,
+  },
+  {
+    id: "farm",
+    name: "Farm",
+    description: "Cultivated field that grows grain from fertile soil.",
+    icon: "🚜",
+    color: "#c0ca33",
+    requiresSelection: true,
+  },
+  {
+    id: "quarry",
+    name: "Quarry",
+    description: "Extracts stone and ore from rocky ground.",
+    icon: "⛏️",
     color: "#757575",
     requiresSelection: true,
   },
   {
-    id: "campfire",
-    name: "Campfire",
-    description: "Community gathering place providing warmth and light.",
+    id: "workshop",
+    name: "Workshop",
+    description: "Coordinates builders and basic crafting.",
+    icon: "🛠️",
+    color: "#5c6bc0",
+    requiresSelection: true,
+  },
+  {
+    id: "smelter",
+    name: "Smelter",
+    description: "Refines ore into ingots.",
     icon: "🔥",
-    color: "#ff6b00",
+    color: "#ff7043",
+    requiresSelection: true,
+  },
+  {
+    id: "improvement_hall",
+    name: "Improvement Hall",
+    description: "Upgrades existing structures with skilled labor.",
+    icon: "🏛️",
+    color: "#8d6e63",
     requiresSelection: true,
   },
   {
@@ -81,30 +160,6 @@ const BUILDING_CONFIGS: BuildingConfig[] = [
     description: "Guardian statue that protects the settlement.",
     icon: "🗿",
     color: "#9e9e9e",
-    requiresSelection: true,
-  },
-  {
-    id: "tree",
-    name: "Tree",
-    description: "Natural resource that provides wood and spawns fruit.",
-    icon: "🌳",
-    color: "#2e7d32",
-    requiresSelection: true,
-  },
-  {
-    id: "wolf",
-    name: "Wolf",
-    description: "Wild predator that hunts in the wilderness.",
-    icon: "🐺",
-    color: "#795548",
-    requiresSelection: true,
-  },
-  {
-    id: "bear",
-    name: "Bear",
-    description: "Powerful predator that commands respect.",
-    icon: "🐻",
-    color: "#5d4037",
     requiresSelection: true,
   },
 ];
@@ -168,9 +223,12 @@ function StockpileConfig({
           style={{ width: "100%", padding: 4 }}
         >
           <option value="wood">Wood</option>
-          <option value="food">Food</option>
-          <option value="fruit">Fruit</option>
           <option value="log">Log</option>
+          <option value="fruit">Fruit</option>
+          <option value="grain">Grain</option>
+          <option value="rock">Rock</option>
+          <option value="berry">Berry</option>
+          <option value="food">Food</option>
         </select>
       </div>
       
@@ -215,7 +273,7 @@ function StockpileConfig({
             cursor: "pointer",
           }}
         >
-          Place
+          Queue Build
         </button>
       </div>
     </div>
@@ -223,7 +281,7 @@ function StockpileConfig({
 }
 
 export function BuildingPalette({
-  onPlaceBuilding,
+  onQueueBuild,
   selectedCell,
   disabled = false,
 }: BuildingPaletteProps) {
@@ -243,18 +301,20 @@ export function BuildingPalette({
 
   const handleCellClick = () => {
     if (!selectedBuilding || !selectedCell || disabled) return;
-    
+
     if (selectedBuilding === "stockpile") {
       setShowStockpileConfig(true);
+    } else if (selectedBuilding === "warehouse") {
+      setShowStockpileConfig(true);
     } else {
-      onPlaceBuilding(selectedBuilding, selectedCell);
+      onQueueBuild(selectedBuilding, selectedCell);
       setSelectedBuilding(null);
     }
   };
 
   const handleStockpileConfirm = (resource: string, capacity: number) => {
     if (selectedCell) {
-      onPlaceBuilding("stockpile", selectedCell, { resource, capacity });
+      onQueueBuild(selectedBuilding ?? "stockpile", selectedCell, { stockpile: { resource, max_qty: capacity } });
     }
     setShowStockpileConfig(false);
     setSelectedBuilding(null);
@@ -318,7 +378,7 @@ export function BuildingPalette({
             borderRadius: 4,
             border: "1px solid #bbdefb"
           }}>
-            Ready to place {BUILDING_CONFIGS.find(b => b.id === selectedBuilding)?.name}
+            Ready to queue {BUILDING_CONFIGS.find(b => b.id === selectedBuilding)?.name}
           </div>
         )}
 
@@ -379,7 +439,7 @@ export function BuildingPalette({
                 cursor: selectedCell ? "pointer" : "not-allowed",
               }}
             >
-              Place {BUILDING_CONFIGS.find(b => b.id === selectedBuilding)?.name}
+              Queue {BUILDING_CONFIGS.find(b => b.id === selectedBuilding)?.name}
             </button>
           </div>
         )}

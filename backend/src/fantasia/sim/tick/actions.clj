@@ -11,6 +11,7 @@
        (let [job (jobs/create-job :job/build-wall pos)]
          (swap! fantasia.sim.tick.core/*state jobs/assign-job! job agent-id)))))
 
+
 (defn place-wall-ghost! [pos]
    (let [world (core/get-state)
          [q r] pos
@@ -88,3 +89,39 @@
   (let [world (core/get-state)]
     (when (hex/in-bounds? (:map world) pos)
       (swap! fantasia.sim.tick.core/*state core/spawn-bear! pos))))
+
+(defn- enqueue-job!
+  [job]
+  (swap! fantasia.sim.tick.core/*state jobs/enqueue-job! job))
+
+(defn- job-already-queued?
+  [world job-type target structure]
+  (some (fn [job]
+          (and (= (:type job) job-type)
+               (= (:target job) target)
+               (or (nil? structure) (= (:structure job) structure))
+               (not= (:state job) :completed)))
+        (:jobs world)))
+
+(defn queue-build-job!
+  [structure pos stockpile]
+  (let [world (core/get-state)
+        [q r] pos
+        tile-key (vector q r)
+        tile (get-in world [:tiles tile-key])]
+    (when (hex/in-bounds? (:map world) pos)
+      (case structure
+        :shrine (core/place-shrine! pos)
+        :wall (when (nil? (:structure tile))
+                (when-not (job-already-queued? world :job/build-wall pos nil)
+                  (place-wall-ghost! pos)
+                  (enqueue-job! (jobs/create-job :job/build-wall pos))))
+        :house (when (nil? (:structure tile))
+                 (when-not (job-already-queued? world :job/build-house pos nil)
+                   (enqueue-job! (jobs/create-job :job/build-house pos))))
+        (when (nil? (:structure tile))
+          (when-not (job-already-queued? world :job/build-structure pos structure)
+            (enqueue-job!
+             (assoc (jobs/create-job :job/build-structure pos)
+                    :structure structure
+                    :stockpile stockpile))))))))
