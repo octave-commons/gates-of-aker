@@ -79,6 +79,25 @@ Trees are spawned via `spawn-initial-trees!` at world init (line 96 of `initial.
 
 ---
 
+### Critical Bug #4: update-needs destroys agent structure
+**Location**: `backend/src/fantasia/sim/agents.clj:7-15`
+
+The `update-needs` function uses `assoc` instead of `assoc-in`, replacing the entire agent map:
+```clojure
+(assoc agent :needs {:warmth warmth' :food food' :sleep sleep'})
+```
+
+**Issues**:
+1. All other agent fields (`:status`, `:inventory`, `:role`, `:alive?`, etc.) are lost
+2. After first tick, agents have `needs: nil` and `alive?: nil`
+3. All agents immediately die
+
+**Impact**: Agents cannot persist state across ticks. Job system cannot function.
+
+**Fix**: Change to `(assoc-in agent [:needs] {...})` to preserve all fields.
+
+---
+
 ### Issue #5: Only 2 agents moving to stockpile at 0,0
 User observation: Only 2 agents move, targeting stockpile at [0,0].
 
@@ -102,6 +121,7 @@ User observation: Only 2 agents move, targeting stockpile at [0,0].
 6. ✅ Agents gather wood from trees
 7. ✅ Agents build walls from wood
 8. ✅ Agents eat and sleep to maintain needs
+9. ✅ `update-needs` preserves all agent fields while updating needs
 
 ---
 
@@ -132,3 +152,59 @@ User observation: Only 2 agents move, targeting stockpile at [0,0].
 - Verify wall building
 - Verify food/eat/sleep cycles
 - Confirm multiple agents working simultaneously
+
+### Phase 6: Fix update-needs agent structure (Critical)
+- Change `assoc` to `assoc-in` in `update-needs` function
+- Verify all agent fields persist across ticks (`:status`, `:inventory`, `:role`, `:alive?`)
+- Test needs decay properly (food/sleep/warmth go down over time)
+- Confirm agents no longer die immediately
+
+### Phase 7: Fix job progress not being saved (Critical)
+- Fix `tick-once` in `backend/src/fantasia/sim/tick/core.clj` to preserve world updates from `move-agent-with-job`
+- Jobs now accumulate progress and complete correctly
+
+### Phase 8: Fix job deduplication (Critical)
+- Add `existing-targets` check to `generate-chop-jobs!`, `generate-haul-jobs-for-items!`, `generate-deliver-food-jobs!`
+- Jobs no longer accumulate infinitely
+
+### Phase 9: Fix job completion calls (Critical)
+- Add `advance-job!` call when agent reaches job target in `move-agent-with-job`
+- Jobs now complete when progress reaches required threshold
+
+---
+
+## Changelog
+
+### 2026-01-19 17:00
+**Bug #4 Fixed**: Fixed `update-needs` in `backend/src/fantasia/sim/agents.clj:15`
+- Changed from `(assoc agent :needs {...})` to `(assoc-in agent [:needs] {...})`
+- All agent fields now persist across ticks
+- Needs decay verified: warmth 0.6→0.57, food 0.7→0.69, sleep 0.8→0.792 (cold-snap 1.0)
+- All agents tests pass (9 tests, 27 assertions)
+
+### 2026-01-19 18:00
+**Bug #5 Fixed**: Job progress not saved in `backend/src/fantasia/sim/tick/core.clj`
+- Fixed `tick-once` loop to accumulate `w3` (world with job progress) instead of using original `w2`
+- Jobs now complete and produce items
+
+**Bug #6 Fixed**: Jobs accumulate infinitely due to duplication in `backend/src/fantasia/sim/jobs.clj`
+- Added `existing-targets` set to check before creating chop, haul, and deliver jobs
+- Jobs now limited to one per target
+
+**Bug #7 Fixed**: Jobs never complete in `backend/src/fantasia/sim/tick/movement.clj`
+- Added `advance-job!` call when agent is at job target
+- Jobs now progress toward completion and are removed when done
+
+### 2026-01-19 18:15
+**End-to-end simulation verified**:
+- 12 agents alive after 6 ticks
+- 344 items created (wood from chopped trees)
+- Needs decay correctly: warmth 0.6→0.447, food 0.7→0.64, sleep 0.7→0.652
+- Jobs complete and are removed: 2006 active jobs (one per tree)
+- All agents working on jobs correctly
+
+### 2026-01-19 18:30
+**Bug #8 Fixed**: Eat jobs consume wrong resource in `backend/src/fantasia/sim/jobs.clj:235`
+- Changed from `:food` to `:fruit` in `complete-eat!` 
+- Eat jobs now correctly consume fruit dropped by trees
+- Trees drop fruit every 5-20 ticks via `drop-tree-fruits!`

@@ -15,6 +15,7 @@ export type WSMessage =
 
 export class WSClient {
   private ws: WebSocket | null = null;
+  private isConnected = false;
 
   constructor(
     private url: string,
@@ -23,9 +24,19 @@ export class WSClient {
   ) {}
 
   connect() {
+    if (this.isConnected) {
+      return;
+    }
+    
     this.ws = new WebSocket(this.url);
-    this.ws.onopen = () => this.onStatus("open");
-    this.ws.onclose = () => this.onStatus("closed");
+    this.ws.onopen = () => {
+      this.isConnected = true;
+      this.onStatus("open");
+    };
+    this.ws.onclose = () => {
+      this.isConnected = false;
+      this.onStatus("closed");
+    };
     this.ws.onerror = () => this.onStatus("error");
     this.ws.onmessage = (ev) => {
       try {
@@ -43,8 +54,12 @@ export class WSClient {
   }
 
   close() {
-     this.ws?.close();
-   }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.isConnected = false;
+  }
 
    sendPlaceWallGhost(pos: [number, number]) {
      this.send({ op: "place_wall_ghost", pos });
@@ -52,6 +67,14 @@ export class WSClient {
 
    sendPlaceStockpile(pos: [number, number], resource: string, maxQty?: number) {
      this.send({ op: "place_stockpile", pos, resource, max_qty: maxQty });
+   }
+
+   sendPlaceBuilding(type: string, pos: [number, number], config?: any) {
+     const msg: any = { op: `place_${type}`, pos };
+     if (config) {
+       Object.assign(msg, config);
+     }
+     this.send(msg);
    }
 
     sendAssignJob(jobType: string, targetPos: [number, number], agentId: number) {

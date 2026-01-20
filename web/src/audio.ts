@@ -7,6 +7,7 @@ type AudioState = {
   masterGain: GainNode | null;
   isMuted: boolean;
   isInitialized: boolean;
+  hasUserInteracted: boolean;
 };
 
 const state: AudioState = {
@@ -14,6 +15,7 @@ const state: AudioState = {
   masterGain: null,
   isMuted: false,
   isInitialized: false,
+  hasUserInteracted: false,
 };
 
 function ensureInitialized() {
@@ -83,7 +85,15 @@ export function hexToFrequency(hex: string): number {
   return PENTATONIC_SCALE[Math.min(index, PENTATONIC_SCALE.length - 1)];
 }
 
+export function markUserInteraction(): void {
+  state.hasUserInteracted = true;
+}
+
 export function playTone(frequency: number, duration: number = 0.1): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+  
   if (!ensureInitialized()) {
     return;
   }

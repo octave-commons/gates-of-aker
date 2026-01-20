@@ -12,7 +12,7 @@
         warmth' (f/clamp01 (- warmth (* 0.03 cold)))
         food' (f/clamp01 (- (get-in agent [:needs :food] 0.7) 0.01))
         sleep' (f/clamp01 (- (get-in agent [:needs :sleep] 0.7) 0.008))]
-    (assoc agent :needs {:warmth warmth' :food food' :sleep sleep'})))
+    (assoc-in agent [:needs] {:warmth warmth' :food food' :sleep sleep'})))
 
 (defn choose-packet
   "Convert agent state + local context into a broadcast packet."

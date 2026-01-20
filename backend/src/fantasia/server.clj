@@ -136,6 +136,26 @@
             (do (sim/place-warehouse! (:pos msg) (:resource msg) (:max_qty msg))
                 (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
 
+            "place_campfire"
+            (do (sim/place-campfire! (:pos msg))
+                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+
+            "place_statue_dog"
+            (do (sim/place-statue-dog! (:pos msg))
+                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+
+            "place_tree"
+            (do (sim/place-tree! (:pos msg))
+                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+
+            "place_wolf"
+            (do (sim/place-wolf! (:pos msg))
+                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
+
+            "place_bear"
+            (do (sim/place-bear! (:pos msg))
+                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
+
              "assign_job"
              (let [agent-id (:agent_id msg)
                    job-type (:job_type msg)

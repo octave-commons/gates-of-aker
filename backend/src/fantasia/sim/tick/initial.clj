@@ -92,10 +92,10 @@
            :trace-max 250}
          world-with-biomes (biomes/generate-biomes! base-world)
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)
-         world-with-trees (trees/spawn-initial-trees! world-with-resources tree-density)
-         world-with-warehouse (assoc-in world-with-trees [:tiles "0,0"] {:terrain :ground :structure :warehouse :resource nil})
-         world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :food 200)
-         world-with-food (jobs/add-item! world-with-stockpile [0 0] :food 10)]
+          world-with-trees (trees/spawn-initial-trees! world-with-resources tree-density)
+          world-with-warehouse (assoc-in world-with-trees [:tiles "0,0"] {:terrain :ground :structure :warehouse :resource nil})
+          world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :food 200)
+          world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :food 10)]
      (println "Warehouse created:" (get-in world-with-food [:tiles "0,0"]))
      (println "Stockpiles:" (:stockpiles world-with-food))
      (println "Items:" (:items world-with-food))

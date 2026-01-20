@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
-import { playTone } from "./audio";
+import { playTone, markUserInteraction } from "./audio";
   import {
       AgentCard,
       AgentList,
@@ -13,15 +13,18 @@ import { playTone } from "./audio";
       SimulationCanvas,
       StatusBar,
       TickControls,
-      TraceFeed,
       BuildControls,
+      BuildingPalette,
       JobQueuePanel,
       TreeSpreadControls,
     } from "./components";
+import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
 import { clamp01, fmt, colorForRole } from "./utils";
 import { CONFIG } from "./config/constants";
+
+const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
 
 export function App() {
   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
@@ -55,8 +58,10 @@ export function App() {
   const [worldHeight, setWorldHeight] = useState<number | null>(null);
   const [treeDensity, setTreeDensity] = useState<number>(CONFIG.data.DEFAULT_TREE_DENSITY);
 
-   const [tracesCollapsed, setTracesCollapsed] = useState(false);
-   const [jobsCollapsed, setJobsCollapsed] = useState(false);
+   const [tracesCollapsed, setTracesCollapsed] = useState(true);
+   const [jobsCollapsed, setJobsCollapsed] = useState(true);
+   const [leverControlsCollapsed, setLeverControlsCollapsed] = useState(true);
+   const [treeSpreadCollapsed, setTreeSpreadCollapsed] = useState(true);
    const [isInitializing, setIsInitializing] = useState(false);
    const [isRunning, setIsRunning] = useState(false);
 
@@ -69,10 +74,14 @@ export function App() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("click", markUserInteraction);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("click", markUserInteraction);
+    };
   }, [isRunning]);
 
- 
+
   const client = useMemo(() => {
     const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
     const wsUrl = backendOrigin.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
@@ -162,17 +171,17 @@ export function App() {
       try {
         const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
         const response = await fetch(`${backendOrigin}/sim/state`);
-        
+
         if (response.ok) {
           const state = await response.json();
-          
+
           // Check if the state has meaningful data
           const hasData = state && (
-            (state.tick && state.tick > 0) || 
+            (state.tick && state.tick > 0) ||
             (state.agents && state.agents.length > 0) ||
             (state.ledger && Object.keys(state.ledger).length > 0)
           );
-          
+
           if (hasData) {
              setTick(state.tick ?? 0);
              setSnapshot(state);
@@ -256,10 +265,14 @@ export function App() {
       setSelectedAgentId(agentId);
     };
 
-  const placeShrineAtSelected = () => {
-    if (!selectedCell) return;
-    client.send({ op: "place_shrine", pos: selectedCell });
-  };
+   const placeShrineAtSelected = () => {
+     if (!selectedCell) return;
+     client.send({ op: "place_shrine", pos: selectedCell });
+   };
+
+   const handlePlaceBuilding = (type: string, pos: [number, number], config?: any) => {
+     client.sendPlaceBuilding(type, pos, config);
+   };
 
   const applyLevers = () => {
     client.send({
@@ -278,6 +291,79 @@ export function App() {
     client.sendSetTreeSpreadLevers(clamp01(spreadProbability), minInterval, maxInterval);
   };
 
+  const recentEvents = useMemo(() => {
+    if (!snapshot) return [];
+    return snapshot?.["recent-events"] ?? snapshot?.recentEvents ?? snapshot?.recent_events ?? [];
+  }, [snapshot]);
+  const mouthpieceId = useMemo(() => {
+    if (!snapshot?.levers) return null;
+    return snapshot.levers?.["mouthpiece-agent-id"] ?? snapshot.levers?.mouthpiece_agent_id ?? null;
+  }, [snapshot?.levers]);
+  const agents = useMemo(() => {
+    if (!snapshot?.agents) return [];
+    return snapshot.agents as Agent[];
+  }, [snapshot?.agents]);
+  const jobs = useMemo(() => {
+    if (!snapshot?.jobs) return [];
+    return snapshot.jobs as any[];
+  }, [snapshot?.jobs]);
+  const attribution = useMemo(() => {
+    if (!snapshot?.attribution) return {};
+    return snapshot.attribution ?? {};
+  }, [snapshot?.attribution]);
+
+  const selectedTile = useMemo(() => {
+    try {
+      if (!selectedCell || !snapshot?.tiles) return null;
+      return snapshot.tiles[`${selectedCell[0]},${selectedCell[1]}`] ?? null;
+    } catch (error) {
+      console.error("Error in selectedTile useMemo:", error);
+      return null;
+    }
+  }, [selectedCell, snapshot?.tiles]);
+
+  const selectedTileAgents = useMemo(() => {
+    try {
+      if (!selectedCell || !agents || agents.length === 0) return [];
+      return agents.filter((a: Agent) => {
+        try {
+          if (!hasPos(a)) return false;
+          const [aq, ar] = a.pos as AxialCoords;
+          return aq === selectedCell[0] && ar === selectedCell[1];
+        } catch (error) {
+          console.error("Error filtering agent:", error, a);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error("Error in selectedTileAgents useMemo:", error);
+      return [];
+    }
+  }, [selectedCell, agents]);
+
+  const selectedAgent = useMemo(() => {
+    try {
+      if (selectedAgentId == null || !agents || agents.length === 0) return null;
+      return agents.find((a: Agent) => a.id === selectedAgentId) ?? null;
+    } catch (error) {
+      console.error("Error in selectedAgent useMemo:", error);
+      return null;
+    }
+  }, [selectedAgentId, agents]);
+
+  const getAgentJob = useCallback((agentId: number) => {
+    try {
+      if (!jobs || jobs.length === 0) return null;
+      const targetAgent = agents?.find((a: Agent) => a.id === agentId);
+      const currentJobId = targetAgent?.current_job ?? selectedAgent?.current_job;
+      if (currentJobId == null) return null;
+      return jobs.find((j: any) => j.id === currentJobId);
+    } catch (error) {
+      console.error("Error in getAgentJob:", error);
+      return null;
+    }
+  }, [agents, jobs, selectedAgent]);
+
   const setMouthpieceToSelected = () => {
     if (selectedAgentId == null) return;
     client.send({ op: "appoint_mouthpiece", agent_id: selectedAgentId });
@@ -288,29 +374,12 @@ export function App() {
     reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
   };
 
-  const recentEvents = snapshot?.["recent-events"] ?? snapshot?.recentEvents ?? snapshot?.recent_events ?? [];
-  const mouthpieceId = snapshot?.levers?.["mouthpiece-agent-id"] ?? snapshot?.levers?.mouthpiece_agent_id ?? null;
-  const selectedAgent =
-    selectedAgentId == null ? null : (snapshot?.agents ?? []).find((a: Agent) => a.id === selectedAgentId) ?? null;
-  const attribution = snapshot?.attribution ?? {};
-  const agents: Agent[] = (snapshot?.agents ?? []) as Agent[];
-  const jobs = (snapshot?.jobs ?? []) as any[];
-  
-  const getAgentJob = (agentId: number) => {
-    const currentJobId = selectedAgent?.current_job ?? (agents.find((a: Agent) => a.id === agentId) as any)?.current_job;
-    return jobs.find((j: any) => j.id === currentJobId);
-  };
-
-  const selectedTile = selectedCell ? snapshot?.tiles?.[`${selectedCell[0]},${selectedCell[1]}`] : null;
-  const selectedTileAgents = selectedCell ? (snapshot?.agents ?? []).filter((a: Agent) => {
-    if (!hasPos(a)) return false;
-      const [aq, ar] = a.pos as AxialCoords;
-      return aq === selectedCell[0] && ar === selectedCell[1];
-    }) : [];
-
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 16, padding: 16, height: "calc(100vh - 32px)" }}>
-      <div style={{ overflow: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+    <div
+      onClick={() => markUserInteraction()}
+      style={{ display: "grid", gridTemplateColumns: "1fr 320px 320px", overflow: "hidden", margin: 0 }}
+    >
+      <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
         {/* Loading overlay for snapshot initialization */}
         {isInitializing && !snapshot && (
           <div style={{
@@ -335,7 +404,7 @@ export function App() {
             </div>
           </div>
         )}
-        
+
         <SimulationCanvas
           snapshot={snapshot}
           mapConfig={mapConfig}
@@ -407,8 +476,10 @@ export function App() {
         )}
       </div>
 
-      <div style={{ overflow: "auto", paddingRight: 8 }}>
+      <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
         <StatusBar status={status} />
+
+        {/* Time controls */}
         <TickControls
            onTick={sendTick}
            onReset={() => reset(1, undefined, treeDensity)}
@@ -420,35 +491,132 @@ export function App() {
            onToggleRun={toggleRun}
          />
 
-        <BuildControls
-           onPlaceWallGhost={(pos) => client.sendPlaceWallGhost(pos)}
-           onPlaceStockpile={(pos, resource, maxQty) => client.sendPlaceStockpile(pos, resource, maxQty)}
-           onToggleBuildMode={() => setBuildMode(!buildMode)}
-           buildMode={buildMode}
-           selectedCell={selectedCell}
-         />
+        {/* FPS controls */}
+        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+           <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>FPS Control</h3>
+           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+             <label style={{ fontSize: 12 }}>
+               {fps} FPS:
+             </label>
+             <input
+               type="range"
+               min={1}
+               max={120}
+               value={fps}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value, 10);
+                 if (!isNaN(val)) setFpsValue(val);
+               }}
+               style={{ flex: 1 }}
+             />
+           </div>
+         </div>
 
-        <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-          <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>FPS Control</h3>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12 }}>
-              {fps} FPS:
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={120}
-              value={fps}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val)) setFpsValue(val);
-              }}
-              style={{ flex: 1 }}
-            />
+        {/* Third view: Selected + Agents under the tile view */}
+        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, maxHeight: 320, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)" }}>
+          <SelectedPanel
+            selectedCell={selectedCell}
+            selectedAgentId={selectedAgentId}
+            selectedAgent={selectedAgent}
+            mouthpieceId={mouthpieceId}
+          />
+          <div style={{ marginTop: 12 }}>
+            <AgentList agents={agents} jobs={jobs} collapsible />
+          </div>
+        </div>
+        <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />
+
+        {/* Tick counter display */}
+        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+          <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Tick Counter</h3>
+          <div style={{ fontSize: 16, fontWeight: "bold", textAlign: "center" }}>
+            {tick}
           </div>
         </div>
 
-         <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />
+        {/* Collapsible levers panel */}
+        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+              padding: "8px 0",
+              borderBottom: "1px solid #ddd"
+            }}
+            onClick={() => setLeverControlsCollapsed(!leverControlsCollapsed)}
+          >
+            <strong style={{ margin: 0 }}>Levers</strong>
+            <span style={{
+              fontSize: "1.2em",
+              color: "#666",
+              transition: "transform 0.2s ease",
+              transform: leverControlsCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
+            }}>
+              ▼
+            </span>
+          </div>
+          {!leverControlsCollapsed && (
+            <div style={{ marginTop: 8 }}>
+              <LeverControls
+                tick={tick}
+                fireToPatron={fireToPatron}
+                lightningToStorm={lightningToStorm}
+                stormToDeity={stormToDeity}
+                onFireChange={setFireToPatron}
+                onLightningChange={setLightningToStorm}
+                onStormChange={setStormToDeity}
+                onApply={applyLevers}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Collapsible tree spread panel */}
+        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+              padding: "8px 0",
+              borderBottom: "1px solid #ddd"
+            }}
+            onClick={() => setTreeSpreadCollapsed(!treeSpreadCollapsed)}
+          >
+            <strong style={{ margin: 0 }}>Tree Spread</strong>
+            <span style={{
+              fontSize: "1.2em",
+              color: "#666",
+              transition: "transform 0.2s ease",
+              transform: treeSpreadCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
+            }}>
+              ▼
+            </span>
+          </div>
+          {!treeSpreadCollapsed && (
+            <div style={{ marginTop: 8 }}>
+              <TreeSpreadControls
+                spreadProbability={spreadProbability}
+                minInterval={minInterval}
+                maxInterval={maxInterval}
+                onSpreadProbabilityChange={setSpreadProbability}
+                onMinIntervalChange={setMinInterval}
+                onMaxIntervalChange={setMaxInterval}
+                onApply={applyTreeSpreadLevers}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
+        <BuildingPalette
+           onPlaceBuilding={handlePlaceBuilding}
+           selectedCell={selectedCell}
+         />
 
          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
@@ -510,114 +678,38 @@ export function App() {
            </div>
          </div>
 
-        <LeverControls
-          tick={tick}
-          fireToPatron={fireToPatron}
-          lightningToStorm={lightningToStorm}
-          stormToDeity={stormToDeity}
-          onFireChange={setFireToPatron}
-          onLightningChange={setLightningToStorm}
-          onStormChange={setStormToDeity}
-          onApply={applyLevers}
-        />
 
-        <TreeSpreadControls
-          spreadProbability={spreadProbability}
-          minInterval={minInterval}
-          maxInterval={maxInterval}
-          onSpreadProbabilityChange={setSpreadProbability}
-          onMinIntervalChange={setMinInterval}
-          onMaxIntervalChange={setMaxInterval}
-          onApply={applyTreeSpreadLevers}
-        />
 
-        <SelectedPanel
-          selectedCell={selectedCell}
-          selectedAgentId={selectedAgentId}
-          selectedAgent={selectedAgent}
-          mouthpieceId={mouthpieceId}
-          style={{ marginTop: 12 }}
-        />
+         <div style={{ marginTop: 12 }}>
+           <div
+             style={{
+               display: "flex",
+               justifyContent: "space-between",
+               alignItems: "center",
+               cursor: "pointer",
+               padding: "8px 0",
+               borderBottom: tracesCollapsed ? "1px solid #ddd" : "none"
+             }}
+             onClick={() => setTracesCollapsed(!tracesCollapsed)}
+           >
+             <strong style={{ margin: 0 }}>Traces</strong>
+             <span style={{ opacity: 0.7, marginRight: 8 }}>({traces.length})</span>
+             <span style={{
+               fontSize: "1.2em",
+               color: "#666",
+               transition: "transform 0.2s ease",
+               transform: tracesCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
+             }}>
+               ▼
+             </span>
+             </div>
 
-        <div style={{ marginTop: 12 }}>
-           <AgentList agents={agents} jobs={jobs} collapsible />
+           {!tracesCollapsed && (
+             <div style={{ marginTop: 8 }}>
+               <TraceFeed traces={traces} />
+             </div>
+           )}
          </div>
-
-        <div style={{ marginTop: 12 }}>
-          <div 
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-              padding: "8px 0",
-              borderBottom: tracesCollapsed ? "1px solid #ddd" : "none"
-            }}
-            onClick={() => setTracesCollapsed(!tracesCollapsed)}
-          >
-            <strong style={{ margin: 0 }}>Traces</strong> 
-            <span style={{ opacity: 0.7, marginRight: 8 }}>({traces.length})</span>
-            <span style={{ 
-              fontSize: "1.2em", 
-              color: "#666",
-              transition: "transform 0.2s ease",
-              transform: tracesCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
-            }}>
-              ▼
-            </span>
-          </div>
-          
-          {!tracesCollapsed && (
-            <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
-              {[...traces].reverse().map((trace: Trace, idx) => (
-            <div
-              key={trace["trace/id"] ?? idx}
-              data-testid="trace-card"
-              style={{ border: "1px solid #aaa", borderRadius: 10, padding: 10 }}
-            >
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <div>
-                  <strong>{trace["trace/id"]}</strong>
-                </div>
-                <div style={{ opacity: 0.7 }}>tick {trace.tick}</div>
-                <div style={{ opacity: 0.7 }}>
-                  {trace.speaker} → {trace.listener}
-                </div>
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <strong>packet</strong> <span style={{ opacity: 0.7 }}>{trace.packet?.intent}</span>
-                {trace.packet?.facets && (
-                  <span style={{ marginLeft: 6 }}>
-                    facets: {Array.isArray(trace.packet.facets) ? trace.packet.facets.join(", ") : trace.packet.facets}
-                  </span>
-                )}
-                {trace.packet?.["claim-hint"] ? (
-                  <span style={{ marginLeft: 6, opacity: 0.7 }}>hint: {String(trace.packet?.["claim-hint"])} </span>
-                ) : null}
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <strong>spread</strong>
-                <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
-                  {(trace.spread ?? []).slice(0, 12).map((entry: any, i: number) => (
-                    <div key={i} style={{ fontFamily: "monospace", fontSize: 12 }}>
-                      {String(entry.from)} → {String(entry.to)} w={fmt(entry.w)} Δ={fmt(entry.delta)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ marginTop: 8, fontFamily: "monospace" }}>
-                <strong>event</strong> {trace["event-recall"]?.["event-type"]} Δ=
-                {fmt(trace["event-recall"]?.delta)} new={fmt(trace["event-recall"]?.new)}
-              </div>
-              <div style={{ marginTop: 8, fontFamily: "monospace" }}>
-                <strong>mention</strong> {trace.mention?.["event-type"]}/{trace.mention?.claim} w=
-                {fmt(trace.mention?.weight)}
-              </div>
-            </div>
-          ))}
-            </div>
-          )}
-        </div>
 
         <AttributionPanel data={attribution} style={{ marginTop: 12 }} />
         <EventFeed events={recentEvents} title="Recent events (snapshot)" compact collapsible />

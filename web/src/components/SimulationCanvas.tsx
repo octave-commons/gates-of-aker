@@ -4,7 +4,7 @@ import { Agent, hasPos, PathPoint } from "../types";
 import type { HexConfig } from "../hex";
 import { axialToPixel, pixelToAxial, hexCorner, getMapBoundsInPixels, type AxialCoords } from "../hex";
 import { hexToFrequency, playTone } from "../audio";
-import { colorForRole } from "../utils";
+import { colorForRole, getAgentIcon } from "../utils";
 import { CONFIG } from "../config/constants";
 
 type CameraState = {
@@ -245,35 +245,74 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
          ctx.setLineDash([]);
          ctx.lineWidth = 1;
        }
-        if (tile?.structure === "wall") {
-          ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-            const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE - 3, i);
-            if (i === 0) {
-              ctx.moveTo(cx, cy);
-            } else {
-              ctx.lineTo(cx, cy);
-            }
-          }
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-     }
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = "#111";
+         if (tile?.structure === "wall") {
+           ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
+           ctx.beginPath();
+           for (let i = 0; i < 6; i++) {
+             const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE - 3, i);
+             if (i === 0) {
+               ctx.moveTo(cx, cy);
+             } else {
+               ctx.lineTo(cx, cy);
+             }
+           }
+           ctx.closePath();
+           ctx.fill();
+           ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
+           ctx.lineWidth = 1;
+           ctx.stroke();
+         }
 
-    if (Array.isArray(snapshot.shrine) && snapshot.shrine.length === 2) {
-      const [sq, sr] = snapshot.shrine as AxialCoords;
-      const [sx, sy] = axialToPixel([sq, sr], size);
-      ctx.fillStyle = CONFIG.colors.SHRINE;
-      ctx.beginPath();
-      ctx.arc(sx, sy, CONFIG.canvas.HEX_SIZE * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+         // Render additional structures
+         if (tile?.structure === "campfire") {
+           ctx.fillStyle = "#ff6b00";
+           ctx.beginPath();
+           ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.3, 0, Math.PI * 2);
+           ctx.fill();
+           
+           // Add flames effect
+           ctx.fillStyle = "#ffa726";
+           ctx.beginPath();
+           ctx.arc(px - 2, py - 2, CONFIG.canvas.HEX_SIZE * 0.15, 0, Math.PI * 2);
+           ctx.fill();
+         }
+
+         if (tile?.structure === "statue/dog") {
+           ctx.fillStyle = "#9e9e9e";
+           ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.6);
+           ctx.strokeStyle = "#616161";
+           ctx.lineWidth = 1;
+           ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.6);
+         }
+
+         if (tile?.structure === "warehouse") {
+           ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
+           ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
+           ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
+           ctx.lineWidth = 2;
+           ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
+           
+           // Add roof detail
+           ctx.fillStyle = "#757575";
+           ctx.beginPath();
+           ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.5, py - CONFIG.canvas.HEX_SIZE * 0.3);
+           ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.5);
+           ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.5, py - CONFIG.canvas.HEX_SIZE * 0.3);
+           ctx.closePath();
+           ctx.fill();
+         }
+     }
+     ctx.globalAlpha = 1;
+     ctx.strokeStyle = "#111";
+
+     if (Array.isArray(snapshot.shrine) && snapshot.shrine.length === 2) {
+       const [sq, sr] = snapshot.shrine as AxialCoords;
+       const [sx, sy] = axialToPixel([sq, sr], size);
+       ctx.fillStyle = CONFIG.colors.SHRINE;
+       ctx.beginPath();
+       ctx.arc(sx, sy, CONFIG.canvas.HEX_SIZE * 0.5, 0, Math.PI * 2);
+       ctx.fill();
+     }
 
     const stockpiles = snapshot.stockpiles ?? {};
     for (const [tileKey, stockpile] of Object.entries(stockpiles)) {
@@ -360,6 +399,15 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       ctx.fillStyle = agentColor;
       ctx.arc(ax, ay, CONFIG.canvas.HEX_SIZE * 0.35, 0, Math.PI * 2);
       ctx.fill();
+
+      // Draw agent icon
+      ctx.fillStyle = "white";
+      const fontSize = CONFIG.canvas.HEX_SIZE * 0.4;
+      ctx.font = `${fontSize}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const icon = getAgentIcon(agent.role);
+      ctx.fillText(icon, ax, ay);
 
       if (agent.id === selectedAgentId) {
         ctx.beginPath();

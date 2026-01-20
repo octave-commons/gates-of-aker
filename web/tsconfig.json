@@ -7,8 +7,26 @@
     "jsx": "react-jsx",
     "strict": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsc/tsbuildinfo",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
   },
-  "include": ["src"],
-  "exclude": ["../src", "../node_modules", "../dist"]
+  "include": ["src", "vite.config.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ]
 }

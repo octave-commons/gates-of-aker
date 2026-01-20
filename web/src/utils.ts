@@ -10,9 +10,28 @@ const colorForRole = (role?: string): string => {
       return CONFIG.colors.ROLE.priest;
     case "knight":
       return CONFIG.colors.ROLE.knight;
+    case "wolf":
+      return "#795548";
+    case "bear":
+      return "#5d4037";
     default:
       return CONFIG.colors.ROLE.default;
   }
 };
 
-export { clamp01, fmt, colorForRole };
+const getAgentIcon = (role?: string): string => {
+  switch (role) {
+    case "priest":
+      return "✝";
+    case "knight":
+      return "⚔";
+    case "wolf":
+      return "🐺";
+    case "bear":
+      return "🐻";
+    default:
+      return "👤";
+  }
+};
+
+export { clamp01, fmt, colorForRole, getAgentIcon };
