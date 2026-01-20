@@ -147,9 +147,11 @@
 
 (defn- stockpile-accepts? [sp resource]
   (let [sp-resource (:resource sp)
-        wood? #(contains? #{:wood :log} %)]
+        wood? #(contains? #{:wood :log} %)
+        food? #(contains? #{:fruit :berry :raw-meat :cooked-meat :stew} %)]
     (or (= sp-resource resource)
-        (and (wood? sp-resource) (wood? resource)))))
+        (and (wood? sp-resource) (wood? resource))
+        (and (food? sp-resource) (food? resource)))))
 
 (defn- stockpile-for-structure [structure]
   (case structure
@@ -163,6 +165,7 @@
   (case resource
     :log :lumberyard
     :fruit :orchard
+    :berry :orchard
     :grain :granary
     :rock :quarry
     nil))
@@ -659,19 +662,28 @@
 
 (defn complete-eat! [world job agent-id]
    (let [target (:target job)
-         [w' consumed] (consume-items! world target :fruit 1)
-         [w'' stocked] (if (pos? consumed)
-                         [w' 0]
-                         (take-from-stockpile! w' target :fruit 1))
-         total (max consumed stocked)]
+         [w' consumed-fruit] (consume-items! world target :fruit 1)
+         [w'' consumed-berry] (if (pos? consumed-fruit)
+                                  [w' 0]
+                                  (consume-items! w' target :berry 1))
+         [w''' stocked] (if (pos? (+ consumed-fruit consumed-berry))
+                           [w'' 0]
+                           (if (pos? consumed-fruit)
+                             (take-from-stockpile! w'' target :fruit 1)
+                             (take-from-stockpile! w'' target :berry 1)))
+         total (max consumed-fruit consumed-berry stocked)
+         food-type (cond
+                    (pos? consumed-fruit) "fruit"
+                    (pos? consumed-berry) "berry"
+                    :else "food")]
      (if (pos? total)
-       (let [world' (assoc-in w'' [:agents agent-id :needs :food] 1.0)]
+       (let [world' (assoc-in w''' [:agents agent-id :needs :food] 1.0)]
          (println "[JOB:COMPLETE]"
                   {:type :job/eat
                    :target target
-                   :outcome (format "Consumed 1 fruit, need food=1.0")})
+                   :outcome (format "Consumed 1 %s, need food=1.0" food-type)})
          world')
-       w'')))
+       w''')))
 
 (defn complete-warm-up! [world job agent-id]
   (let [target (:target job)
@@ -857,18 +869,20 @@
                   warmth-cold (get thresholds :warmth-cold 0.3)
                   sleep-tired (get thresholds :sleep-tired 0.3)
                   sleep-threshold (if night? (max sleep-tired 0.6) sleep-tired)
-                  pos (:pos agent)
-                  agent-id (:id agent)
-                  campfire-pos (find-campfire-pos w)
-                  fruit-pos (->> (:items w)
-                                 (keep (fn [[k items]]
-                                         (when (pos? (get items :fruit 0))
-                                           (parse-key-pos k))))
-                                 (sort-by (fn [p] (hex/distance pos p)))
-                                 first)
-                  stockpile-pos (find-nearest-stockpile-with-qty w pos :fruit)
-                  food-pos (or fruit-pos stockpile-pos pos)
-                  has-eat-job? (some #(and (= (:type %) :job/eat) (= (:target %) food-pos)) (:jobs w))
+                   pos (:pos agent)
+                   agent-id (:id agent)
+                   campfire-pos (find-campfire-pos w)
+                   fruit-pos (->> (:items w)
+                                  (keep (fn [[k items]]
+                                          (when (or (pos? (get items :fruit 0))
+                                                    (pos? (get items :berry 0)))
+                                            (parse-key-pos k))))
+                                  (sort-by (fn [p] (hex/distance pos p)))
+                                  first)
+                   stockpile-pos (or (find-nearest-stockpile-with-qty w pos :fruit)
+                                    (find-nearest-stockpile-with-qty w pos :berry))
+                   food-pos (or fruit-pos stockpile-pos pos)
+                   has-eat-job? (some #(and (= (:type %) :job/eat) (= (:target %) food-pos)) (:jobs w))
                   has-warm-job? (some #(and (= (:type %) :job/warm-up) (= (:target %) campfire-pos)) (:jobs w))
                   has-sleep-job? (some #(and (= (:type %) :job/sleep) (= (:target %) pos)) (:jobs w))
                   already-has-job? (some #(= (:worker-id %) agent-id) (:jobs w))]

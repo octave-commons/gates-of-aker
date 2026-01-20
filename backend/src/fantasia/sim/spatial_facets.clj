@@ -134,9 +134,11 @@
     ["bear" "predator" "ferocious" "strong" "wild" "danger" "animal" "hostile" "aggressive"])
   (register-entity-facets! :tree
     ["tree" "wood" "forest" "resource" "nature" "standing" "plant" "material"])
-  (register-entity-facets! :fruit
-    ["fruit" "food" "nourishment" "edible" "gather" "resource" "nature" "sweet"])
-  (register-entity-facets! :stockpile
+   (register-entity-facets! :fruit
+     ["fruit" "food" "nourishment" "edible" "gather" "resource" "nature" "sweet"])
+   (register-entity-facets! :berry
+     ["berry" "bush" "wild" "food" "nourishment" "edible" "gather" "resource" "nature" "small" "fruit"])
+   (register-entity-facets! :stockpile
     ["stockpile" "storage" "safe" "protected" "structure" "resource" "organized" "supplies"])
   (register-entity-facets! :campfire
     ["fire" "warmth" "light" "camp" "safe" "community" "comfort" "protection" "warm"])
@@ -190,6 +192,7 @@
         (cond
           (= resource :tree) (get-entity-facets :tree)
           (= resource :fruit) (get-entity-facets :fruit)
+          (= resource :berry) (get-entity-facets :berry)
           :else [])
 
          terrain

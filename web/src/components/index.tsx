@@ -1,10 +1,7 @@
 export { RawJSONFeedPanel } from "./RawJSONFeedPanel";
 export { SelectedPanel } from "./SelectedPanel";
-export { AttributionPanel } from "./AttributionPanel";
-export { LedgerPanel } from "./LedgerPanel";
 export { StatusBar } from "./StatusBar";
 export { TickControls } from "./TickControls";
-export { LeverControls } from "./LeverControls";
 export { BuildControls } from "./BuildControls";
 export { BuildingPalette } from "./BuildingPalette";
 export { SimulationCanvas } from "./SimulationCanvas";
@@ -14,6 +11,6 @@ export { EventCard } from "./EventCard";
 export { EventFeed } from "./EventFeed";
 export { TraceFeed } from "./TraceFeed";
 export { JobQueuePanel } from "./JobQueuePanel";
-export { TreeSpreadControls } from "./TreeSpreadControls";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { WorldInfoPanel } from "./WorldInfoPanel";
+export { ThoughtsPanel } from "./ThoughtsPanel";

@@ -65,25 +65,28 @@
          (be/add-component entity-id (c/->Recall (:recall agent-data))))]))
 
 (defn import-tile [ecs-world tile-key tile-data]
-  "Import old-style tile map into ECS.
-   Returns updated-ecs-world"
-  (let [[q r] (clojure.string/split tile-key #",")
-        q (Integer/parseInt q)
-        r (Integer/parseInt r)
-        terrain (:terrain tile-data)
-        biome (:biome tile-data)
-        structure (:structure tile-data)
-        resource (:resource tile-data)
-        result (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource)
-        world' (nth result 2)]
-    world'))
+   "Import old-style tile map into ECS.
+    Returns updated-ecs-world"
+   (let [tile-key-str (if (keyword? tile-key) (name tile-key) tile-key)]
+     (when (and tile-key-str (clojure.string/includes? tile-key-str ","))
+       (let [[q r] (clojure.string/split tile-key-str #",")
+             q (Integer/parseInt q)
+             r (Integer/parseInt r)
+             terrain (:terrain tile-data)
+             biome (:biome tile-data)
+             structure (:structure tile-data)
+             resource (:resource tile-data)
+             result (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource)]
+         (nth result 2)))))
 
 (defn import-stockpile [ecs-world tile-key contents]
-  "Import old-style stockpile into ECS.
-   Returns updated-ecs-world"
-  (let [result (fantasia.sim.ecs.core/create-stockpile ecs-world tile-key)
-        world' (second result)]
-    world'))
+   "Import old-style stockpile into ECS.
+    Returns updated-ecs-world"
+   (when tile-key
+     (let [tile-key-str (if (keyword? tile-key) (name tile-key) tile-key)
+           result (fantasia.sim.ecs.core/create-stockpile ecs-world tile-key-str)
+           world' (second result)]
+       world')))
 
 (defn import-world-to-ecs [old-world]
   "Convert entire old-style world to ECS.

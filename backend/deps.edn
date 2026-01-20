@@ -1,11 +1,12 @@
-{:paths ["src"]
-  :deps
-  {org.clojure/clojure {:mvn/version "1.11.3"}
-   http-kit/http-kit {:mvn/version "2.8.0"}
-   metosin/reitit-ring {:mvn/version "0.7.2"}
-   cheshire/cheshire {:mvn/version "5.13.0"}
-   io.github.clojure/tools.build {:mvn/version "0.10.5"}
-   brute/brute {:mvn/version "0.4.0"}}
+ {:paths ["src"]
+   :deps
+   {org.clojure/clojure {:mvn/version "1.11.3"}
+    http-kit/http-kit {:mvn/version "2.8.0"}
+    metosin/reitit-ring {:mvn/version "0.7.2"}
+    cheshire/cheshire {:mvn/version "5.13.0"}
+    clj-http/clj-http {:mvn/version "3.12.3"}
+    io.github.clojure/tools.build {:mvn/version "0.10.5"}
+    brute/brute {:mvn/version "0.4.0"}}
 
  :aliases
  {:server

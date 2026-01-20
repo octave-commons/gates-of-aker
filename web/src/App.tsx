@@ -4,10 +4,6 @@ import { playDeathTone, playTone, markUserInteraction } from "./audio";
 import {
   AgentCard,
   AgentList,
-  AttributionPanel,
-  EventFeed,
-  LedgerPanel,
-  LeverControls,
   RawJSONFeedPanel,
   SelectedPanel,
   SimulationCanvas,
@@ -16,8 +12,8 @@ import {
   BuildControls,
   BuildingPalette,
   JobQueuePanel,
-  TreeSpreadControls,
   WorldInfoPanel,
+  ThoughtsPanel,
 } from "./components";
 import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
@@ -30,10 +26,9 @@ const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ??
 export function App() {
   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
   const [tick, setTick] = useState(0);
-  const [snapshot, setSnapshot] = useState<any>(null);
-  const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
-  const [traces, setTraces] = useState<Trace[]>([]);
-    const [events, setEvents] = useState<any[]>([]);
+   const [snapshot, setSnapshot] = useState<any>(null);
+     const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
+     const [traces, setTraces] = useState<Trace[]>([]);
     const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
   const aliveAgentsRef = useRef<Set<number>>(new Set());
   const initialFocusRef = useRef(false);
@@ -48,20 +43,12 @@ export function App() {
   };
 
    const [buildMode, setBuildMode] = useState(false);
-    const [stockpileMode, setStockpileMode] = useState(false);
-    const [fps, setFps] = useState(15);
-
-  const [fireToPatron, setFireToPatron] = useState(0.8);
-  const [lightningToStorm, setLightningToStorm] = useState(0.75);
-  const [stormToDeity, setStormToDeity] = useState(0.85);
-
-  const [spreadProbability, setSpreadProbability] = useState(0.30);
-  const [minInterval, setMinInterval] = useState(20);
-  const [maxInterval, setMaxInterval] = useState(160);
-
-  const [worldWidth, setWorldWidth] = useState<number | null>(null);
-  const [worldHeight, setWorldHeight] = useState<number | null>(null);
-  const [treeDensity, setTreeDensity] = useState<number>(CONFIG.data.DEFAULT_TREE_DENSITY);
+   const [stockpileMode, setStockpileMode] = useState(false);
+     const [fps, setFps] = useState(15);
+ 
+   const [worldWidth, setWorldWidth] = useState<number | null>(null);
+   const [worldHeight, setWorldHeight] = useState<number | null>(null);
+   const [treeDensity, setTreeDensity] = useState<number>(CONFIG.data.DEFAULT_TREE_DENSITY);
 
   const getAliveAgents = useCallback((state: any) => {
     const alive = new Set<number>();
@@ -122,11 +109,10 @@ export function App() {
     setFocusTrigger((prev) => prev + 1);
   }, [findTownCenter]);
 
-   const [tracesCollapsed, setTracesCollapsed] = useState(true);
-   const [jobsCollapsed, setJobsCollapsed] = useState(true);
-   const [leverControlsCollapsed, setLeverControlsCollapsed] = useState(true);
-   const [treeSpreadCollapsed, setTreeSpreadCollapsed] = useState(true);
-   const [isInitializing, setIsInitializing] = useState(false);
+    const [tracesCollapsed, setTracesCollapsed] = useState(true);
+    const [jobsCollapsed, setJobsCollapsed] = useState(true);
+    const [thoughtsCollapsed, setThoughtsCollapsed] = useState(true);
+    const [isInitializing, setIsInitializing] = useState(false);
    const [isRunning, setIsRunning] = useState(false);
    const [tickHealth, setTickHealth] = useState<{
      targetMs: number;
@@ -181,19 +167,12 @@ export function App() {
           setTraces((prev) => {
             const next = [...prev, incoming];
             return next.slice(Math.max(0, next.length - CONFIG.data.MAX_TRACES));
-          });
-        }
-        if (m.op === "event") {
-          setEvents((prev) => {
-            const next = [...prev, m.data];
-            return next.slice(Math.max(0, next.length - CONFIG.data.MAX_EVENTS));
-          });
-        }
-        if (m.op === "reset") {
-           setTraces([]);
-           setEvents([]);
-           setSelectedCell(null);
-           setSelectedAgentId(null);
+           });
+         }
+         if (m.op === "reset") {
+            setTraces([]);
+            setSelectedCell(null);
+            setSelectedAgentId(null);
            const state = m.state ?? {};
            setSnapshot(state);
            if (state.map) {
@@ -376,28 +355,7 @@ export function App() {
      client.sendPlaceBuilding(type, pos, config);
    };
 
-  const applyLevers = () => {
-    client.send({
-      op: "set_levers",
-      levers: {
-        iconography: {
-          "fire->patron": clamp01(fireToPatron),
-          "lightning->storm": clamp01(lightningToStorm),
-          "storm->deity": clamp01(stormToDeity),
-        },
-      },
-    });
-  };
-
-  const applyTreeSpreadLevers = () => {
-    client.sendSetTreeSpreadLevers(clamp01(spreadProbability), minInterval, maxInterval);
-  };
-
-  const recentEvents = useMemo(() => {
-    if (!snapshot) return [];
-    return snapshot?.["recent-events"] ?? snapshot?.recentEvents ?? snapshot?.recent_events ?? [];
-  }, [snapshot]);
-  const mouthpieceId = useMemo(() => {
+   const mouthpieceId = useMemo(() => {
     if (!snapshot?.levers) return null;
     return snapshot.levers?.["mouthpiece-agent-id"] ?? snapshot.levers?.mouthpiece_agent_id ?? null;
   }, [snapshot?.levers]);
@@ -405,15 +363,11 @@ export function App() {
     if (!snapshot?.agents) return [];
     return snapshot.agents as Agent[];
   }, [snapshot?.agents]);
-  const jobs = useMemo(() => {
-    if (!snapshot?.jobs) return [];
-    return snapshot.jobs as any[];
-  }, [snapshot?.jobs]);
-  const attribution = useMemo(() => {
-    if (!snapshot?.attribution) return {};
-    return snapshot.attribution ?? {};
-  }, [snapshot?.attribution]);
-  const calendar = useMemo(() => {
+   const jobs = useMemo(() => {
+     if (!snapshot?.jobs) return [];
+     return snapshot.jobs as any[];
+   }, [snapshot?.jobs]);
+   const calendar = useMemo(() => {
     if (!snapshot?.calendar) return null;
     return snapshot.calendar;
   }, [snapshot?.calendar]);
@@ -642,88 +596,11 @@ export function App() {
           <div style={{ fontSize: 16, fontWeight: "bold", textAlign: "center" }}>
             {tick}
           </div>
-        </div>
+         </div>
+       </div>
 
-        {/* Collapsible levers panel */}
-        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-              padding: "8px 0",
-              borderBottom: "1px solid #ddd"
-            }}
-            onClick={() => setLeverControlsCollapsed(!leverControlsCollapsed)}
-          >
-            <strong style={{ margin: 0 }}>Levers</strong>
-            <span style={{
-              fontSize: "1.2em",
-              color: "#666",
-              transition: "transform 0.2s ease",
-              transform: leverControlsCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
-            }}>
-              ▼
-            </span>
-          </div>
-          {!leverControlsCollapsed && (
-            <div style={{ marginTop: 8 }}>
-              <LeverControls
-                tick={tick}
-                fireToPatron={fireToPatron}
-                lightningToStorm={lightningToStorm}
-                stormToDeity={stormToDeity}
-                onFireChange={setFireToPatron}
-                onLightningChange={setLightningToStorm}
-                onStormChange={setStormToDeity}
-                onApply={applyLevers}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Collapsible tree spread panel */}
-        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-              padding: "8px 0",
-              borderBottom: "1px solid #ddd"
-            }}
-            onClick={() => setTreeSpreadCollapsed(!treeSpreadCollapsed)}
-          >
-            <strong style={{ margin: 0 }}>Tree Spread</strong>
-            <span style={{
-              fontSize: "1.2em",
-              color: "#666",
-              transition: "transform 0.2s ease",
-              transform: treeSpreadCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
-            }}>
-              ▼
-            </span>
-          </div>
-          {!treeSpreadCollapsed && (
-            <div style={{ marginTop: 8 }}>
-              <TreeSpreadControls
-                spreadProbability={spreadProbability}
-                minInterval={minInterval}
-                maxInterval={maxInterval}
-                onSpreadProbabilityChange={setSpreadProbability}
-                onMinIntervalChange={setMinInterval}
-                onMaxIntervalChange={setMaxInterval}
-                onApply={applyTreeSpreadLevers}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
-        <BuildingPalette
+       <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
+         <BuildingPalette
            onPlaceBuilding={handlePlaceBuilding}
            selectedCell={selectedCell}
          />
@@ -819,13 +696,16 @@ export function App() {
                <TraceFeed traces={traces} />
              </div>
            )}
-         </div>
+          </div>
 
-        <AttributionPanel data={attribution} style={{ marginTop: 12 }} />
-        <EventFeed events={recentEvents} title="Recent events (snapshot)" compact collapsible />
-        <EventFeed events={events} title="Live event feed" compact collapsible />
-        <LedgerPanel data={snapshot?.ledger ?? null} style={{ marginTop: 12 }} />
-      </div>
-    </div>
-  );
-}
+         <ThoughtsPanel
+           agents={agents}
+           selectedAgent={selectedAgent}
+           collapsible
+           collapsed={thoughtsCollapsed}
+           onToggleCollapse={() => setThoughtsCollapsed(!thoughtsCollapsed)}
+         />
+       </div>
+     </div>
+   );
+ }

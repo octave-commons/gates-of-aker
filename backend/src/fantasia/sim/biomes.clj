@@ -127,14 +127,18 @@
                           (if-let [biome-type (:biome tile)]
                             (let [biome-def (get biome-definitions biome-type)
                                    resource-type (:resource biome-def)
-                                   spawn-prob (:spawn-prob biome-def)]
-                               (if (and resource-type
-                                        (< (.nextDouble r) spawn-prob))
-                                 (assoc acc tile-key
-                                        (assoc tile :resource (if (= resource-type :rock)
-                                                                (pick-rock-resource r)
-                                                                resource-type)))
-                                 acc))
+                                   spawn-prob (:spawn-prob biome-def)
+                                   tile-with-resource (if (and resource-type
+                                                          (< (.nextDouble r) spawn-prob))
+                                                      (assoc tile :resource (if (= resource-type :rock)
+                                                                              (pick-rock-resource r)
+                                                                              resource-type))
+                                                      tile)
+                                   tile-with-berries (when (and (not (:resource tile-with-resource))
+                                                                 (contains? #{:forest :field} biome-type)
+                                                                 (< (.nextDouble r) 0.12))
+                                                        (assoc tile-with-resource :resource :berry))]
+                              (or tile-with-berries tile-with-resource))
                             acc))
                         tiles
                         tiles)]
