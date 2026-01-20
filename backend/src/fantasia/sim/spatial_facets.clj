@@ -1,10 +1,13 @@
 (ns fantasia.sim.spatial_facets
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [fantasia.sim.hex :as hex]
             [fantasia.dev.logging :as log]))
 
 ;; Embedding cache (word -> vector map)
 (defonce ^:private embedding-cache (atom {}))
+(defonce ^:private embeddings-loaded? (atom false))
+(defonce ^:private facets-initialized? (atom false))
 
 ;; Entity facet definitions (entity-type -> word list map)
 (defonce ^:private entity-facets (atom {}))
@@ -17,29 +20,78 @@
     (> x 1.0) 1.0
     :else x))
 
+(defn- normalize-word [word]
+  (if (string? word)
+    (keyword (str/lower-case word))
+    word))
+
+(defn- parse-embedding-line [line]
+  (let [parts (str/split line #"\s+")
+        word (first parts)
+        values (mapv #(Double/parseDouble %) (rest parts))]
+    {:word (normalize-word word)
+     :vec values}))
+
+(defn- load-embedding-file! [model-path {:keys [word-set max-rows]}]
+  (with-open [reader (io/reader model-path)]
+    (let [lines (line-seq reader)
+          limit (or max-rows Long/MAX_VALUE)]
+      (reduce
+        (fn [acc line]
+          (if (>= (:count acc) limit)
+            (reduced acc)
+            (let [{:keys [word vec]} (parse-embedding-line line)]
+              (if (and word (seq vec) (or (nil? word-set) (contains? word-set word)))
+                {:count (inc (:count acc))
+                 :cache (assoc (:cache acc) word vec)}
+                acc))))
+        {:count 0 :cache {}}
+        lines))))
+
 (defn load-embeddings!
-  "Load pre-trained word2vec/GloVe model once at startup.
-   Parses model file and populates embedding-cache."
-  [model-path]
-  (log/log-info "Loading embeddings from:" model-path)
-  (try
-    ;; TODO: Parse GloVe format (word v1 v2 ... v300)
-    ;; For now, stub with random vectors
-    (log/log-info "Embedding loading not yet implemented - using stub vectors")
-    (swap! embedding-cache
-      (fn [cache]
-        (assoc cache :stub 0.5)
-        (assoc cache :danger [-0.8 -0.7 -0.5 0.9 -0.4 0.6 -0.3])
-        (assoc cache :safety [0.9 0.7 0.8 0.5 0.6 0.3 0.4])
-        (assoc cache :comfort [0.8 0.7 0.6 0.5 0.4 0.9])))
-    (catch Exception e
-      (log/log-error "Failed to load embeddings:" e)
-      (throw e))))
+  "Load pre-trained word embeddings (GloVe format) once at startup.
+   Returns {:loaded? true :count n} when loaded, false when skipped."
+  ([model-path]
+   (load-embeddings! model-path {}))
+  ([model-path {:keys [word-set max-rows]}]
+   (if (or (nil? model-path) (str/blank? (str model-path)))
+     (do
+       (log/log-warn "[EMBEDDINGS] No model path provided; using fallback embeddings")
+       {:loaded? false :count 0})
+     (try
+       (log/log-info "[EMBEDDINGS] Loading embeddings from:" model-path)
+       (let [{:keys [count cache]}
+             (load-embedding-file! model-path {:word-set word-set :max-rows max-rows})]
+         (swap! embedding-cache merge cache)
+         (reset! embeddings-loaded? true)
+         (log/log-info "[EMBEDDINGS] Loaded" count "embeddings")
+         {:loaded? true :count count})
+        (catch Exception e
+          (log/log-error "[EMBEDDINGS] Failed to load embeddings:" e)
+          {:loaded? false :count 0})))))
+
+(defn- fallback-embedding
+  "Create a deterministic fallback embedding for a word."
+  [word]
+  (let [dim 12
+        seed (long (hash (str word)))
+        rng (java.util.Random. seed)]
+    (vec (repeatedly dim #(- (* 2.0 (.nextDouble rng)) 1.0)))))
+
+(defn ensure-embedding!
+  "Ensure a word has an embedding, populating fallback when missing."
+  [word]
+  (let [word-kw (normalize-word word)]
+    (if-let [existing (get @embedding-cache word-kw)]
+      existing
+      (let [vec (fallback-embedding word-kw)]
+        (swap! embedding-cache assoc word-kw vec)
+        vec))))
 
 (defn get-embedding
   "Retrieve cached embedding for a word. Returns nil if not in cache."
   [word]
-  (let [word-kw (if (string? word) (keyword word) word)]
+  (let [word-kw (normalize-word word)]
     (get @embedding-cache word-kw)))
 
 (defn register-entity-facets!

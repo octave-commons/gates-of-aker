@@ -128,6 +128,11 @@ export function App() {
    const [treeSpreadCollapsed, setTreeSpreadCollapsed] = useState(true);
    const [isInitializing, setIsInitializing] = useState(false);
    const [isRunning, setIsRunning] = useState(false);
+   const [tickHealth, setTickHealth] = useState<{
+     targetMs: number;
+     tickMs: number;
+     health: "healthy" | "degraded" | "unhealthy" | "unknown";
+   } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -227,6 +232,25 @@ export function App() {
         if (m.op === "runner_state") {
            setIsRunning(m.running);
            setFps(m.fps);
+         }
+        if (m.op === "tick_health") {
+           const data = m.data ?? {};
+           const targetMs = typeof data.targetMs === "number"
+             ? data.targetMs
+             : typeof data["target-ms"] === "number"
+               ? data["target-ms"]
+               : undefined;
+           const tickMs = typeof data.tickMs === "number"
+             ? data.tickMs
+             : typeof data["tick-ms"] === "number"
+               ? data["tick-ms"]
+               : undefined;
+           const health = (data.health as "healthy" | "degraded" | "unhealthy" | "unknown") ?? "unknown";
+           if (targetMs != null && tickMs != null) {
+             setTickHealth({ targetMs, tickMs, health });
+           } else {
+             setTickHealth(null);
+           }
          }
        },
       (s) => setStatus(s)
@@ -561,7 +585,7 @@ export function App() {
       </div>
 
       <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-        <StatusBar status={status} />
+        <StatusBar status={status} tickHealth={tickHealth} />
 
         <WorldInfoPanel calendar={calendar} />
 

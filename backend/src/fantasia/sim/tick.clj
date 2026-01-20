@@ -43,5 +43,5 @@
         (let [current-pos (:pos agent)
               job-target (:target job)]
           (if (not= current-pos job-target)
-            (fantasia.sim.pathing/bfs-path world current-pos job-target)
+            (fantasia.sim.pathing/a-star-path world current-pos job-target)
             []))))))

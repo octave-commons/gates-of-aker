@@ -45,7 +45,7 @@
       nil)))
 
 (defonce *clients (atom #{}))
-(defonce *runner (atom {:running? false :future nil :ms 66}))
+(defonce *runner (atom {:running? false :future nil :ms 66 :tick-ms 0}))
 
 (defn ws-send! [ch msg]
   (http/send! ch (json/generate-string msg)))
@@ -54,19 +54,33 @@
   (doseq [ch @*clients]
     (ws-send! ch msg)))
 
+(defn compute-health-status [tick-ms target-ms]
+  (cond
+    (zero? target-ms) "unknown"
+    (< tick-ms (* target-ms 0.7)) "healthy"
+    (< tick-ms (* target-ms 0.9)) "degraded"
+    :else "unhealthy"))
+
 (defn start-runner! []
   (when-not (:running? @*runner)
     (let [fut (future
                 (swap! *runner assoc :running? true)
                 (try
                   (while (:running? @*runner)
-                    (let [o (last (sim/tick! 1))]
+                    (let [start-time (System/currentTimeMillis)
+                          o (last (sim/tick! 1))
+                          end-time (System/currentTimeMillis)
+                          tick-ms (- end-time start-time)
+                          target-ms (:ms @*runner)
+                          health (compute-health-status tick-ms target-ms)]
+                      (swap! *runner assoc :tick-ms tick-ms)
                       (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                      (broadcast! {:op "tick_health" :data {:target-ms target-ms :tick-ms tick-ms :health health}})
                       (when-let [ev (:event o)]
                         (broadcast! {:op "event" :data ev}))
                       (doseq [tr (:traces o)]
-                        (broadcast! {:op "trace" :data tr})))
-                    (Thread/sleep (long (:ms @*runner))))
+                        (broadcast! {:op "trace" :data tr}))
+                      (Thread/sleep (long (:ms @*runner)))))
                   (finally
                     (swap! *runner assoc :running? false :future nil))))]
       (swap! *runner assoc :future fut))))
@@ -175,6 +189,12 @@
             (do
               (stop-runner!)
               (broadcast! {:op "runner_state" :running false :fps (int (/ 1000 (:ms @*runner)))}))
+
+            "set_fps"
+            (let [fps (int (or (:fps msg) 15))
+                  ms (if (pos? fps) (/ 1000.0 fps) 66)]
+              (swap! *runner assoc :ms ms)
+              (broadcast! {:op "runner_state" :running (:running? @*runner) :fps fps}))
 
              (ws-send! ch {:op "error" :message "unknown op"})))))))
 

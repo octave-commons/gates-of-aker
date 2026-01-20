@@ -80,11 +80,11 @@
 
 (defn next-step-toward
   "Get next position on path toward goal.
-   Returns one step along path, or current pos if already there."
+    Returns one step along path, or current pos if already there."
   [world start goal]
   (if (= start goal)
     start
-    (let [path (bfs-path world start goal)]
+    (let [path (a-star-path world start goal)]
       (if (and path (> (count path) 1))
         (second path)
         start))))
@@ -92,4 +92,4 @@
 (defn reachable?
   "Check if goal is reachable from start."
   [world start goal]
-  (boolean (bfs-path world start goal)))
+  (boolean (a-star-path world start goal)))

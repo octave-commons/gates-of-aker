@@ -10,6 +10,7 @@ export type WSMessage =
     | { op: "stockpiles"; stockpiles: any }
     | { op: "jobs"; jobs: any }
     | { op: "runner_state"; running: boolean; fps: number }
+    | { op: "tick_health"; data: { targetMs: number; tickMs: number; health: "healthy" | "degraded" | "unhealthy" | "unknown" } }
     | { op: "error"; message: string }
     | { op: string; [k: string]: any };
 
