@@ -1,8 +1,19 @@
 # AGENTS
 
+## Obsidian Primer
+[[2026-01-15-roadmap]] 
+we use wiki links to connect documents.
+We view these documents in obsidian
+Documents can have front matter
+obsidian explicitly recognizes `tags:` properties in 
+front matter for tagging documents.
+### Obsidian docs
+- https://blacksmithgu.github.io/obsidian-dataview/
+- 
 ## Related Documentation
 - [[README.md]] - Project overview
 - [[HACK.md]] - High-level vision and inspirations
+- [[HOME]] - Obsidian home page
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
 - [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics

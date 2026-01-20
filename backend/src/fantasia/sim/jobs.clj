@@ -8,15 +8,54 @@
    :job/warm-up 95
    :job/sleep 90
    :job/chop-tree 60
+   :job/mine 60
    :job/harvest-wood 58
    :job/harvest-fruit 58
    :job/harvest-grain 58
    :job/harvest-stone 58
+   :job/smelt 57
    :job/build-house 55
-   :job/build-structure 35
+   :job/improve 52
    :job/haul 50
    :job/deliver-food 45
-   :job/build-wall 40})
+   :job/build-wall 40
+   :job/builder 38
+   :job/build-structure 35})
+
+(def ore-types
+  [:ore-iron :ore-copper :ore-tin :ore-gold :ore-silver :ore-aluminum :ore-lead])
+
+(def ore->ingot
+  {:ore-iron :ingot-iron
+   :ore-copper :ingot-copper
+   :ore-tin :ingot-tin
+   :ore-gold :ingot-gold
+   :ore-silver :ingot-silver
+   :ore-aluminum :ingot-aluminum
+   :ore-lead :ingot-lead})
+
+(def mineral-types
+  (into #{:rock} ore-types))
+
+(def max-structure-level 3)
+
+(def job-provider-config
+  {:lumberyard {:job-type :job/harvest-wood :max-jobs 3}
+   :orchard {:job-type :job/harvest-fruit :max-jobs 2}
+   :granary {:job-type :job/harvest-grain :max-jobs 2}
+   :quarry {:job-type :job/mine :max-jobs 3}
+   :workshop {:job-type :job/builder :max-jobs 2}
+   :improvement-hall {:job-type :job/improve :max-jobs 1}
+   :smelter {:job-type :job/smelt :max-jobs 1}})
+
+(def improvable-structures
+  #{:lumberyard :orchard :granary :quarry :workshop :smelter :warehouse})
+
+(def build-structure-options
+  [:stockpile :lumberyard :orchard :granary :quarry :warehouse :smelter :improvement-hall :workshop])
+
+(def unique-structures
+  #{:workshop :smelter :improvement-hall})
 
 (defn create-job [job-type target]
    (let [target-pos (cond
@@ -261,10 +300,12 @@
        (sort-by (fn [p] (hex/distance pos p)))
        first))
 
+
 (defn- find-nearest-item [world pos resource]
   (->> (items-with-resource world resource)
        (sort-by (fn [p] (hex/distance pos p)))
        first))
+
 
 (defn- stockpiles-with-space-for [world resource]
   (->> (:stockpiles world)
@@ -389,10 +430,11 @@
             wood-use (- required log-use)
             [w1 _] (consume-resource-global! world :log log-use)
             [w2 _] (consume-resource-global! w1 :wood wood-use)
-            world' (-> w2
-                       (assoc-in [:tiles k :terrain] :ground)
-                       (assoc-in [:tiles k :structure] :house)
-                       (assoc-in [:tiles k :resource] nil))]
+             world' (-> w2
+                        (assoc-in [:tiles k :terrain] :ground)
+                        (assoc-in [:tiles k :structure] :house)
+                        (assoc-in [:tiles k :resource] nil)
+                        (assoc-in [:tiles k :level] 1))]
         (println "[JOB:COMPLETE]"
                  {:type :job/build-house
                   :target target
@@ -442,6 +484,63 @@
                 :outcome (format "Harvested %s at %s" (name resource) (pr-str target))}))
     world'))
 
+(defn complete-mine! [world job]
+  (let [target (:target job)
+        tile-key (str (first target) "," (second target))
+        resource (or (:resource job) (get-in world [:tiles tile-key :resource]))
+        provider-pos (:provider-pos job)
+        has-resource? (contains? mineral-types (get-in world [:tiles tile-key :resource]))
+        world' (if has-resource?
+                 (assoc-in world [:tiles tile-key :resource] nil)
+                 world)
+        world'' (if (and has-resource? resource provider-pos)
+                  (add-item! world' provider-pos resource 1)
+                  world')]
+    (when has-resource?
+      (println "[JOB:COMPLETE]"
+               {:type :job/mine
+                :target target
+                :resource resource
+                :outcome (format "Mined %s at %s" (name resource) (pr-str target))}))
+    world''))
+
+(defn- structure-level [tile]
+  (long (or (:level tile) 1)))
+
+(defn complete-improve! [world job]
+  (let [target (:target job)
+        k (str (first target) "," (second target))
+        tile (get-in world [:tiles k])
+        structure (:structure tile)
+        level (structure-level tile)]
+    (if (and (contains? improvable-structures structure)
+             (< level max-structure-level))
+      (let [new-level (inc level)
+            world' (assoc-in world [:tiles k :level] new-level)]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/improve
+                  :target target
+                  :structure structure
+                  :outcome (format "Improved %s to level %d" (name structure) new-level)})
+        world')
+      world)))
+
+(defn complete-smelt! [world job]
+  (let [resource (:resource job)
+        output (:output job)
+        target (:target job)
+        [w' consumed] (consume-resource-global! world resource 1)]
+    (if (and (pos? consumed) output)
+      (let [world' (add-item! w' target output 1)]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/smelt
+                  :target target
+                  :resource resource
+                  :output output
+                  :outcome (format "Smelted %s into %s" (name resource) (name output))})
+        world')
+      w')))
+
 (defn complete-build-structure! [world job]
   (let [target (:target job)
         k (str (first target) "," (second target))
@@ -460,12 +559,14 @@
                   :outcome (format "Stockpile created at %s" (pr-str target))})
         world')
 
-      (:lumberyard :orchard :granary :quarry)
-      (let [resource (stockpile-for-structure structure)
-            max-qty 120
-            world' (-> world
-                       (assoc-in [:tiles k] {:terrain :ground :structure structure :resource nil})
-                       (create-stockpile! target resource max-qty))]
+       (:lumberyard :orchard :granary :quarry :warehouse :smelter :improvement-hall :workshop)
+       (let [resource (stockpile-for-structure structure)
+             max-qty 120
+             world' (assoc-in world [:tiles k]
+                              {:terrain :ground :structure structure :resource nil :level 1})
+             world' (if resource
+                      (create-stockpile! world' target resource max-qty)
+                      world')]
         (println "[JOB:COMPLETE]"
                  {:type :job/build-structure
                   :structure structure
@@ -473,10 +574,10 @@
                   :outcome (format "%s built at %s" (name structure) (pr-str target))})
         world')
 
-      :campfire
-      (let [world' (-> world
-                       (assoc :campfire target)
-                       (assoc-in [:tiles k] {:terrain :ground :structure :campfire :resource nil}))]
+       :campfire
+       (let [world' (-> world
+                        (assoc :campfire target)
+                        (assoc-in [:tiles k] {:terrain :ground :structure :campfire :resource nil :level 1}))]
         (println "[JOB:COMPLETE]"
                  {:type :job/build-structure
                   :structure structure
@@ -484,8 +585,8 @@
                   :outcome (format "Campfire lit at %s" (pr-str target))})
         world')
 
-      :statue/dog
-      (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :statue/dog :resource nil})]
+       :statue/dog
+       (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :statue/dog :resource nil :level 1})]
         (println "[JOB:COMPLETE]"
                  {:type :job/build-structure
                   :structure structure
@@ -493,8 +594,8 @@
                   :outcome (format "Statue raised at %s" (pr-str target))})
         world')
 
-      :wall
-      (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :wall :resource nil})]
+       :wall
+       (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :wall :resource nil :level 1})]
         (println "[JOB:COMPLETE]"
                  {:type :job/build-structure
                   :structure structure
@@ -629,6 +730,10 @@
                     :job/build-wall (complete-build-wall! world job)
                     :job/build-house (complete-build-house! world job)
                     :job/build-structure (complete-build-structure! world job)
+                    :job/builder (complete-build-structure! world job)
+                    :job/improve (complete-improve! world job)
+                    :job/mine (complete-mine! world job)
+                    :job/smelt (complete-smelt! world job)
                     :job/chop-tree (complete-chop-tree! world job)
                     :job/harvest-wood (complete-harvest-job! world job agent-id)
                     :job/harvest-fruit (complete-harvest-job! world job agent-id)
@@ -918,13 +1023,3 @@
      (reduce (fn [w job] (update w :jobs conj job))
              world
              jobs-to-add)))
-
-(defn auto-generate-jobs! [world]
-  (-> world
-      (generate-need-jobs!)
-      (generate-harvest-building-jobs!)
-      (generate-house-jobs!)
-      (generate-harvest-jobs!)
-      (generate-haul-jobs-for-items! {:default 5 :log 1})
-      (generate-deliver-food-jobs!)
-      (generate-idle-structure-jobs!)))

@@ -4,7 +4,8 @@
             [fantasia.sim.biomes :as biomes]
             [fantasia.sim.time :as sim-time]
             [fantasia.sim.tick.trees :as trees]
-            [fantasia.sim.jobs :as jobs]))
+            [fantasia.sim.jobs :as jobs]
+            [fantasia.sim.jobs.providers :as job-providers]))
 
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
@@ -77,7 +78,7 @@
 (defn- scatter-fruit! [world rng]
   (let [hex-map (:map world)
         total-tiles (bounds-tile-count hex-map)
-        desired (max 24 (long (Math/ceil (* total-tiles 0.004))))
+        desired (max 24 (long (Math/ceil (* total-tiles 0.015))))
         positions (loop [acc #{}
                          attempts 0]
                     (if (or (>= (count acc) desired)
@@ -138,43 +139,52 @@
           world-with-fruit (scatter-fruit! world-with-trees r)
           campfire-pos (biomes/rand-pos-in-biome r hex-map :village (:tiles world-with-fruit))
           campfire-key (str (first campfire-pos) "," (second campfire-pos))
-          world-with-campfire (-> world-with-fruit
-                                  (assoc :campfire campfire-pos)
-                                  (assoc :shrine campfire-pos)
-                                  (assoc-in [:tiles campfire-key] {:terrain :ground :structure :campfire :resource nil}))
-          agent-count 16
-          nearby-tiles (nearby-positions campfire-pos 3)
-          house-tiles (take agent-count nearby-tiles)
-          building-tiles (take 4 (drop agent-count nearby-tiles))
-          world-with-houses (reduce (fn [w pos]
-                                      (let [k (str (first pos) "," (second pos))]
-                                        (assoc-in w [:tiles k] {:terrain :ground :structure :house :resource nil})))
-                                    world-with-campfire
-                                    house-tiles)
-          building-types [:lumberyard :orchard :granary :quarry]
-          world-with-buildings
-          (reduce (fn [w [pos structure]]
-                    (let [k (str (first pos) "," (second pos))
-                          resource (case structure
-                                     :lumberyard :log
-                                     :orchard :fruit
-                                     :granary :grain
-                                     :quarry :rock)]
-                      (-> w
-                          (assoc-in [:tiles k] {:terrain :ground :structure structure :resource nil})
-                          (jobs/create-stockpile! pos resource 120))))
-                  world-with-houses
-                  (map vector building-tiles building-types))
-          world-with-warehouse (assoc-in world-with-buildings [:tiles "0,0"] {:terrain :ground :structure :warehouse :resource nil})
-          world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
-          world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 40)]
-     (println "Warehouse created:" (get-in world-with-food [:tiles "0,0"]))
-     (println "Stockpiles:" (:stockpiles world-with-food))
-     (println "Items:" (:items world-with-food))
-      (assoc world-with-food
-             :agents (vec (for [i (range agent-count)]
-                            (let [[q r] (nth (concat [campfire-pos] nearby-tiles) (mod i (inc (count nearby-tiles))))]
-                              (->agent i q r (cond
-                                              (= i 0) :priest
-                                              (= i 1) :knight
-                                              :else :peasant))))))))
+           world-with-campfire (-> world-with-fruit
+                                   (assoc :campfire campfire-pos)
+                                   (assoc :shrine campfire-pos)
+                                   (assoc-in [:tiles campfire-key]
+                                             {:terrain :ground :structure :campfire :resource nil :level 1}))
+           agent-count 16
+           nearby-tiles (nearby-positions campfire-pos 3)
+           house-tiles (take agent-count nearby-tiles)
+           building-tiles (take 7 (drop agent-count nearby-tiles))
+           world-with-houses (reduce (fn [w pos]
+                                       (let [k (str (first pos) "," (second pos))]
+                                         (assoc-in w [:tiles k]
+                                                   {:terrain :ground :structure :house :resource nil :level 1})))
+                                     world-with-campfire
+                                     house-tiles)
+           building-types [:lumberyard :orchard :granary :quarry :workshop :improvement-hall :smelter]
+           world-with-buildings
+           (reduce (fn [w [pos structure]]
+                     (let [k (str (first pos) "," (second pos))
+                           resource (case structure
+                                      :lumberyard :log
+                                      :orchard :fruit
+                                      :granary :grain
+                                      :quarry :rock
+                                      nil)]
+                       (let [w' (assoc-in w [:tiles k]
+                                          {:terrain :ground :structure structure :resource nil :level 1})]
+                         (if resource
+                           (jobs/create-stockpile! w' pos resource 120)
+                           w'))))
+                   world-with-houses
+                   (map vector building-tiles building-types))
+           world-with-warehouse (assoc-in world-with-buildings
+                                          [:tiles "0,0"]
+                                          {:terrain :ground :structure :warehouse :resource nil :level 1})
+           world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
+           world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 40)]
+      (println "Warehouse created:" (get-in world-with-food [:tiles "0,0"]))
+      (println "Stockpiles:" (:stockpiles world-with-food))
+      (println "Items:" (:items world-with-food))
+      (let [world-with-agents
+            (assoc world-with-food
+                   :agents (vec (for [i (range agent-count)]
+                                  (let [[q r] (nth (concat [campfire-pos] nearby-tiles) (mod i (inc (count nearby-tiles))))]
+                                    (->agent i q r (cond
+                                                    (= i 0) :priest
+                                                    (= i 1) :knight
+                                                    :else :peasant))))))]
+        (job-providers/seed-initial-jobs world-with-agents agent-count))))

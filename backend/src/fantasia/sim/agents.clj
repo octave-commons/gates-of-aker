@@ -16,20 +16,21 @@
              warmth (get-in agent [:needs :warmth] 0.6)
              pos (:pos agent)
              campfire-pos (:campfire world)
-             campfire-near? (and campfire-pos (<= (hex/distance pos campfire-pos) 2))
-             tile-key (str (first pos) "," (second pos))
+             campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) 2))
+             tile-key (when pos (str (first pos) "," (second pos)))
              house-near?
-             (or (= :house (get-in world [:tiles tile-key :structure]))
-                 (some (fn [n]
-                         (= :house (get-in world [:tiles (str (first n) "," (second n)) :structure])))
-                       (hex/neighbors pos)))
+             (and pos
+                  (or (= :house (get-in world [:tiles tile-key :structure]))
+                      (some (fn [n]
+                              (= :house (get-in world [:tiles (str (first n) "," (second n)) :structure])))
+                            (hex/neighbors pos))))
              warmth-bonus (cond
                             campfire-near? 0.04
                             house-near? 0.02
                             :else 0.0)
              warmth-decay (+ 0.004 (* 0.012 cold))
-             food-decay (if asleep? 0.0005 0.002)
-             sleep-decay (if asleep? 0.0 0.008)
+              food-decay (if asleep? 0.0002 0.0008)
+              sleep-decay (if asleep? 0.0 0.0032)
              warmth' (f/clamp01 (+ (- warmth warmth-decay) warmth-bonus))
              food' (f/clamp01 (- (get-in agent [:needs :food] 0.7) food-decay))
              sleep' (f/clamp01 (- (get-in agent [:needs :sleep] 0.7) sleep-decay))]

@@ -62,6 +62,8 @@
 (deftest chop-jobs-skip-existing-targets
   (let [world (-> (initial/initial-world {:seed 1 :tree-density 0})
                   (assoc :jobs [])
+                  (assoc :items {})
+                  (assoc :stockpiles {})
                   (update :tiles assoc "2,0" {:terrain :ground :resource :tree}))
         job (jobs/create-job :job/chop-tree [2 0])
         world (update world :jobs conj job)
@@ -92,6 +94,14 @@
   (let [world (-> (initial/initial-world {:seed 1 :tree-density 0})
                   (assoc :jobs [])
                   (assoc :items {"1,0" {:log 3}})
+                  (update :tiles
+                          (fn [tiles]
+                            (into {}
+                                  (map (fn [[k tile]]
+                                         (if (= (:structure tile) :house)
+                                           [k (dissoc tile :structure :level)]
+                                           [k tile]))
+                                       tiles))))
                   (assoc-in [:agents 0 :needs :warmth] 0.2))
         world (jobs/generate-house-jobs! world)
         house-job (some #(when (= (:type %) :job/build-house) %) (:jobs world))]

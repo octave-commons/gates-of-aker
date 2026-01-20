@@ -16,7 +16,11 @@ const jobTypeColors: Record<string, string> = {
   ":job/harvest-wood": "#6d4c41",
   ":job/harvest-fruit": "#ffb74d",
   ":job/harvest-grain": "#fbc02d",
-  ":job/harvest-stone": "#757575"
+  ":job/harvest-stone": "#757575",
+  ":job/builder": "#5c6bc0",
+  ":job/improve": "#26a69a",
+  ":job/mine": "#546e7a",
+  ":job/smelt": "#ef6c00"
 };
 
 const jobTypeNames: Record<string, string> = {
@@ -31,7 +35,11 @@ const jobTypeNames: Record<string, string> = {
   ":job/harvest-wood": "Harvest Wood",
   ":job/harvest-fruit": "Harvest Fruit",
   ":job/harvest-grain": "Harvest Grain",
-  ":job/harvest-stone": "Harvest Stone"
+  ":job/harvest-stone": "Harvest Stone",
+  ":job/builder": "Builder",
+  ":job/improve": "Improve",
+  ":job/mine": "Mine",
+  ":job/smelt": "Smelt"
 };
 
 export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: JobQueuePanelProps) {

@@ -1,0 +1,13 @@
+Essential docs:
+https://opencode.ai/docs
+https://opencode.ai/docs/skills/
+https://opencode.ai/docs/tools/
+https://opencode.ai/docs/rules/
+https://opencode.ai/docs/agents/
+https://opencode.ai/docs/models/
+https://opencode.ai/docs/commands/
+https://opencode.ai/docs/custom-tools/
+https://opencode.ai/docs/server/
+https://opencode.ai/docs/sdk/
+https://opencode.ai/docs/plugins/
+https://opencode.ai/docs/ecosystem/

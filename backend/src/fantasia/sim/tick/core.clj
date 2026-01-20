@@ -4,6 +4,7 @@
             [fantasia.sim.institutions :as institutions]
             [fantasia.sim.world :as world]
             [fantasia.sim.jobs :as jobs]
+            [fantasia.sim.jobs.providers :as job-providers]
             [fantasia.sim.hex :as hex]
             [fantasia.sim.pathing]
             [fantasia.sim.time :as sim-time]
@@ -44,7 +45,7 @@
            w2 (-> w1
                     (trees/spread-trees!)
                     (mortality/process-mortality!)
-                    (jobs/auto-generate-jobs!)
+                    (job-providers/auto-generate-jobs!)
                     (jobs/auto-assign-jobs!)
                     (trees/drop-tree-fruits!))
          [w3 agents1] (loop [w w2

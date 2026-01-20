@@ -50,8 +50,8 @@
     (is (= :pointy (get-in world [:map :layout])))
     (is (map? (:map world)))
     (is (map? (:tiles world)))
-    (is (= 12 (count ids)))
-    (is (= (set (range 12)) (set ids)))
+    (is (= 16 (count ids)))
+    (is (= (set (range 16)) (set ids)))
     (is (every? #(spatial/in-bounds? world (:pos %)) (:agents world)))))
 
 
@@ -107,4 +107,3 @@
     (is (= :temple (:institution broadcast)))
     (is (= [:fire :judgment :winter] (get-in broadcast [:packet :facets])))
     (is (empty? not-due))))
-

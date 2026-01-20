@@ -69,6 +69,15 @@
            :spawn-prob 0.2
            :description "Rocky terrain with stone resources"}})
 
+(def ore-types
+  [:ore-iron :ore-copper :ore-tin :ore-gold :ore-silver :ore-aluminum :ore-lead])
+
+(defn- pick-rock-resource [^java.util.Random r]
+  (let [roll (.nextDouble r)]
+    (if (< roll 0.35)
+      (nth ore-types (.nextInt r (count ore-types)))
+      :rock)))
+
 (defn generate-biomes!
   "Generate biomes across the map using simplex noise." 
   [world]
@@ -117,13 +126,15 @@
                         (fn [acc tile-key tile]
                           (if-let [biome-type (:biome tile)]
                             (let [biome-def (get biome-definitions biome-type)
-                                  resource-type (:resource biome-def)
-                                  spawn-prob (:spawn-prob biome-def)]
-                              (if (and resource-type
-                                       (< (.nextDouble r) spawn-prob))
-                                (assoc acc tile-key
-                                       (assoc tile :resource resource-type))
-                                acc))
+                                   resource-type (:resource biome-def)
+                                   spawn-prob (:spawn-prob biome-def)]
+                               (if (and resource-type
+                                        (< (.nextDouble r) spawn-prob))
+                                 (assoc acc tile-key
+                                        (assoc tile :resource (if (= resource-type :rock)
+                                                                (pick-rock-resource r)
+                                                                resource-type)))
+                                 acc))
                             acc))
                         tiles
                         tiles)]
