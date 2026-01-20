@@ -11,15 +11,14 @@
 
 ;; Tile key helpers
 (defn- parse-tile-key
-  "Parse a tile key string 'q,r' into [q r] coordinate vector."
-  [k]
-  (let [parts (str/split k #",")]
-    [(Integer/parseInt (first parts)) (Integer/parseInt (second parts))]))
+  "Parse a tile key vector [q r] into [q r] coordinate vector (identity for vector keys)."
+  [[q r]]
+  [q r])
 
 (defn- tile-key-for
-  "String key for a position vector [q r]."
+  "Vector key for a position vector [q r]."
   [[q r]]
-  (str q "," r))
+  [q r])
 
 (defn- make-tree-tile
   "Construct a fresh tree tile map for the given tick and rng.

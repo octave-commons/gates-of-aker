@@ -6,8 +6,10 @@
              [fantasia.sim.constants :as const]))
 
 (defn- parse-key-pos [k]
-  (let [parts (str/split k #",")]
-    [(Integer/parseInt (first parts)) (Integer/parseInt (second parts))]))
+  (if (sequential? k)
+    k
+    (let [parts (str/split k #",")]
+      [(Integer/parseInt (first parts)) (Integer/parseInt (second parts))])))
 
 (defn- stockpile-accepts? [sp resource]
   (let [sp-resource (:resource sp)
@@ -155,9 +157,9 @@
    (fn [w provider]
      (if (contains? #{:job/harvest-wood :job/harvest-fruit :job/harvest-grain :job/harvest-stone}
                     (:job-type provider))
-       (let [open (provider-open-slots w provider)
-             target-resource (harvest-resource-for-job (:job-type provider))
-             stockpile-key (str (first (:pos provider)) "," (second (:pos provider)))
+        (let [open (provider-open-slots w provider)
+              target-resource (harvest-resource-for-job (:job-type provider))
+              stockpile-key (vector (first (:pos provider)) (second (:pos provider)))
              stockpile (get-in w [:stockpiles stockpile-key])
              space (when stockpile (- (:max-qty stockpile) (:current-qty stockpile)))
              targets (provider-resource-targets w provider [target-resource])
@@ -184,9 +186,9 @@
              targets (provider-resource-targets w provider jobs/mineral-types)
              jobs (->> targets
                        (take open)
-                       (map (fn [target]
-                              (let [tile-key (str (first target) "," (second target))
-                                    resource (get-in w [:tiles tile-key :resource])]
+                        (map (fn [target]
+                               (let [tile-key (vector (first target) (second target))
+                                     resource (get-in w [:tiles tile-key :resource])]
                                 (assoc (jobs/create-job :job/mine target)
                                        :resource resource
                                        :provider-pos (:pos provider))))))

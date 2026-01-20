@@ -15,7 +15,7 @@
          (spatial/neighbors [1 1]))))
 
 (deftest shrine-and-tree-detection
-  (let [world {:tiles {"1,1" {:resource :tree}} :shrine [2 2]}]
+  (let [world {:tiles {[1 1] {:resource :tree}} :shrine [2 2]}]
     (is (spatial/at-trees? world [1 1]))
     (is (not (spatial/at-trees? world [0 0])))
     (is (spatial/near-shrine? world [3 2]))

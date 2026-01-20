@@ -1,4 +1,4 @@
-(ns fantasia.sim.jobs-logging-test
+(ns fantasia.sim.jobs_logging_test
   (:require [clojure.test :refer [deftest is testing]]
             [fantasia.sim.jobs :as jobs]))
 

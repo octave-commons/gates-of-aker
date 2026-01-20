@@ -6,8 +6,8 @@
 (defn base-world []
   (-> (initial/initial-world {:seed 1})
       (assoc :jobs [])
-      (assoc :items {"2,0" {:fruit 5 :wood 3}})
-      (assoc :stockpiles {"0,0" {:resource :fruit :max-qty 10 :current-qty 0}})))
+      (assoc :items {[2 0] {:fruit 5 :wood 3}})
+      (assoc :stockpiles {[0 0] {:resource :fruit :max-qty 10 :current-qty 0}})))
 
 (defn advance-to-adjacent [world agent-id target]
   (assoc-in world [:agents agent-id :pos] target))
@@ -23,7 +23,7 @@
         agent (get-in world [:agents agent-id])]
     (is (= 5 (get-in agent [:inventories :hauling :fruit])))
     (is (= 5 (get-in agent [:inventory :fruit])))
-    (is (zero? (get-in world [:items "2,0" :fruit] 0)))))
+    (is (zero? (get-in world [:items [2 0] :fruit] 0)))))
 
 (deftest hauling-job-deposits-items-and-clears-hauling
   (let [target [0 0]
@@ -38,7 +38,7 @@
         world2 (jobs/pickup-items! world1 agent-id (:from-pos job) :fruit 5)
         world3 (advance-to-adjacent world2 agent-id target)
         world4 (jobs/complete-haul! world3 job agent-id)
-        stockpile (get-in world4 [:stockpiles "0,0"])
+        stockpile (get-in world4 [:stockpiles [0 0]])
         agent (get-in world4 [:agents agent-id])]
     (is (= {} (get-in agent [:inventories :hauling])))
     (is (nil? (:inventory agent)))

@@ -1,29 +1,26 @@
 (ns fantasia.sim.jobs.eat)
 
-(defn parse-key-pos [tile-key]
-  (let [[x y] (clojure.string/split tile-key #",")]
-    [(Integer/parseInt x) (Integer/parseInt y)]))
-
 (defn create-eat-job [pos]
-  {:id (random-uuid)
-   :type :job/eat
-   :target pos
-   :priority 100
-   :progress 0.0
-   :required 1.0
-   :state :pending})
+   {:id (random-uuid)
+    :type :job/eat
+    :target pos
+    :priority 100
+    :progress 0.0
+    :required 1.0
+    :state :pending})
 
 (defn complete-eat! [world job agent-id]
-  (let [pos (:target job)
-        tile-key (str (first pos) "," (second pos))
-        stockpiles (:stockpiles world)
-        items (:items world)
-        sp (get stockpiles tile-key)
-        has-stockpile-food? (and sp
-                               (= (:resource sp) :food)
-                               (pos? (:current-qty sp)))
-        has-food-item? (get-in items [tile-key :food])
-        has-fruit-item? (get-in items [tile-key :fruit])]
+   (let [[q r] (:target job)
+         tile-key (vector q r)
+         pos (:target job)
+         stockpiles (:stockpiles world)
+         items (:items world)
+         sp (get stockpiles tile-key)
+         has-stockpile-food? (and sp
+                                (= (:resource sp) :food)
+                                (pos? (:current-qty sp)))
+         has-food-item? (get-in items [tile-key :food])
+         has-fruit-item? (get-in items [tile-key :fruit])]
     (if has-stockpile-food?
       (let [new-qty (dec (:current-qty sp))
             world1 (assoc-in world [:stockpiles tile-key :current-qty] new-qty)

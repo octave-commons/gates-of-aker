@@ -67,10 +67,26 @@
 (defn import-tile [ecs-world tile-key tile-data]
     "Import old-style tile map into ECS.
      Returns updated-ecs-world"
-    (let [tile-key-str (if (keyword? tile-key) (name tile-key) tile-key)]
-      (when (and tile-key-str (string? tile-key-str) (clojure.string/includes? tile-key-str ","))
+    (let [tile-key' (if (keyword? tile-key) (name tile-key) tile-key)]
+      (cond
+        ;; Handle vector keys directly
+        (and (sequential? tile-key') (= 2 (count tile-key')))
         (try
-          (let [parts (clojure.string/split tile-key-str #",")
+          (let [q (first tile-key')
+                r (second tile-key')
+                terrain (or (:terrain tile-data) :ground)
+                biome (or (:biome tile-data) :plains)
+                structure (:structure tile-data)
+                resource (:resource tile-data)
+                [_ _ world'] (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource)]
+            world')
+          (catch Exception e
+            (println "[ECS] Warning: Failed to import tile at" tile-key ":" (.getMessage e))
+            ecs-world))
+        ;; Handle string keys (backward compatibility)
+        (and tile-key' (string? tile-key') (clojure.string/includes? tile-key' ","))
+        (try
+          (let [parts (clojure.string/split tile-key' #",")
                 q (Integer/parseInt (first parts))
                 r (Integer/parseInt (second parts))
                 terrain (or (:terrain tile-data) :ground)
@@ -81,22 +97,39 @@
             world')
           (catch Exception e
             (println "[ECS] Warning: Failed to import tile at" tile-key ":" (.getMessage e))
-            ecs-world)))))
+            ecs-world))
+        :else
+        ecs-world)))
 
 (defn import-stockpile [ecs-world tile-key contents]
     "Import old-style stockpile into ECS.
      Returns updated-ecs-world"
-    (when (and tile-key (string? tile-key) (clojure.string/includes? tile-key ","))
+    (cond
+      ;; Handle vector keys directly
+      (and (sequential? tile-key) (= 2 (count tile-key)))
+      (try
+        (let [q (first tile-key)
+              r (second tile-key)
+              result (fantasia.sim.ecs.core/create-stockpile ecs-world q r)
+              world' (nth result 2)]
+          world')
+         (catch Exception e
+           (println "[ECS] Warning: Failed to import stockpile at" tile-key ":" (.getMessage e))
+           ecs-world))
+      ;; Handle string keys (backward compatibility)
+      (and (string? tile-key) (clojure.string/includes? tile-key ","))
       (try
         (let [parts (clojure.string/split tile-key #",")
               q (Integer/parseInt (first parts))
               r (Integer/parseInt (second parts))
               result (fantasia.sim.ecs.core/create-stockpile ecs-world q r)
-              world' (second result)]
+              world' (nth result 2)]
           world')
          (catch Exception e
            (println "[ECS] Warning: Failed to import stockpile at" tile-key ":" (.getMessage e))
-           ecs-world))))
+           ecs-world))
+      :else
+      ecs-world))
 
 (defn import-world-to-ecs [old-world]
   "Convert entire old-style world to ECS.

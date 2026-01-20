@@ -12,19 +12,19 @@
          (swap! fantasia.sim.tick.core/*state jobs/assign-job! job agent-id)))))
 
 (defn place-wall-ghost! [pos]
-  (let [world (core/get-state)
-        [q r] pos
-        tile-key (str q "," r)
-        tile (get-in world [:tiles tile-key])]
-    (when (and (hex/in-bounds? (:map world) pos)
-               (nil? (:structure tile)))
-      (swap! fantasia.sim.tick.core/*state assoc-in [:tiles tile-key]
-             {:terrain :ground :structure :wall-ghost :resource nil}))))
+   (let [world (core/get-state)
+         [q r] pos
+         tile-key (vector q r)
+         tile (get-in world [:tiles tile-key])]
+     (when (and (hex/in-bounds? (:map world) pos)
+                (nil? (:structure tile)))
+       (swap! fantasia.sim.tick.core/*state assoc-in [:tiles tile-key]
+              {:terrain :ground :structure :wall-ghost :resource nil}))))
 
 (defn place-stockpile! [pos resource max-qty]
   (let [world (core/get-state)
         [q r] pos
-        tile-key (str q "," r)
+        tile-key (vector q r)
         tile (get-in world [:tiles tile-key])]
     (when (and (hex/in-bounds? (:map world) pos)
                (nil? (:structure tile))
@@ -34,7 +34,7 @@
 (defn place-warehouse! [pos resource max-qty]
   (let [world (core/get-state)
         [q r] pos
-        tile-key (str q "," r)
+        tile-key (vector q r)
         tile (get-in world [:tiles tile-key])]
     (when (and (hex/in-bounds? (:map world) pos)
                (nil? (:structure tile))
@@ -48,7 +48,7 @@
 (defn place-campfire! [pos]
   (let [world (core/get-state)
         [q r] pos
-        tile-key (str q "," r)
+        tile-key (vector q r)
         tile (get-in world [:tiles tile-key])]
     (when (and (hex/in-bounds? (:map world) pos)
                (nil? (:structure tile)))
@@ -62,7 +62,7 @@
 (defn place-statue-dog! [pos]
   (let [world (core/get-state)
         [q r] pos
-        tile-key (str q "," r)
+        tile-key (vector q r)
         tile (get-in world [:tiles tile-key])]
     (when (and (hex/in-bounds? (:map world) pos)
                (nil? (:structure tile)))
@@ -72,7 +72,7 @@
 (defn place-tree! [pos]
   (let [world (core/get-state)
         [q r] pos
-        tile-key (str q "," r)
+        tile-key (vector q r)
         tile (get-in world [:tiles tile-key])]
     (when (and (hex/in-bounds? (:map world) pos)
                (nil? (:resource tile)))

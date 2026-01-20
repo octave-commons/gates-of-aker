@@ -65,15 +65,15 @@
      :structure (:structure tile)}))
 
 (defn ecs->tiles-map
-  "Convert all tile entities to old-style map format keyed by position."
-  [ecs-world]
-  (reduce (fn [acc tile-id]
-              (let [position (get-comp ecs-world tile-id :position)
-                    tile-key (str (:q position) "," (:r position))
-                    tile-data (ecs->tile-map ecs-world tile-id)]
-                (assoc acc tile-key tile-data)))
-          {}
-          (fantasia.sim.ecs.core/get-all-tiles ecs-world)))
+   "Convert all tile entities to old-style map format keyed by position."
+   [ecs-world]
+   (reduce (fn [acc tile-id]
+               (let [position (get-comp ecs-world tile-id :position)
+                     tile-key (vector (:q position) (:r position))
+                     tile-data (ecs->tile-map ecs-world tile-id)]
+                 (assoc acc tile-key tile-data)))
+           {}
+           (fantasia.sim.ecs.core/get-all-tiles ecs-world)))
 
 (defn ecs->stockpiles-map
   "Convert stockpile entities to old-style map format."

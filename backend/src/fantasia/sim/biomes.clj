@@ -99,7 +99,7 @@
             (reduce
               (fn [acc [q r]]
                 (if (hex/in-bounds? hex-map [q r])
-                  (let [tile-key (str q "," r)
+                  (let [tile-key (vector q r)
                         base-tile (get acc tile-key {:terrain :ground})
                         noise (simplex2d perm (* q scale) (* r scale))
                         bias-dist (min 1.0 (/ (double (hex/distance center [q r])) max-dist))
@@ -158,7 +158,7 @@
   (let [biome-positions (reduce-kv
                           (fn [acc tile-key tile]
                             (if (= (:biome tile) biome-type)
-                              (let [[q r] (map #(Long/parseLong %) (clojure.string/split tile-key #","))]
+                              (let [[q r] tile-key]
                                 (conj acc [q r]))
                               acc))
                           []

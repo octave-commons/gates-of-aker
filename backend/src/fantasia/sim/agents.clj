@@ -15,16 +15,16 @@
              cold (max 0.0 (- 1.0 temperature))
              asleep? (get-in agent [:status :asleep?] false)
              warmth (get-in agent [:needs :warmth] 0.6)
-             pos (:pos agent)
-             campfire-pos (:campfire world)
-              campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) const/campfire-radius))
-             tile-key (when pos (str (first pos) "," (second pos)))
-             house-near?
-             (and pos
-                  (or (= :house (get-in world [:tiles tile-key :structure]))
-                      (some (fn [n]
-                              (= :house (get-in world [:tiles (str (first n) "," (second n)) :structure])))
-                            (hex/neighbors pos))))
+              pos (:pos agent)
+              campfire-pos (:campfire world)
+               campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) const/campfire-radius))
+              tile-key (when pos (vector (first pos) (second pos)))
+              house-near?
+              (and pos
+                   (or (= :house (get-in world [:tiles tile-key :structure]))
+                       (some (fn [n]
+                               (= :house (get-in world [:tiles (vector (first n) (second n))] :structure)))
+                             (hex/neighbors pos))))
               warmth-bonus (cond
                              campfire-near? const/warmth-bonus-campfire
                              house-near? const/warmth-bonus-house

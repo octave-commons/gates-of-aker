@@ -1,18 +1,9 @@
-# AGENTS
 
-## Obsidian Primer
-[[2026-01-15-roadmap]] 
-we use wiki links to connect documents.
-We view these documents in obsidian
-Documents can have front matter
-obsidian explicitly recognizes `tags:` properties in 
-front matter for tagging documents.
-### Obsidian docs
-- https://blacksmithgu.github.io/obsidian-dataview/
-## Related Documentation
-- [[README.md]] - Project overview
+- [[OBSIDIAN]] - Obsidian Specific Instructions for knowledge graphing and plugins
+- [[2026-01-15-roadmap]] - Most current roadmap
+- [[README.md]] - Project overview, basic setup and testing commands, explains how to use it and what it is for.
 - [[HACK.md]] - High-level vision and inspirations
-- [[HOME]] - Obsidian home page
+- [[HOME]] - Obsidian home page, day to day thinking and note taking. Obsidian data views welcome.
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
 - [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
@@ -24,23 +15,14 @@ front matter for tagging documents.
 - Favor incremental, reviewable changes; avoid sweeping refactors without prior discussion.
 - Default to reproducibility: include exact commands, seeds, and script names in PR descriptions.
 
-## Estimation & Story Points
-- All planning and task estimates use **story points** instead of days/hours.
-- Story points represent complexity, risk, and effort as a unified metric.
-- 1 story point ≈ 2-3 hours of focused work for a typical task.
-- Use story points for sprint planning, issue sizing, and roadmap coordination.
-- When estimating, consider: complexity, dependencies, risk, and testing effort.
-
+- [[ESTIMATION]]
 ## Directory Map
 - `/backend`: Clojure server exposing HTTP/WebSocket endpoints plus simulation logic in `fantasia.sim.*`.
   - `/backend/src`: Source code organized by namespace (no test files here).
   - `/backend/test`: All test files, matching namespace structure of `src`.
 - `/web`: React 19 + Vite + TypeScript UI for viewing and steering the myth debugger.
 - `/docs`: Notes, inbox thoughts, and long-form design commentary (`HACK.md`).
-- `/docs/inbox`: Scratchpad ideas; do not assume stability but keep formatting readable.
 - `/docs/notes`: Evergreen facts; prefer appending instead of in-place rewrites.
-- Root scripts/config: `HACK.md`, this `AGENTS.md`, and future workspace-wide configs.
-
 ## Toolchains & Dependencies
 - Backend: `clojure` CLI (deps.edn) with http-kit, reitit, cheshire, and project-local namespaces.
 - Backend Java requirement: JDK 17+ recommended to match deps.edn features; set `JAVA_HOME` explicitly when using SDKMAN.

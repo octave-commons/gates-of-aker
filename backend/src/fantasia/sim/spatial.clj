@@ -23,14 +23,14 @@
 (defn at-trees?
   "True when the world has a tree at the given position."
   [world pos]
-  (let [tile-key (str (first pos) "," (second pos))
+  (let [tile-key (vector (first pos) (second pos))
         tile (get-in world [:tiles tile-key])]
     (= :tree (:resource tile))))
 
 (defn passable?
   "True when a position can be walked through (no wall structures)."
   [world pos]
-  (let [tile-key (str (first pos) "," (second pos))
+  (let [tile-key (vector (first pos) (second pos))
         tile (get-in world [:tiles tile-key])
         structure (:structure tile)]
     (not (= :wall structure))))

@@ -53,11 +53,11 @@
                        (be/add-component entity-id (c/->Tile terrain biome structure resource))
                        (be/add-component entity-id (c/->TileIndex q r)))]
      (cond-> system'
-             tile-resources (be/add-component entity-id tile-resources)
-             structure-state (be/add-component entity-id structure-state)
-             (= structure :campfire) (be/add-component entity-id (c/->CampfireState const/campfire-radius true (:tick system)))
-             (= structure :shrine) (be/add-component entity-id (c/->ShrineState nil)))
-     [(str q "," r) entity-id system'])))
+              tile-resources (be/add-component entity-id tile-resources)
+              structure-state (be/add-component entity-id structure-state)
+              (= structure :campfire) (be/add-component entity-id (c/->CampfireState const/campfire-radius true (:tick system)))
+              (= structure :shrine) (be/add-component entity-id (c/->ShrineState nil)))
+      [(vector q r) entity-id system'])))
 
 (defn create-building
   "Create a building entity (job provider) with JobQueue."
@@ -90,22 +90,22 @@
   "Create a stockpile entity at given position."
   [system q r]
   (let [entity-id (java.util.UUID/randomUUID)
-        system' (-> system
-                      (be/add-entity entity-id)
-                      (be/add-component entity-id (c/->TileIndex q r))
-                      (be/add-component entity-id (c/->Stockpile {:log 0})))]
-    [entity-id (str q "," r) system']))
+         system' (-> system
+                       (be/add-entity entity-id)
+                       (be/add-component entity-id (c/->TileIndex q r))
+                       (be/add-component entity-id (c/->Stockpile {:log 0})))]
+     [entity-id (vector q r) system']))
 
 (defn create-world-item
   "Create a dropped item entity."
   [system q r resource qty]
   (let [entity-id (java.util.UUID/randomUUID)
-        tick (:tick system)
-        system' (-> system
-                      (be/add-entity entity-id)
-                      (be/add-component entity-id (c/->Position q r))
-                      (be/add-component entity-id (c/->WorldItem resource qty [q r] tick)))]
-    [entity-id (str q "," r) system']))
+         tick (:tick system)
+         system' (-> system
+                       (be/add-entity entity-id)
+                       (be/add-component entity-id (c/->Position q r))
+                       (be/add-component entity-id (c/->WorldItem resource qty [q r] tick)))]
+     [entity-id (vector q r) system']))
 
 (defn get-all-agents [system]
   "Get all entities with Role component (agents)."
