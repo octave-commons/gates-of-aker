@@ -32,13 +32,16 @@
 
 ;; --- Spawn initial trees -----------------------------------------------------
 (defn- try-place-tree
-  "Place a tree at pos in world when a randomized roll succeeds.
-  Returns updated world." 
-  [world pos rng spawn-chance]
-  (let [tile-key (tile-key-for pos)]
-    (if (< (rand-int* rng 1000) (int (* spawn-chance 1000)))
-      (assoc-in world [:tiles tile-key] (make-tree-tile (:tick world) rng))
-      world)))
+   "Place a tree at pos in world when a randomized roll succeeds.
+   Returns updated world." 
+   [world pos rng spawn-chance]
+    (let [tile-key (tile-key-for pos)
+          existing-tile (get-in world [:tiles tile-key])]
+      (if (< (rand-int* rng 1000) (int (* spawn-chance 1000)))
+        (assoc-in world [:tiles tile-key] (if existing-tile
+                                         (merge existing-tile (make-tree-tile (:tick world) rng))
+                                         (make-tree-tile (:tick world) rng)))
+        world)))
 
 (defn spawn-initial-trees!
   "Spawn initial trees randomly throughout the map. Approximately `tree-density`
@@ -95,7 +98,7 @@
           (let [new-pos (rand-nth neighbors)
                 new-key (tile-key-for new-pos)]
             (-> world
-                (assoc-in [:tiles new-key] (make-tree-tile current-tick r))
+                (assoc-in [:tiles new-key] (merge (get-in world [:tiles new-key]) (make-tree-tile current-tick r)))
                 (assoc-in [:tiles tile-key :next-spread-tick] (next-spread-tick current-tick min-interval max-interval r))))
           (assoc-in world [:tiles tile-key :next-spread-tick] (next-spread-tick current-tick min-interval max-interval r))))
 

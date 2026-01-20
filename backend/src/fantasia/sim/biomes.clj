@@ -79,43 +79,46 @@
       :rock)))
 
 (defn generate-biomes!
-  "Generate biomes across the map using simplex noise." 
-  [world]
-  (let [hex-map (:map world)
-        tiles (:tiles world)
-        {:keys [bounds]} hex-map
-        {:keys [w h origin]} bounds
-        [oq or] (or origin [0 0])
-        perm (build-perm (:seed world))
-        scale 0.08
-        village-scale 0.14
-        center [(+ oq (quot w 2)) (+ or (quot h 2))]
-        max-dist (max 1 (long (/ (max w h) 2)))
-        coords (for [q (range oq (+ oq w))
-                     r (range or (+ or h))]
-                 [q r])]
-    (assoc world :tiles
-           (reduce
-             (fn [acc [q r]]
-               (if (hex/in-bounds? hex-map [q r])
-                 (let [tile-key (str q "," r)
-                       base-tile (get acc tile-key {:terrain :ground})
-                       noise (simplex2d perm (* q scale) (* r scale))
-                       bias-dist (min 1.0 (/ (double (hex/distance center [q r])) max-dist))
-                       field-bias (* 0.18 (- 1.0 bias-dist))
-                       value (+ noise field-bias)
-                       village-noise (simplex2d perm (* q village-scale) (* r village-scale))
-                       village? (and (> village-noise 0.55) (< bias-dist 0.85))
-                       biome (cond
-                               village? :village
-                               (< value -0.25) :rocky
-                               (< value 0.05) :forest
-                               (< value 0.45) :field
-                               :else :forest)]
-                   (assoc acc tile-key (assoc base-tile :biome biome)))
-                 acc))
-             tiles
-             coords))))
+   "Generate biomes across the map using simplex noise." 
+   [world]
+   (let [hex-map (:map world)
+         tiles (:tiles world)
+         {:keys [bounds]} hex-map
+         {:keys [w h origin]} bounds
+         [oq or] (or origin [0 0])
+         perm (build-perm (:seed world))
+         scale 0.08
+         village-scale 0.14
+         center [(+ oq (quot w 2)) (+ or (quot h 2))]
+         max-dist (max 1 (long (/ (max w h) 2)))
+         coords (for [q (range oq (+ oq w))
+                      r (range or (+ or h))]
+                  [q r])]
+     (println "[BIOME:GEN] Creating biomes for" w "x" h "map, coords:" (count coords) ", initial tiles:" (count tiles))
+     (let [result (assoc world :tiles
+            (reduce
+              (fn [acc [q r]]
+                (if (hex/in-bounds? hex-map [q r])
+                  (let [tile-key (str q "," r)
+                        base-tile (get acc tile-key {:terrain :ground})
+                        noise (simplex2d perm (* q scale) (* r scale))
+                        bias-dist (min 1.0 (/ (double (hex/distance center [q r])) max-dist))
+                        field-bias (* 0.18 (- 1.0 bias-dist))
+                        value (+ noise field-bias)
+                        village-noise (simplex2d perm (* q village-scale) (* r village-scale))
+                        village? (and (> village-noise 0.55) (< bias-dist 0.85))
+                        biome (cond
+                                village? :village
+                                (< value -0.25) :rocky
+                                (< value 0.05) :forest
+                                (< value 0.45) :field
+                                :else :forest)]
+                    (assoc acc tile-key (assoc base-tile :biome biome)))
+                  acc))
+              tiles
+              coords))]
+       (println "[BIOME:GEN] Created" (count (:tiles result)) "tiles")
+       result)))
 
 (defn spawn-biome-resources!
   "Spawn resources on tiles based on their biome type."

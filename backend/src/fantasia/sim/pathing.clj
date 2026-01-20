@@ -1,6 +1,7 @@
 (ns fantasia.sim.pathing
   (:require [fantasia.sim.hex :as hex]
-            [fantasia.sim.spatial :as spatial]))
+            [fantasia.sim.spatial :as spatial]
+            [fantasia.sim.constants :as const]))
 
 (defn bfs-path
   "Find shortest path from start to goal using BFS.
@@ -12,7 +13,7 @@
     (loop [queue [[start]]
            visited #{start}
            steps 0]
-      (let [max-steps 1000]
+      (let [max-steps const/pathfinding-max-steps]
         (if (>= steps max-steps)
           nil
           (if (empty? queue)
@@ -39,10 +40,10 @@
     [start]
     (let [heuristic (fn [pos] (hex/distance pos goal))
           start-g 0
-          start-f (+ start-g (heuristic start))
-          open-set {start {:g start-g :f start-f :path [start]}}
-          closed-set #{}
-          max-steps 1000]
+           start-f (+ start-g (heuristic start))
+           open-set {start {:g start-g :f start-f :path [start]}}
+           closed-set #{}
+           max-steps const/pathfinding-max-steps]
       (loop [open-set open-set
              closed-set closed-set
              steps 0]

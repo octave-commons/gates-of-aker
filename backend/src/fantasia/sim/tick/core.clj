@@ -11,7 +11,8 @@
             [fantasia.sim.tick.initial :as initial]
             [fantasia.sim.tick.trees :as trees]
             [fantasia.sim.tick.movement :as movement]
-            [fantasia.sim.tick.mortality :as mortality]))
+            [fantasia.sim.tick.mortality :as mortality]
+            [fantasia.sim.constants :as const]))
 
 (def ^:dynamic *state (atom (initial/initial-world 1)))
 

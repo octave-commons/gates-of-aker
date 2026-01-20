@@ -2,7 +2,8 @@
   (:require [fantasia.sim.facets :as f]
             [fantasia.sim.events :as events]
             [fantasia.sim.spatial :as spatial]
-            [fantasia.sim.hex :as hex]))
+            [fantasia.sim.hex :as hex]
+            [fantasia.sim.constants :as const]))
 
 (defn update-needs
   "Decay warmth/food/sleep relative to cold snap."
@@ -16,7 +17,7 @@
              warmth (get-in agent [:needs :warmth] 0.6)
              pos (:pos agent)
              campfire-pos (:campfire world)
-             campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) 2))
+              campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) const/campfire-radius))
              tile-key (when pos (str (first pos) "," (second pos)))
              house-near?
              (and pos
@@ -24,13 +25,13 @@
                       (some (fn [n]
                               (= :house (get-in world [:tiles (str (first n) "," (second n)) :structure])))
                             (hex/neighbors pos))))
-             warmth-bonus (cond
-                            campfire-near? 0.04
-                            house-near? 0.02
-                            :else 0.0)
-             warmth-decay (+ 0.004 (* 0.012 cold))
-              food-decay (if asleep? 0.0002 0.0008)
-              sleep-decay (if asleep? 0.0 0.0032)
+              warmth-bonus (cond
+                             campfire-near? const/warmth-bonus-campfire
+                             house-near? const/warmth-bonus-house
+                             :else 0.0)
+              warmth-decay (+ const/base-warmth-decay (* const/cold-warmth-decay-factor cold))
+               food-decay (if asleep? const/base-food-decay-asleep const/base-food-decay-awake)
+               sleep-decay (if asleep? 0.0 const/base-sleep-decay)
              warmth' (f/clamp01 (+ (- warmth warmth-decay) warmth-bonus))
              food' (f/clamp01 (- (get-in agent [:needs :food] 0.7) food-decay))
              sleep' (f/clamp01 (- (get-in agent [:needs :sleep] 0.7) sleep-decay))]

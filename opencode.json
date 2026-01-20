@@ -22,5 +22,20 @@
         }
       }
     }
+  },
+  "permission":{
+    "bash":{
+      "*":"allow",
+      "pkill*":"deny",
+      "kill*":"deny",
+      "rm*":"ask",
+      "rmdir*":"ask",
+      "shutdown*":"deny",
+      "git*":"ask",
+      "git log*":"allow",
+      "git diff*":"allow",
+      "pm2*":"ask",
+      "pm2*logs*--nostream*":"allow"
+    }
   }
 }

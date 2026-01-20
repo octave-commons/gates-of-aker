@@ -1,4 +1,5 @@
-(ns fantasia.sim.facets)
+(ns fantasia.sim.facets
+  (:require [fantasia.sim.constants :as const]))
 
 (defn clamp01 ^double [^double x]
   (cond
@@ -15,7 +16,7 @@
 
 (defn decay-frontier
   "Decay activations each tick. Keep sparse frontier by dropping tiny activations."
-  [frontier {:keys [decay drop-threshold] :or {decay 0.92 drop-threshold 0.02}}]
+  [frontier {:keys [decay drop-threshold] :or {decay const/default-decay-rate drop-threshold const/default-drop-threshold}}]
   (->> frontier
        (map (fn [[k {:keys [a strength valence]}]]
               (let [a' (* (double a) (double decay))]
@@ -32,16 +33,16 @@
 
 (defn spread-step
   "One hop of spreading along weighted edges.
-  edges is a map {[from to] w} with w in [0..1]."
-  [frontier edges {:keys [spread-gain max-hops] :or {spread-gain 0.55 max-hops 2}}]
+   edges is a map {[from to] w} with w in [0..1]."
+  [frontier edges {:keys [spread-gain max-hops] :or {spread-gain const/default-spread-gain max-hops const/default-max-hops}}]
   (loop [hop 0
          fr frontier
          deltas []]
     (if (>= hop max-hops)
       {:frontier fr :deltas deltas}
       (let [active (sort-by (fn [[_ {:keys [a]}]] (- (double a))) fr)
-            ;; small frontier = safe; take top 24 active facets
-            active (take 24 active)
+             ;; small frontier = safe; take top active facets
+             active (take const/max-active-facets active)
             step (reduce
                    (fn [{:keys [fr deltas]} [from {:keys [a]}]]
                      (reduce

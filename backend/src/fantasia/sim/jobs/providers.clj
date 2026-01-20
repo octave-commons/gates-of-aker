@@ -1,8 +1,9 @@
 (ns fantasia.sim.jobs.providers
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [fantasia.sim.hex :as hex]
-            [fantasia.sim.jobs :as jobs]))
+   (:require [clojure.set :as set]
+             [clojure.string :as str]
+             [fantasia.sim.hex :as hex]
+             [fantasia.sim.jobs :as jobs]
+             [fantasia.sim.constants :as const]))
 
 (defn- parse-key-pos [k]
   (let [parts (str/split k #",")]
@@ -224,7 +225,7 @@
                (let [structure (:structure tile)
                      level (structure-level tile)]
                  (when (and (contains? jobs/improvable-structures structure)
-                            (< level jobs/max-structure-level))
+                             (< level const/max-structure-level))
                    (parse-key-pos k)))))
        (remove (provider-existing-targets world provider))
        (sort-by (fn [pos] (hex/distance (:pos provider) pos)))))

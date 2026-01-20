@@ -1,11 +1,12 @@
 (ns fantasia.sim.tick.initial
-  (:require [clojure.set :as set]
-            [fantasia.sim.hex :as hex]
-            [fantasia.sim.biomes :as biomes]
-            [fantasia.sim.time :as sim-time]
-            [fantasia.sim.tick.trees :as trees]
-            [fantasia.sim.jobs :as jobs]
-            [fantasia.sim.jobs.providers :as job-providers]))
+   (:require [clojure.set :as set]
+             [fantasia.sim.hex :as hex]
+             [fantasia.sim.biomes :as biomes]
+             [fantasia.sim.time :as sim-time]
+             [fantasia.sim.tick.trees :as trees]
+             [fantasia.sim.jobs :as jobs]
+             [fantasia.sim.jobs.providers :as job-providers]
+             [fantasia.sim.constants :as const]))
 
 (defn rng [seed] (java.util.Random. (long seed)))
 (defn rand-int* [^java.util.Random r n] (.nextInt r (int n)))
@@ -127,11 +128,12 @@
                    [:patron/fire :judgment] 0.35
                    [:deity/storm :awe] 0.25
                    [:judgment :awe] 0.25}
-           :ledger {}
-           :recent-events []
-           :recent-max 30
-           :traces []
-           :trace-max 250}
+            :ledger {}
+             :recent-events []
+             :recent-max const/default-recent-max
+             :traces []
+             :trace-max const/default-trace-max
+             :jobs-by-id {}}
           base-world (assoc base-world :calendar (sim-time/calendar-info base-world))
           world-with-biomes (biomes/generate-biomes! base-world)
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)
@@ -142,16 +144,14 @@
            world-with-campfire (-> world-with-fruit
                                    (assoc :campfire campfire-pos)
                                    (assoc :shrine campfire-pos)
-                                   (assoc-in [:tiles campfire-key]
-                                             {:terrain :ground :structure :campfire :resource nil :level 1}))
+                                     (update-in [:tiles campfire-key] merge {:structure :campfire}))
            agent-count 16
            nearby-tiles (nearby-positions campfire-pos 3)
            house-tiles (take agent-count nearby-tiles)
            building-tiles (take 7 (drop agent-count nearby-tiles))
            world-with-houses (reduce (fn [w pos]
                                        (let [k (str (first pos) "," (second pos))]
-                                         (assoc-in w [:tiles k]
-                                                   {:terrain :ground :structure :house :resource nil :level 1})))
+                                         (update-in w [:tiles k] merge {:structure :house})))
                                      world-with-campfire
                                      house-tiles)
            building-types [:lumberyard :orchard :granary :quarry :workshop :improvement-hall :smelter]
@@ -164,16 +164,15 @@
                                       :granary :grain
                                       :quarry :rock
                                       nil)]
-                       (let [w' (assoc-in w [:tiles k]
-                                          {:terrain :ground :structure structure :resource nil :level 1})]
-                         (if resource
-                           (jobs/create-stockpile! w' pos resource 120)
-                           w'))))
+                        (let [w' (assoc-in w [:tiles k]
+                                           (merge {:terrain :ground :structure structure :resource nil :level 1}))]
+                          (if resource
+                            (jobs/create-stockpile! w' pos resource 120)
+                            w'))))
                    world-with-houses
                    (map vector building-tiles building-types))
-           world-with-warehouse (assoc-in world-with-buildings
-                                          [:tiles "0,0"]
-                                          {:terrain :ground :structure :warehouse :resource nil :level 1})
+            world-with-warehouse (update-in world-with-buildings
+                                           [:tiles "0,0"] merge {:structure :warehouse})
            world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
            world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 40)]
       (println "Warehouse created:" (get-in world-with-food [:tiles "0,0"]))
