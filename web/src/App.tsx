@@ -23,6 +23,37 @@ import { CONFIG } from "./config/constants";
 
 const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
 
+const normalizeTileKey = (rawKey: string) => {
+  const trimmed = rawKey.trim();
+  if (trimmed.includes(",") && !trimmed.includes("[")) {
+    return trimmed.replace(/\s+/g, "");
+  }
+  const match = trimmed.match(/^\[(-?\d+)\s+(-?\d+)\]$/);
+  if (match) {
+    return `${match[1]},${match[2]}`;
+  }
+  return trimmed;
+};
+
+const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined) => {
+  if (!input || typeof input !== "object") return input;
+  const normalized: Record<string, T> = {};
+  for (const [key, value] of Object.entries(input)) {
+    normalized[normalizeTileKey(key)] = value;
+  }
+  return normalized;
+};
+
+const normalizeSnapshot = (state: any) => {
+  if (!state || typeof state !== "object") return state;
+  return {
+    ...state,
+    tiles: normalizeKeyedMap(state.tiles),
+    items: normalizeKeyedMap(state.items),
+    stockpiles: normalizeKeyedMap(state.stockpiles),
+  };
+};
+
 export function App() {
   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
   const [tick, setTick] = useState(0);
@@ -144,7 +175,7 @@ export function App() {
       wsUrl,
       (m: WSMessage) => {
         if (m.op === "hello") {
-          const state = m.state ?? {};
+          const state = normalizeSnapshot(m.state ?? {});
           setTick(state.tick ?? 0);
           setSnapshot(state);
           if (state.map) {
@@ -158,7 +189,7 @@ export function App() {
         }
         if (m.op === "tick") {
           setTick(m.data?.tick ?? 0);
-          setSnapshot(m.data?.snapshot ?? null);
+          setSnapshot(normalizeSnapshot(m.data?.snapshot ?? null));
           playTone(440, 0.08);
           handleDeathTone(m.data?.snapshot ?? null);
         }
@@ -169,16 +200,16 @@ export function App() {
             return next.slice(Math.max(0, next.length - CONFIG.data.MAX_TRACES));
            });
          }
-         if (m.op === "reset") {
-            setTraces([]);
-            setSelectedCell(null);
-            setSelectedAgentId(null);
-           const state = m.state ?? {};
-           setSnapshot(state);
-           if (state.map) {
-             setMapConfig(state.map as HexConfig);
-           }
-           aliveAgentsRef.current = getAliveAgents(state);
+          if (m.op === "reset") {
+             setTraces([]);
+             setSelectedCell(null);
+             setSelectedAgentId(null);
+            const state = normalizeSnapshot(m.state ?? {});
+            setSnapshot(state);
+            if (state.map) {
+              setMapConfig(state.map as HexConfig);
+            }
+            aliveAgentsRef.current = getAliveAgents(state);
            initialFocusRef.current = false;
            focusOnTownCenter(state);
            initialFocusRef.current = true;
@@ -186,13 +217,13 @@ export function App() {
         if (m.op === "tiles") {
            setSnapshot((prev: any) => {
              if (!prev) return prev;
-             return { ...prev, tiles: m.tiles };
+             return { ...prev, tiles: normalizeKeyedMap(m.tiles) };
            });
          }
          if (m.op === "stockpiles") {
            setSnapshot((prev: any) => {
              if (!prev) return prev;
-             return { ...prev, stockpiles: m.stockpiles };
+             return { ...prev, stockpiles: normalizeKeyedMap(m.stockpiles) };
            });
          }
          if (m.op === "agent_path") {
@@ -249,8 +280,8 @@ export function App() {
         const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
         const response = await fetch(`${backendOrigin}/sim/state`);
 
-        if (response.ok) {
-          const state = await response.json();
+          if (response.ok) {
+            const state = normalizeSnapshot(await response.json());
 
           // Check if the state has meaningful data
           const hasData = state && (
@@ -260,8 +291,8 @@ export function App() {
           );
 
           if (hasData) {
-             setTick(state.tick ?? 0);
-             setSnapshot(state);
+              setTick(state.tick ?? 0);
+              setSnapshot(state);
              if (state.map) {
                setMapConfig(state.map as HexConfig);
              }
