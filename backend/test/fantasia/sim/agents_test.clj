@@ -37,9 +37,20 @@
   (let [world (assoc (core/initial-world 5) :cold-snap 0.0)
         agent {:needs {:warmth 0.6 :food 0.6 :sleep 0.6}}
         updated (agents/update-needs world agent)]
-    (is (= 0.6 (get-in updated [:needs :warmth])))
+    (is (< (get-in updated [:needs :warmth]) 0.6))
     (is (< (get-in updated [:needs :food]) 0.6))
     (is (< (get-in updated [:needs :sleep]) 0.6))))
+
+(deftest update-needs-slow-food-decay-while-asleep
+  (let [world (core/initial-world 5)
+        base-agent {:pos [0 0]
+                    :needs {:warmth 0.6 :food 0.6 :sleep 0.6}}
+        awake (agents/update-needs world (assoc base-agent :status {:alive? true :asleep? false}))
+        asleep (agents/update-needs world (assoc base-agent :status {:alive? true :asleep? true}))]
+    (is (< (get-in awake [:needs :food]) 0.6))
+    (is (> (get-in asleep [:needs :food]) (get-in awake [:needs :food])))
+    (is (< (get-in awake [:needs :sleep]) 0.6))
+    (is (approx= 0.6 (get-in asleep [:needs :sleep])))))
 
 (deftest choose-packet-reflects-context
   (let [world (-> (core/initial-world 2)

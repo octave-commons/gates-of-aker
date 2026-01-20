@@ -51,6 +51,14 @@
         eat-job (some #(when (= (:type %) :job/eat) %) (:jobs world))]
     (is eat-job)))
 
+(deftest nightfall-prompts-sleep-job
+  (let [world (-> (base-world)
+                  (assoc :daylight 0.2)
+                  (assoc-in [:agents 0 :needs :sleep] 0.55)
+                  (jobs/generate-need-jobs!))
+        sleep-job (some #(when (= (:type %) :job/sleep) %) (:jobs world))]
+    (is sleep-job)))
+
 (deftest chop-jobs-skip-existing-targets
   (let [world (-> (initial/initial-world {:seed 1 :tree-density 0})
                   (assoc :jobs [])
@@ -60,3 +68,31 @@
         world (jobs/generate-chop-jobs! world)
         chop-jobs (filter #(= (:type %) :job/chop-tree) (:jobs world))]
     (is (= 1 (count chop-jobs)))))
+
+(deftest chop-jobs-require-wood-demand
+  (let [world (-> (initial/initial-world {:seed 1 :tree-density 0})
+                  (assoc :jobs [])
+                  (assoc :stockpiles {})
+                  (update :tiles assoc "2,0" {:terrain :ground :resource :tree}))
+        world (jobs/generate-chop-jobs! world)
+        chop-jobs (filter #(= (:type %) :job/chop-tree) (:jobs world))]
+    (is (empty? chop-jobs))))
+
+(deftest deliver-food-jobs-cap-to-stockpiles
+  (let [world (-> (initial/initial-world {:seed 1 :tree-density 0})
+                  (assoc :jobs [])
+                  (assoc :items {"1,1" {:fruit 2}
+                                 "2,2" {:fruit 1}})
+                  (assoc :stockpiles {"0,0" {:resource :fruit :max-qty 10 :current-qty 0}}))
+        world (jobs/generate-deliver-food-jobs! world)
+        food-jobs (filter #(= (:type %) :job/deliver-food) (:jobs world))]
+    (is (= 1 (count food-jobs)))))
+
+(deftest cold-agent-triggers-house-job
+  (let [world (-> (initial/initial-world {:seed 1 :tree-density 0})
+                  (assoc :jobs [])
+                  (assoc :items {"1,0" {:log 3}})
+                  (assoc-in [:agents 0 :needs :warmth] 0.2))
+        world (jobs/generate-house-jobs! world)
+        house-job (some #(when (= (:type %) :job/build-house) %) (:jobs world))]
+    (is house-job)))

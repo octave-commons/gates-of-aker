@@ -53,7 +53,7 @@ const BUILDING_CONFIGS: BuildingConfig[] = [
   {
     id: "stockpile",
     name: "Stockpile",
-    description: "Storage area for resources (wood or food).",
+    description: "Storage area for resources (wood, food, fruit).",
     icon: "📦",
     color: "#8d6e63",
     requiresSelection: true,
@@ -169,6 +169,8 @@ function StockpileConfig({
         >
           <option value="wood">Wood</option>
           <option value="food">Food</option>
+          <option value="fruit">Fruit</option>
+          <option value="log">Log</option>
         </select>
       </div>
       

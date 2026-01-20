@@ -1,6 +1,8 @@
 (ns fantasia.sim.tick.initial
-  (:require [fantasia.sim.hex :as hex]
+  (:require [clojure.set :as set]
+            [fantasia.sim.hex :as hex]
             [fantasia.sim.biomes :as biomes]
+            [fantasia.sim.time :as sim-time]
             [fantasia.sim.tick.trees :as trees]
             [fantasia.sim.jobs :as jobs]))
 
@@ -47,6 +49,43 @@
     :recall {}
     :events []})
 
+(defn- bounds-tile-count [hex-map]
+  (let [{:keys [bounds]} hex-map
+        {:keys [shape]} bounds]
+    (case shape
+      :radius (let [radius (long (:r bounds 1))]
+                (+ 1 (* 3 radius (inc radius))))
+      (* (long (:w bounds 1)) (long (:h bounds 1))))))
+
+(defn- positions-within-radius [origin radius]
+  (loop [frontier #{origin}
+         visited #{origin}
+         step 0]
+    (if (>= step radius)
+      visited
+      (let [next (->> frontier
+                      (mapcat hex/neighbors)
+                      set)
+            next (set/difference next visited)]
+        (recur next (into visited next) (inc step))))))
+
+(defn- nearby-positions [pos radius]
+  (->> (positions-within-radius pos radius)
+       (remove #(= % pos))
+       (sort-by (fn [p] (hex/distance pos p)))))
+
+(defn- scatter-fruit! [world rng]
+  (let [hex-map (:map world)
+        total-tiles (bounds-tile-count hex-map)
+        desired (max 24 (long (Math/ceil (* total-tiles 0.004))))
+        positions (loop [acc #{}
+                         attempts 0]
+                    (if (or (>= (count acc) desired)
+                            (>= attempts (* desired 6)))
+                      acc
+                      (recur (conj acc (hex/rand-pos rng hex-map)) (inc attempts))))]
+    (reduce (fn [w pos] (jobs/add-item! w pos :fruit 1)) world positions)))
+
 (defn initial-world [opts]
    (let [{:keys [seed bounds tree-density]} opts
          actual-seed (or seed 1)
@@ -56,20 +95,22 @@
          hex-map {:kind :hex
                    :layout :pointy
                    :bounds hex-bounds}
-         base-world
-         {:seed actual-seed
-          :tick 0
-          :map hex-map
-          :tiles {}
-          :shrine nil
-          :cold-snap 0.85
-          :jobs []
-          :items {}
-          :stockpiles {}
-          :levers {:iconography {:fire->patron 0.80
-                                  :lightning->storm 0.75
-                                  :storm->deity 0.85}
-                     :mouthpiece-agent-id nil}
+           base-world
+            {:seed actual-seed
+             :tick 0
+             :map hex-map
+             :tiles {}
+             :shrine nil
+             :temperature 0.6
+             :cold-snap 0.4
+             :daylight 0.7
+             :jobs []
+             :items {}
+             :stockpiles {}
+           :levers {:iconography {:fire->patron 0.80
+                                   :lightning->storm 0.75
+                                   :storm->deity 0.85}
+                      :mouthpiece-agent-id nil}
           :institutions
           {:temple {:id :temple
                     :name "Temple of Embers"
@@ -90,19 +131,50 @@
            :recent-max 30
            :traces []
            :trace-max 250}
-         world-with-biomes (biomes/generate-biomes! base-world)
+          base-world (assoc base-world :calendar (sim-time/calendar-info base-world))
+          world-with-biomes (biomes/generate-biomes! base-world)
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)
           world-with-trees (trees/spawn-initial-trees! world-with-resources tree-density)
-          world-with-warehouse (assoc-in world-with-trees [:tiles "0,0"] {:terrain :ground :structure :warehouse :resource nil})
-          world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :food 200)
-          world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :food 10)]
+          world-with-fruit (scatter-fruit! world-with-trees r)
+          campfire-pos (biomes/rand-pos-in-biome r hex-map :village (:tiles world-with-fruit))
+          campfire-key (str (first campfire-pos) "," (second campfire-pos))
+          world-with-campfire (-> world-with-fruit
+                                  (assoc :campfire campfire-pos)
+                                  (assoc :shrine campfire-pos)
+                                  (assoc-in [:tiles campfire-key] {:terrain :ground :structure :campfire :resource nil}))
+          agent-count 16
+          nearby-tiles (nearby-positions campfire-pos 3)
+          house-tiles (take agent-count nearby-tiles)
+          building-tiles (take 4 (drop agent-count nearby-tiles))
+          world-with-houses (reduce (fn [w pos]
+                                      (let [k (str (first pos) "," (second pos))]
+                                        (assoc-in w [:tiles k] {:terrain :ground :structure :house :resource nil})))
+                                    world-with-campfire
+                                    house-tiles)
+          building-types [:lumberyard :orchard :granary :quarry]
+          world-with-buildings
+          (reduce (fn [w [pos structure]]
+                    (let [k (str (first pos) "," (second pos))
+                          resource (case structure
+                                     :lumberyard :log
+                                     :orchard :fruit
+                                     :granary :grain
+                                     :quarry :rock)]
+                      (-> w
+                          (assoc-in [:tiles k] {:terrain :ground :structure structure :resource nil})
+                          (jobs/create-stockpile! pos resource 120))))
+                  world-with-houses
+                  (map vector building-tiles building-types))
+          world-with-warehouse (assoc-in world-with-buildings [:tiles "0,0"] {:terrain :ground :structure :warehouse :resource nil})
+          world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
+          world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 40)]
      (println "Warehouse created:" (get-in world-with-food [:tiles "0,0"]))
      (println "Stockpiles:" (:stockpiles world-with-food))
      (println "Items:" (:items world-with-food))
-     (assoc world-with-food
-            :agents (vec (for [i (range 12)]
-                           (let [[q r] (biomes/rand-pos-in-biome r hex-map :village (:tiles world-with-food))]
-                             (->agent i q r (cond
-                                                 (= i 0) :priest
-                                                 (= i 1) :knight
-                                                 :else :peasant))))))))
+      (assoc world-with-food
+             :agents (vec (for [i (range agent-count)]
+                            (let [[q r] (nth (concat [campfire-pos] nearby-tiles) (mod i (inc (count nearby-tiles))))]
+                              (->agent i q r (cond
+                                              (= i 0) :priest
+                                              (= i 1) :knight
+                                              :else :peasant))))))))

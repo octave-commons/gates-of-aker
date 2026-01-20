@@ -45,7 +45,7 @@
       nil)))
 
 (defonce *clients (atom #{}))
-(defonce *runner (atom {:running? false :future nil :ms 250}))
+(defonce *runner (atom {:running? false :future nil :ms 66}))
 
 (defn ws-send! [ch msg]
   (http/send! ch (json/generate-string msg)))

@@ -136,11 +136,17 @@
          (>= turns-since (or (:next-fruit-drop tile) drop-at)))))
 
 (defn- perform-drop
-  "Add one fruit at the tree position and update tile timings." 
+  "Add one fruit at a nearby tile and update tile timings." 
   [w tile-key tile current-tick rng]
-  (let [pos (parse-tile-key tile-key)]
+  (let [pos (parse-tile-key tile-key)
+        neighbors (->> (hex/neighbors pos)
+                       (filter #(hex/in-bounds? (:map w) %))
+                       vec)
+        drop-pos (if (seq neighbors)
+                   (nth neighbors (rand-int* rng (count neighbors)))
+                   pos)]
     (-> w
-        (jobs/add-item! pos :fruit 1)
+        (jobs/add-item! drop-pos :fruit 1)
         (assoc-in [:tiles tile-key :last-fruit-drop] current-tick)
         (assoc-in [:tiles tile-key :next-fruit-drop] (+ current-tick 5 (mod (rand-int* rng 1000000) 16))))))
 

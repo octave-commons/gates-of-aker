@@ -31,6 +31,7 @@
   (let [agent (get-in world [:agents agent-id])
         agent-pos (:pos agent)
         agent-type (:role agent)
+        current-job-id (:current-job agent)
         
         ;; Build facet list for memory
         base-facets ["death" "tragedy" "loss" "warning" "fear" "blood" "corpse"]
@@ -58,12 +59,22 @@
     
     ;; Create memory and mark agent as dead
     (-> (mem/create-memory! world
-                           :memory/danger
-                           agent-pos
-                           memory-strength
-                           agent-id
-                           memory-facets)
-        (assoc-in [:agents agent-id :status :alive?] false))))
+                            :memory/danger
+                            agent-pos
+                            memory-strength
+                            agent-id
+                            memory-facets)
+        (cond-> current-job-id
+          (update :jobs (fn [jobs]
+                          (mapv (fn [job]
+                                  (if (= (:id job) current-job-id)
+                                    (assoc job :worker-id nil :state :pending)
+                                    job))
+                                jobs))))
+        (cond-> current-job-id
+          (update-in [:agents agent-id] dissoc :current-job))
+        (assoc-in [:agents agent-id :status :alive?] false)
+        (assoc-in [:agents agent-id :status :cause-of-death] cause))))
 
 (defn process-mortality!
   "Process all agents and handle deaths by creating memories."

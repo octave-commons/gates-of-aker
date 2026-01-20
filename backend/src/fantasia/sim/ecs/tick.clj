@@ -18,8 +18,8 @@
 (defn run-systems [ecs-world global-state]
   "Run all ECS systems in sequence.
    Returns updated ECS world."
-  (let [levers (:levers global-state {})
-         cold-snap (or (:cold-snap levers) 0.85)]
+   (let [levers (:levers global-state {})
+         cold-snap (or (:cold-snap levers) 0.4)]
     (-> ecs-world
         (fantasia.sim.ecs.systems.needs-decay/process cold-snap)
         (fantasia.sim.ecs.systems.movement/process))))
@@ -117,11 +117,11 @@
    Returns global-state with ECS data."
   (reset-ecs-world!)
   (let [seed (or (:seed opts) 1)
-        global-state {:seed seed
-                      :tick 0
-                      :map {:kind :hex :layout :pointy :bounds {:shape :rect :w 128 :h 128}}
-                      :shrine nil
-                      :levers {:cold-snap 0.85 :iconography {:fire->patron 0.80}}
+         global-state {:seed seed
+                       :tick 0
+                       :map {:kind :hex :layout :pointy :bounds {:shape :rect :w 128 :h 128}}
+                       :shrine nil
+                       :levers {:cold-snap 0.4 :iconography {:fire->patron 0.80}}
                       :jobs {}
                       :items {}
                       :stockpiles {}

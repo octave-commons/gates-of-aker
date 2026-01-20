@@ -60,6 +60,8 @@ export function BuildControls({
             >
               <option value="wood">Wood</option>
               <option value="food">Food</option>
+              <option value="fruit">Fruit</option>
+              <option value="log">Log</option>
             </select>
           </label>
           <label>

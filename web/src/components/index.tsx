@@ -16,3 +16,4 @@ export { TraceFeed } from "./TraceFeed";
 export { JobQueuePanel } from "./JobQueuePanel";
 export { TreeSpreadControls } from "./TreeSpreadControls";
 export { ErrorBoundary } from "./ErrorBoundary";
+export { WorldInfoPanel } from "./WorldInfoPanel";

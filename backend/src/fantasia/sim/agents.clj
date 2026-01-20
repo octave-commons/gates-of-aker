@@ -7,12 +7,33 @@
 (defn update-needs
   "Decay warmth/food/sleep relative to cold snap."
   [world agent]
-  (let [cold (:cold-snap world)
-        warmth (get-in agent [:needs :warmth] 0.6)
-        warmth' (f/clamp01 (- warmth (* 0.03 cold)))
-        food' (f/clamp01 (- (get-in agent [:needs :food] 0.7) 0.01))
-        sleep' (f/clamp01 (- (get-in agent [:needs :sleep] 0.7) 0.008))]
-    (assoc-in agent [:needs] {:warmth warmth' :food food' :sleep sleep'})))
+  (let [alive? (get-in agent [:status :alive?] true)]
+    (if (not alive?)
+      agent
+       (let [temperature (double (or (:temperature world) 0.6))
+             cold (max 0.0 (- 1.0 temperature))
+             asleep? (get-in agent [:status :asleep?] false)
+             warmth (get-in agent [:needs :warmth] 0.6)
+             pos (:pos agent)
+             campfire-pos (:campfire world)
+             campfire-near? (and campfire-pos (<= (hex/distance pos campfire-pos) 2))
+             tile-key (str (first pos) "," (second pos))
+             house-near?
+             (or (= :house (get-in world [:tiles tile-key :structure]))
+                 (some (fn [n]
+                         (= :house (get-in world [:tiles (str (first n) "," (second n)) :structure])))
+                       (hex/neighbors pos)))
+             warmth-bonus (cond
+                            campfire-near? 0.04
+                            house-near? 0.02
+                            :else 0.0)
+             warmth-decay (+ 0.004 (* 0.012 cold))
+             food-decay (if asleep? 0.0005 0.002)
+             sleep-decay (if asleep? 0.0 0.008)
+             warmth' (f/clamp01 (+ (- warmth warmth-decay) warmth-bonus))
+             food' (f/clamp01 (- (get-in agent [:needs :food] 0.7) food-decay))
+             sleep' (f/clamp01 (- (get-in agent [:needs :sleep] 0.7) sleep-decay))]
+        (assoc-in agent [:needs] {:warmth warmth' :food food' :sleep sleep'})))))
 
 (defn choose-packet
   "Convert agent state + local context into a broadcast packet."
@@ -149,4 +170,3 @@
                     (assoc :recall (:new-recall res)))
       :mentions (:mentions res)
       :traces (:traces res)}))
-

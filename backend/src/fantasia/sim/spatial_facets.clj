@@ -45,15 +45,17 @@
 (defn register-entity-facets!
   "Register facet word list for an entity type.
    Enforces facet limit per entity (default 16, max 64)."
-  [entity-type words {:keys [max-facets]}]
-  (let [max-facets (or max-facets 16)
-        word-count (count words)]
-    (when (> word-count max-facets)
-      (log/log-error "Facet limit exceeded"
-                   {:entity-type entity-type
-                    :requested word-count
-                    :max-allowed max-facets}))
-    (swap! entity-facets assoc entity-type (vec words))))
+  ([entity-type words]
+   (register-entity-facets! entity-type words {}))
+  ([entity-type words {:keys [max-facets]}]
+   (let [max-facets (or max-facets 16)
+         word-count (count words)]
+     (when (> word-count max-facets)
+       (log/log-error "Facet limit exceeded"
+                      {:entity-type entity-type
+                       :requested word-count
+                       :max-allowed max-facets}))
+     (swap! entity-facets assoc entity-type (vec words)))))
 
 (defn get-entity-facets
   "Get facet word list for an entity type.
@@ -86,6 +88,16 @@
     ["stockpile" "storage" "safe" "protected" "structure" "resource" "organized" "supplies"])
   (register-entity-facets! :campfire
     ["fire" "warmth" "light" "camp" "safe" "community" "comfort" "protection" "warm"])
+  (register-entity-facets! :house
+    ["house" "shelter" "home" "warmth" "safe" "community" "comfort" "sleep"])
+  (register-entity-facets! :lumberyard
+    ["lumber" "wood" "work" "craft" "resource" "storage" "industry"])
+  (register-entity-facets! :orchard
+    ["orchard" "fruit" "food" "sweet" "trees" "harvest" "resource"])
+  (register-entity-facets! :granary
+    ["granary" "grain" "food" "storage" "harvest" "safety" "resource"])
+  (register-entity-facets! :quarry
+    ["quarry" "stone" "rock" "resource" "work" "mining" "industry"])
   (register-entity-facets! :warehouse
     ["warehouse" "structure" "building" "storage" "safe" "protected" "resource" "organized"])
   (register-entity-facets! :wall
@@ -112,6 +124,12 @@
         structure
         (cond
           (= structure :wall) (get-entity-facets :wall)
+          (= structure :campfire) (get-entity-facets :campfire)
+          (= structure :house) (get-entity-facets :house)
+          (= structure :lumberyard) (get-entity-facets :lumberyard)
+          (= structure :orchard) (get-entity-facets :orchard)
+          (= structure :granary) (get-entity-facets :granary)
+          (= structure :quarry) (get-entity-facets :quarry)
           (= structure :warehouse) (get-entity-facets :warehouse)
           (= structure :statue/dog) (get-entity-facets :statue/dog)
           :else [])

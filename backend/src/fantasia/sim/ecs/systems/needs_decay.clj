@@ -22,8 +22,8 @@
                     warmth-val (double (or (:warmth needs) 0.6))
                     food-val (double (or (:food needs) 0.7))
                     sleep-val (double (or (:sleep needs) 0.7))
-                    warmth (clamp01 (- warmth-val (* 0.03 cold-snap)))
-                    food (clamp01 (- food-val 0.01))
+                    warmth (clamp01 (- warmth-val (+ 0.004 (* 0.012 cold-snap))))
+                    food (clamp01 (- food-val 0.002))
                     sleep (clamp01 (- sleep-val 0.008))]
                 (be/add-component acc agent-id (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))))
             ecs-world

@@ -1,11 +1,19 @@
 (ns fantasia.sim.jobs
   (:require [fantasia.sim.hex :as hex]
+            [clojure.set :as set]
             [clojure.string :as str]))
 
 (def job-priorities
   {:job/eat 100
+   :job/warm-up 95
    :job/sleep 90
    :job/chop-tree 60
+   :job/harvest-wood 58
+   :job/harvest-fruit 58
+   :job/harvest-grain 58
+   :job/harvest-stone 58
+   :job/build-house 55
+   :job/build-structure 35
    :job/haul 50
    :job/deliver-food 45
    :job/build-wall 40})
@@ -75,12 +83,13 @@
 
 (defn auto-assign-jobs! [world]
   (let [result (reduce (fn [w agent]
-                        (if (nil? (:current-job agent))
-                          (let [w' (claim-next-job! w (:id agent))]
-                            (if (= w w')
-                              (mark-agent-idle w (:id agent))
-                              w'))
-                          w))
+                        (let [alive? (get-in agent [:status :alive?] true)]
+                          (if (and alive? (nil? (:current-job agent)))
+                           (let [w' (claim-next-job! w (:id agent))]
+                             (if (= w w')
+                               (mark-agent-idle w (:id agent))
+                               w'))
+                          w)))
                       world
                       (:agents world))]
     (when (not= world result)
@@ -96,6 +105,28 @@
     (if (zero? qty)
       world
       (update-in world [:items tile-key resource] (fnil + 0) qty))))
+
+(defn- stockpile-accepts? [sp resource]
+  (let [sp-resource (:resource sp)
+        wood? #(contains? #{:wood :log} %)]
+    (or (= sp-resource resource)
+        (and (wood? sp-resource) (wood? resource)))))
+
+(defn- stockpile-for-structure [structure]
+  (case structure
+    :lumberyard :log
+    :orchard :fruit
+    :granary :grain
+    :quarry :rock
+    nil))
+
+(defn- structure-for-resource [resource]
+  (case resource
+    :log :lumberyard
+    :fruit :orchard
+    :grain :granary
+    :rock :quarry
+    nil))
 
 (defn consume-items! [world pos resource qty]
   (let [tile-key (str (first pos) "," (second pos))
@@ -122,7 +153,7 @@
 (defn add-to-stockpile! [world pos resource qty]
   (let [k (str (first pos) "," (second pos))
         sp (get-in world [:stockpiles k])]
-    (if (and sp (= (:resource sp) resource))
+    (if (and sp (stockpile-accepts? sp resource))
       (let [space (- (:max-qty sp) (:current-qty sp))
             to-add (min space qty)]
         (if (pos? to-add)
@@ -133,7 +164,7 @@
 (defn take-from-stockpile! [world pos resource qty]
   (let [k (str (first pos) "," (second pos))
         sp (get-in world [:stockpiles k])]
-    (if (and sp (= (:resource sp) resource))
+    (if (and sp (stockpile-accepts? sp resource))
       (let [available (:current-qty sp)
             to-take (min available qty)]
         (if (pos? to-take)
@@ -153,16 +184,178 @@
       (- (:max-qty sp) (:current-qty sp))
       0)))
 
+(defn- positions-within-radius [origin radius]
+  (loop [frontier #{origin}
+         visited #{origin}
+         step 0]
+    (if (>= step radius)
+      visited
+      (let [next (->> frontier
+                      (mapcat hex/neighbors)
+                      set)
+            next (set/difference next visited)]
+        (recur next (into visited next) (inc step))))))
+
+
 (defn- parse-key-pos [k]
   (let [parts (str/split k #",")]
     [(Integer/parseInt (first parts)) (Integer/parseInt (second parts))]))
 
+(defn find-nearest-stockpile-with-qty [world pos resource]
+  (let [entries (filter (fn [[_ sp]] (stockpile-accepts? sp resource)) (:stockpiles world))
+        entries (filter (fn [[_ sp]] (pos? (:current-qty sp))) entries)]
+    (when (seq entries)
+      (let [pairs (map (fn [[k v]] [(parse-key-pos k) v]) entries)]
+        (first (first (apply min-key (fn [[p _]] (hex/distance pos p)) pairs)))))))
+
 (defn find-nearest-stockpile-with-space [world pos resource]
-  (let [entries (filter (fn [[_ sp]] (= (:resource sp) resource)) (:stockpiles world))
+  (let [entries (filter (fn [[_ sp]] (stockpile-accepts? sp resource)) (:stockpiles world))
         entries (filter (fn [[_ sp]] (< (:current-qty sp) (:max-qty sp))) entries)]
     (when (seq entries)
       (let [pairs (map (fn [[k v]] [(parse-key-pos k) v]) entries)]
         (first (apply min-key (fn [[p _]] (hex/distance pos p)) pairs))))))
+
+(defn- find-campfire-pos [world]
+  (or (:campfire world)
+      (first
+       (keep (fn [[k tile]]
+               (when (= (:structure tile) :campfire)
+                 (parse-key-pos k)))
+             (:tiles world)))))
+
+(defn- empty-build-site? [world pos]
+  (let [k (str (first pos) "," (second pos))
+        tile (get-in world [:tiles k])]
+    (and (hex/in-bounds? (:map world) pos)
+         (nil? (:structure tile))
+         (nil? (:resource tile)))))
+
+(defn- find-house-site [world campfire-pos]
+  (when campfire-pos
+    (->> (positions-within-radius campfire-pos 2)
+         (filter #(empty-build-site? world %))
+         (sort-by (fn [pos] (hex/distance campfire-pos pos)))
+         first)))
+
+(defn- find-structure-site [world campfire-pos]
+  (when campfire-pos
+    (->> (positions-within-radius campfire-pos 3)
+         (filter #(empty-build-site? world %))
+         (sort-by (fn [pos] (hex/distance campfire-pos pos)))
+         first)))
+
+(defn- tiles-with-resource [world resource]
+  (->> (:tiles world)
+       (keep (fn [[k tile]]
+               (when (= (:resource tile) resource)
+                 (parse-key-pos k))))))
+
+(defn- items-with-resource [world resource]
+  (->> (:items world)
+       (keep (fn [[k items]]
+               (when (pos? (get items resource 0))
+                 (parse-key-pos k))))))
+
+(defn- find-nearest-resource [world pos resource]
+  (->> (tiles-with-resource world resource)
+       (sort-by (fn [p] (hex/distance pos p)))
+       first))
+
+(defn- find-nearest-item [world pos resource]
+  (->> (items-with-resource world resource)
+       (sort-by (fn [p] (hex/distance pos p)))
+       first))
+
+(defn- stockpiles-with-space-for [world resource]
+  (->> (:stockpiles world)
+       (keep (fn [[k sp]]
+               (when (and (stockpile-accepts? sp resource)
+                          (< (:current-qty sp) (:max-qty sp)))
+                 [(parse-key-pos k) sp])))))
+
+(defn- harvest-job-type [resource]
+  (case resource
+    :log :job/harvest-wood
+    :fruit :job/harvest-fruit
+    :grain :job/harvest-grain
+    :rock :job/harvest-stone
+    :job/harvest-wood))
+
+(defn- harvest-structure-type [resource]
+  (case resource
+    :log :lumberyard
+    :fruit :orchard
+    :grain :granary
+    :rock :quarry
+    nil))
+
+(defn- harvest-structures [world]
+  (->> (:tiles world)
+       (keep (fn [[k tile]]
+               (let [structure (:structure tile)
+                     resource (stockpile-for-structure structure)]
+                 (when resource
+                   {:pos (parse-key-pos k)
+                    :structure structure
+                    :resource resource}))))))
+
+(defn- total-item-qty [items resource]
+  (reduce (fn [acc [_ item-map]]
+            (+ acc (get item-map resource 0)))
+          0
+          items))
+
+(defn- total-stockpile-space [world resources]
+  (reduce (fn [acc [_ sp]]
+            (if (some #(stockpile-accepts? sp %) resources)
+              (+ acc (max 0 (- (:max-qty sp) (:current-qty sp))))
+              acc))
+          0
+          (:stockpiles world)))
+
+(defn- wood-demand [world]
+  (let [resources #{:wood :log}
+        space (total-stockpile-space world resources)
+        items (:items world)
+        available (+ (total-item-qty items :log)
+                     (total-item-qty items :wood))]
+    (max 0 (- space available))))
+
+(defn- fruit-demand [world]
+  (let [space (total-stockpile-space world #{:fruit})
+        available (total-item-qty (:items world) :fruit)]
+    (max 0 (min space available))))
+
+(defn- consume-resource-global! [world resource qty]
+  (loop [entries (seq (:items world))
+         w world
+         remaining qty]
+    (if (or (zero? remaining) (nil? entries))
+      [w (- qty remaining)]
+      (let [[tile-key items] (first entries)
+            available (get items resource 0)
+            take (min available remaining)]
+        (if (pos? take)
+          (let [new-qty (- available take)
+                w1 (if (zero? new-qty)
+                     (update-in w [:items tile-key] dissoc resource)
+                     (assoc-in w [:items tile-key resource] new-qty))
+                w2 (if (empty? (get-in w1 [:items tile-key]))
+                     (update w1 :items dissoc tile-key)
+                     w1)]
+            (recur (next entries) w2 (- remaining take)))
+          (recur (next entries) w remaining))))))
+
+(defn- house-resources-available? [world required]
+  (let [items (:items world)
+        log-qty (total-item-qty items :log)
+        wood-qty (total-item-qty items :wood)]
+    (>= (+ log-qty wood-qty) required)))
+
+(defn- has-house-near? [world pos radius]
+  (some (fn [p]
+          (= :house (get-in world [:tiles (str (first p) "," (second p)) :structure])))
+        (positions-within-radius pos radius)))
 
 (defn complete-build-wall! [world job]
    (let [target (:target job)
@@ -182,21 +375,152 @@
                          :target target
                          :outcome (format "Wall built at %s, consumed 1 wood" (pr-str target))})
                world')
-             world)))
+              world)))
        world)))
+
+(defn complete-build-house! [world job]
+  (let [target (:target job)
+        k (str (first target) "," (second target))
+        required 3
+        log-qty (total-item-qty (:items world) :log)
+        wood-qty (total-item-qty (:items world) :wood)]
+    (if (>= (+ log-qty wood-qty) required)
+      (let [log-use (min log-qty required)
+            wood-use (- required log-use)
+            [w1 _] (consume-resource-global! world :log log-use)
+            [w2 _] (consume-resource-global! w1 :wood wood-use)
+            world' (-> w2
+                       (assoc-in [:tiles k :terrain] :ground)
+                       (assoc-in [:tiles k :structure] :house)
+                       (assoc-in [:tiles k :resource] nil))]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/build-house
+                  :target target
+                  :outcome (format "House built at %s, consumed %d logs and %d wood" (pr-str target) log-use wood-use)})
+        world')
+      world)))
+
+(defn- harvest-resource! [world resource target-pos qty]
+  (let [pos (or target-pos (:campfire world))]
+    (if pos
+      (let [k (str (first pos) "," (second pos))
+            sp (get-in world [:stockpiles k])]
+        (if sp
+          (add-to-stockpile! world pos resource qty)
+          (add-item! world pos resource qty)))
+      world)))
+
+(defn complete-harvest-job! [world job agent-id]
+  (let [resource (:resource job)
+        target (:target job)
+        yield (case resource
+                :fruit 2
+                :grain 2
+                1)
+        target-resource (case resource
+                          :log :tree
+                          :fruit :tree
+                          :grain :grain
+                          :rock :rock
+                          :tree)
+        tile-key (str (first target) "," (second target))
+        has-resource? (= target-resource (get-in world [:tiles tile-key :resource]))
+        world' (if has-resource?
+                 (case resource
+                   :log (let [w1 (assoc-in world [:tiles tile-key :resource] nil)]
+                          (harvest-resource! w1 :log (:building-pos job) yield))
+                   :fruit (harvest-resource! world :fruit (:building-pos job) yield)
+                   :grain (harvest-resource! world :grain (:building-pos job) yield)
+                   :rock (harvest-resource! world :rock (:building-pos job) yield)
+                   world)
+                 world)]
+    (when has-resource?
+      (println "[JOB:COMPLETE]"
+               {:type (:type job)
+                :target target
+                :resource resource
+                :outcome (format "Harvested %s at %s" (name resource) (pr-str target))}))
+    world'))
+
+(defn complete-build-structure! [world job]
+  (let [target (:target job)
+        k (str (first target) "," (second target))
+        structure (:structure job)
+        stockpile-config (:stockpile job)]
+    (case structure
+      :stockpile
+      (let [{:keys [resource max-qty]} stockpile-config
+            resource (or resource :log)
+            max-qty (or max-qty 120)
+            world' (create-stockpile! world target resource max-qty)]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/build-structure
+                  :structure structure
+                  :target target
+                  :outcome (format "Stockpile created at %s" (pr-str target))})
+        world')
+
+      (:lumberyard :orchard :granary :quarry)
+      (let [resource (stockpile-for-structure structure)
+            max-qty 120
+            world' (-> world
+                       (assoc-in [:tiles k] {:terrain :ground :structure structure :resource nil})
+                       (create-stockpile! target resource max-qty))]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/build-structure
+                  :structure structure
+                  :target target
+                  :outcome (format "%s built at %s" (name structure) (pr-str target))})
+        world')
+
+      :campfire
+      (let [world' (-> world
+                       (assoc :campfire target)
+                       (assoc-in [:tiles k] {:terrain :ground :structure :campfire :resource nil}))]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/build-structure
+                  :structure structure
+                  :target target
+                  :outcome (format "Campfire lit at %s" (pr-str target))})
+        world')
+
+      :statue/dog
+      (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :statue/dog :resource nil})]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/build-structure
+                  :structure structure
+                  :target target
+                  :outcome (format "Statue raised at %s" (pr-str target))})
+        world')
+
+      :wall
+      (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :wall :resource nil})]
+        (println "[JOB:COMPLETE]"
+                 {:type :job/build-structure
+                  :structure structure
+                  :target target
+                  :outcome (format "Wall built at %s" (pr-str target))})
+        world')
+
+      world)))
 
 (defn complete-chop-tree! [world job]
    (let [target (:target job)
-         k (str (first target) "," (second target))]
+         k (str (first target) "," (second target))
+         log-targets (->> (concat [target] (hex/neighbors target))
+                          (filter #(hex/in-bounds? (:map world) %))
+                          distinct
+                          (take 3))]
      (if (= (get-in world [:tiles k :resource]) :tree)
        (let [world' (-> world
                         (assoc-in [:tiles k :resource] nil)
-                        (add-item! target :wood 5))]
-         (println "[JOB:COMPLETE]"
-                  {:type :job/chop-tree
-                   :target target
-                   :outcome (format "Produced 5 wood at %s" (pr-str target))})
-         world')
+                        (assoc-in [:tiles k :last-log-drop] (:tick world)))
+             world'' (reduce (fn [w pos] (add-item! w pos :log 1)) world' log-targets)]
+          (println "[JOB:COMPLETE]"
+                   {:type :job/chop-tree
+                    :target target
+                    :outcome (format "Dropped %d logs near %s" (count log-targets) (pr-str target))})
+         world'')
        world)))
 
 (defn complete-haul! [world job agent-id]
@@ -234,19 +558,32 @@
 
 (defn complete-eat! [world job agent-id]
    (let [target (:target job)
-         [w' consumed] (consume-items! world target :food 1)]
-     (if (pos? consumed)
-       (let [world' (assoc-in w' [:agents agent-id :needs :food] 1.0)]
+         [w' consumed] (consume-items! world target :fruit 1)
+         [w'' stocked] (if (pos? consumed)
+                         [w' 0]
+                         (take-from-stockpile! w' target :fruit 1))
+         total (max consumed stocked)]
+     (if (pos? total)
+       (let [world' (assoc-in w'' [:agents agent-id :needs :food] 1.0)]
          (println "[JOB:COMPLETE]"
                   {:type :job/eat
                    :target target
-                   :outcome (format "Consumed 1 food, need food=1.0")})
+                   :outcome (format "Consumed 1 fruit, need food=1.0")})
          world')
-       w')))
+       w'')))
+
+(defn complete-warm-up! [world job agent-id]
+  (let [target (:target job)
+        world' (assoc-in world [:agents agent-id :needs :warmth] 1.0)]
+    (println "[JOB:COMPLETE]"
+             {:type :job/warm-up
+              :target target
+              :outcome "Warmed up at campfire, need warmth=1.0"})
+    world'))
 
 (defn complete-sleep! [world agent-id]
    (let [world' (-> world
-                   (update-in [:agents agent-id] dissoc :asleep?)
+                   (assoc-in [:agents agent-id :status :asleep?] false)
                    (assoc-in [:agents agent-id :needs :sleep] 1.0))]
      (println "[JOB:COMPLETE]"
               {:type :job/sleep
@@ -290,9 +627,16 @@
             world (update world :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))
             world (case (:type job)
                     :job/build-wall (complete-build-wall! world job)
+                    :job/build-house (complete-build-house! world job)
+                    :job/build-structure (complete-build-structure! world job)
                     :job/chop-tree (complete-chop-tree! world job)
+                    :job/harvest-wood (complete-harvest-job! world job agent-id)
+                    :job/harvest-fruit (complete-harvest-job! world job agent-id)
+                    :job/harvest-grain (complete-harvest-job! world job agent-id)
+                    :job/harvest-stone (complete-harvest-job! world job agent-id)
                     :job/haul (complete-haul! world job agent-id)
                     :job/eat (complete-eat! world job agent-id)
+                    :job/warm-up (complete-warm-up! world job agent-id)
                     :job/sleep (complete-sleep! world agent-id)
                     :job/deliver-food (complete-deliver-food! world job agent-id)
                     world)
@@ -306,11 +650,14 @@
   (if-let [job-id (get-in world [:agents agent-id :current-job])]
     (let [idx (first (keep-indexed (fn [i j] (when (= (:id j) job-id) i)) (:jobs world)))
           job (get-in world [:jobs idx])]
-      (if job
-        (let [new-state (if (= (:state job) :claimed) :in-progress (:state job))
-              new-progress (min (+ (:progress job) delta) (:required job))
-              job' (assoc job :state new-state :progress new-progress)
-              world' (assoc-in world [:jobs idx] job')]
+       (if job
+         (let [new-state (if (= (:state job) :claimed) :in-progress (:state job))
+               new-progress (min (+ (:progress job) delta) (:required job))
+               job' (assoc job :state new-state :progress new-progress)
+               world' (assoc-in world [:jobs idx] job')
+               world' (if (= (:type job) :job/sleep)
+                        (assoc-in world' [:agents agent-id :status :asleep?] true)
+                        world')]
           (println "[JOB:PROGRESS]"
                    {:agent-id agent-id
                     :job-id job-id
@@ -359,18 +706,30 @@
 
 (defn generate-haul-jobs-for-items! [world threshold]
   (let [entries (:items world)
+        threshold-for (if (map? threshold)
+                        (fn [res] (get threshold res (get threshold :default 5)))
+                        (fn [_] threshold))
+        existing-keys (->> (:jobs world)
+                           (filter #(= (:type %) :job/haul))
+                           (keep (fn [job]
+                                   (when (and (:from-pos job) (:to-pos job) (:resource job))
+                                     [(:from-pos job) (:to-pos job) (:resource job)])))
+                           set)
         jobs-to-add
         (->> entries
              (mapcat (fn [[tile-key items]]
                        (let [pos (parse-key-pos tile-key)]
                          (for [[res qty] items
-                               :when (>= qty threshold)
+                               :let [min-qty (threshold-for res)]
+                               :when (>= qty min-qty)
                                :let [nearest (find-nearest-stockpile-with-space world pos res)]
-                               :when nearest]
-                           (let [[sp-pos _] nearest]
-                             (assoc (create-job :job/haul pos)
-                                    :from-pos pos :to-pos sp-pos :resource res :qty threshold
-                                    :state :pickup :stage :pickup)))))))]
+                               :when nearest
+                               :let [[sp-pos _] nearest
+                                     job-key [pos sp-pos res]]
+                               :when (not (contains? existing-keys job-key))]
+                           (assoc (create-job :job/haul pos)
+                                  :from-pos pos :to-pos sp-pos :resource res :qty min-qty
+                                  :state :pickup :stage :pickup))))))]
     (when (seq jobs-to-add)
       (println "[JOB:GENERATE]"
                {:type :job/haul
@@ -384,41 +743,160 @@
   (reduce (fn [w agent]
             (let [needs (:needs agent)
                   thresholds (or (:need-thresholds agent) {})
+                  daylight (double (or (:daylight w) 0.7))
+                  night? (< daylight 0.35)
                   food (get needs :food 1.0)
+                  warmth (get needs :warmth 1.0)
                   sleep (get needs :sleep 1.0)
                   food-hungry (get thresholds :food-hungry 0.3)
+                  warmth-cold (get thresholds :warmth-cold 0.3)
                   sleep-tired (get thresholds :sleep-tired 0.3)
+                  sleep-threshold (if night? (max sleep-tired 0.6) sleep-tired)
                   pos (:pos agent)
                   agent-id (:id agent)
-                  food-pos (or (first (keep (fn [[k items]] (when (get items :fruit) (parse-key-pos k))) (:items w))) pos)
+                  campfire-pos (find-campfire-pos w)
+                  fruit-pos (->> (:items w)
+                                 (keep (fn [[k items]]
+                                         (when (pos? (get items :fruit 0))
+                                           (parse-key-pos k))))
+                                 (sort-by (fn [p] (hex/distance pos p)))
+                                 first)
+                  stockpile-pos (find-nearest-stockpile-with-qty w pos :fruit)
+                  food-pos (or fruit-pos stockpile-pos pos)
                   has-eat-job? (some #(and (= (:type %) :job/eat) (= (:target %) food-pos)) (:jobs w))
+                  has-warm-job? (some #(and (= (:type %) :job/warm-up) (= (:target %) campfire-pos)) (:jobs w))
                   has-sleep-job? (some #(and (= (:type %) :job/sleep) (= (:target %) pos)) (:jobs w))
                   already-has-job? (some #(= (:worker-id %) agent-id) (:jobs w))]
               (cond-> w
                 (and (< food food-hungry) (not has-eat-job?) (not already-has-job?)) (update :jobs conj (create-job :job/eat food-pos))
-                (and (< sleep sleep-tired) (not has-sleep-job?) (not already-has-job?)) (update :jobs conj (create-job :job/sleep pos)))))
+                (and campfire-pos (< warmth warmth-cold) (not has-warm-job?) (not already-has-job?)) (update :jobs conj (create-job :job/warm-up campfire-pos))
+                (and (< sleep sleep-threshold) (not has-sleep-job?) (not already-has-job?)) (update :jobs conj (create-job :job/sleep pos)))))
         world
         (:agents world)))
 
-(defn generate-deliver-food-jobs! [world]
-  (let [entries (:items world)
+(defn generate-house-jobs! [world]
+  (let [campfire-pos (find-campfire-pos world)
+        target (find-house-site world campfire-pos)
+        required 3
+        needs-house?
+        (some (fn [agent]
+                (let [needs (:needs agent)
+                      thresholds (or (:need-thresholds agent) {})
+                      warmth (get needs :warmth 1.0)
+                      sleep (get needs :sleep 1.0)
+                      warmth-cold (get thresholds :warmth-cold 0.3)
+                      sleep-tired (get thresholds :sleep-tired 0.3)]
+                  (or (< warmth warmth-cold)
+                      (< sleep sleep-tired))))
+              (:agents world))
+        has-job? (some #(= (:type %) :job/build-house) (:jobs world))
+        has-house? (and campfire-pos (has-house-near? world campfire-pos 2))]
+    (if (and campfire-pos target needs-house? (not has-job?) (not has-house?)
+             (house-resources-available? world required))
+      (update world :jobs conj (create-job :job/build-house target))
+      world)))
+
+(defn generate-harvest-building-jobs! [world]
+  (let [campfire-pos (find-campfire-pos world)
+        target (find-structure-site world campfire-pos)
+        existing-structures (->> (:tiles world)
+                                 (keep (fn [[_ tile]] (:structure tile)))
+                                 set)
+        existing-jobs (->> (:jobs world)
+                           (filter #(= (:type %) :job/build-structure))
+                           (map :structure)
+                           set)
+        resources [:log :fruit :grain :rock]
+        build-requests
+        (for [resource resources
+              :let [structure (harvest-structure-type resource)
+                    resource-set (if (= resource :log) #{:log :wood} #{resource})
+                    space (total-stockpile-space world resource-set)]
+              :when (and structure (pos? space))
+              :when (not (contains? existing-structures structure))
+              :when (not (contains? existing-jobs structure))]
+          structure)]
+    (if (and target (seq build-requests))
+      (update world :jobs conj
+              (assoc (create-job :job/build-structure target)
+                     :structure (first build-requests)
+                     :stockpile {:resource (stockpile-for-structure (first build-requests))
+                                 :max-qty 120}))
+      world)))
+
+(defn generate-harvest-jobs! [world]
+  (let [existing-keys (->> (:jobs world)
+                           (filter (fn [j]
+                                     (contains? #{:job/harvest-wood :job/harvest-fruit
+                                                  :job/harvest-grain :job/harvest-stone}
+                                                (:type j))))
+                           (keep (fn [job]
+                                   (when (and (:building-pos job) (:resource job))
+                                     [(:building-pos job) (:resource job)])))
+                           set)
         jobs-to-add
-        (->> entries
-             (mapcat (fn [[tile-key items]]
-                       (let [pos (parse-key-pos tile-key)]
-                         (for [[res qty] items
-                               :when (and (= res :food) (pos? qty))
-                               :let [nearest (find-nearest-stockpile-with-space world pos :food)]
-                               :when nearest]
-                           (let [[sp-pos _] nearest]
-                             (assoc (create-job :job/deliver-food sp-pos)
-                                    :from-pos pos :to-pos sp-pos :resource :food :qty qty)))))))]
+        (for [{:keys [pos resource]} (harvest-structures world)
+              :let [stockpile-key (str (first pos) "," (second pos))
+                    stockpile (get-in world [:stockpiles stockpile-key])
+                    space (when stockpile (- (:max-qty stockpile) (:current-qty stockpile)))
+                    target (find-nearest-resource world pos (case resource
+                                                               :log :tree
+                                                               :fruit :tree
+                                                               :grain :grain
+                                                               :rock :rock))
+                    job-key [pos resource]]
+              :when (and target (pos? (or space 0)))
+              :when (not (contains? existing-keys job-key))]
+          (assoc (create-job (harvest-job-type resource) target)
+                 :resource resource
+                 :building-pos pos))]
+    (reduce (fn [w job] (update w :jobs conj job))
+            world
+            jobs-to-add)))
+
+(defn generate-idle-structure-jobs! [world]
+  (let [idle-agents (filter #(nil? (:current-job %)) (:agents world))
+        pending? (some #(= (:state %) :pending) (:jobs world))
+        has-job? (some #(= (:type %) :job/build-structure) (:jobs world))
+        campfire-pos (find-campfire-pos world)
+        target (find-structure-site world campfire-pos)
+        r (java.util.Random. (long (+ (:seed world) (* 17 (:tick world)))))
+        structure-options (cond-> [:stockpile :statue/dog :wall]
+                            (nil? campfire-pos) (conj :campfire))
+        roll (.nextDouble r)
+        structure (cond
+                    (< roll 0.45) :stockpile
+                    (< roll 0.70) :statue/dog
+                    (< roll 0.90) :wall
+                    :else (first structure-options))]
+    (if (and (seq idle-agents) (not pending?) (not has-job?) target)
+      (update world :jobs conj
+              (assoc (create-job :job/build-structure target)
+                     :structure structure
+                     :stockpile {:resource :log :max-qty 120}))
+      world)))
+
+(defn generate-deliver-food-jobs! [world]
+  (let [existing-to-pos (->> (:jobs world)
+                             (filter #(= (:type %) :job/deliver-food))
+                             (map :to-pos)
+                             set)
+        stockpiles (stockpiles-with-space-for world :fruit)
+        jobs-to-add (for [[sp-pos _] stockpiles
+                          :when (not (contains? existing-to-pos sp-pos))
+                          :let [nearest (find-nearest-item world sp-pos :fruit)]
+                          :when nearest]
+                      (assoc (create-job :job/deliver-food sp-pos)
+                             :from-pos nearest :to-pos sp-pos :resource :fruit :qty 1))]
     (reduce (fn [w job] (update w :jobs conj job))
             world
             jobs-to-add)))
 
 (defn generate-chop-jobs! [world]
-   (let [existing-targets (->> (:jobs world)
+   (let [demand (wood-demand world)
+         log-yield 3
+         desired (long (Math/ceil (/ (double demand) log-yield)))
+         existing-targets (->> (:jobs world)
                                (filter #(= (:type %) :job/chop-tree))
                                (map :target)
                                set)
@@ -429,19 +907,24 @@
          jobs-to-add (->> tree-tiles
                           (map first)
                           (remove existing-targets)
+                          (take desired)
                           (map (fn [pos] (create-job :job/chop-tree pos))))]
-    (when (seq jobs-to-add)
-      (println "[JOB:GENERATE]"
-               {:type :job/chop-tree
-                :count (count jobs-to-add)
-                :tick (:tick world)}))
-    (reduce (fn [w job] (update w :jobs conj job))
-            world
-            jobs-to-add)))
+     (when (seq jobs-to-add)
+       (println "[JOB:GENERATE]"
+                {:type :job/chop-tree
+                 :count (count jobs-to-add)
+                 :tick (:tick world)
+                 :demand demand}))
+     (reduce (fn [w job] (update w :jobs conj job))
+             world
+             jobs-to-add)))
 
 (defn auto-generate-jobs! [world]
   (-> world
       (generate-need-jobs!)
-      (generate-chop-jobs!)
-      (generate-haul-jobs-for-items! 5)
-      (generate-deliver-food-jobs!)))
+      (generate-harvest-building-jobs!)
+      (generate-house-jobs!)
+      (generate-harvest-jobs!)
+      (generate-haul-jobs-for-items! {:default 5 :log 1})
+      (generate-deliver-food-jobs!)
+      (generate-idle-structure-jobs!)))

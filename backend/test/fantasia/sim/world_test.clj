@@ -12,6 +12,7 @@
         snap (world/snapshot base attr)]
     (is (= (:tick base) (:tick snap)))
     (is (= (:levers base) (:levers snap)))
+    (is (map? (:calendar snap)))
     (is (vector? (:agents snap)))
     (is (= attr (:attribution snap)))
     (is (map? (:ledger snap)))))

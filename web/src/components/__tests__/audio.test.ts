@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { hexToFrequency, playTone, setMute, isMuted, toggleMute } from "../../audio";
+import { hexToFrequency, playTone, playDeathTone, setMute, isMuted, toggleMute } from "../../audio";
 
 describe("audio", () => {
   beforeEach(() => {
@@ -66,9 +66,15 @@ describe("audio", () => {
     });
   });
 
+  describe("playDeathTone", () => {
+    it("does not throw when called", () => {
+      expect(() => playDeathTone()).not.toThrow();
+    });
+  });
+
   describe("mute control", () => {
-    it("isMuted returns false by default", () => {
-      expect(isMuted()).toBe(false);
+    it("isMuted returns true by default", () => {
+      expect(isMuted()).toBe(true);
     });
 
     it("setMute changes mute state", () => {
@@ -79,18 +85,18 @@ describe("audio", () => {
     });
 
     it("toggleMute returns new state", () => {
-      setMute(false);
+      setMute(true);
       const newState = toggleMute();
-      expect(newState).toBe(true);
-      expect(isMuted()).toBe(true);
+      expect(newState).toBe(false);
+      expect(isMuted()).toBe(false);
     });
 
     it("toggleMute toggles state correctly", () => {
-      setMute(false);
-      toggleMute();
-      expect(isMuted()).toBe(true);
+      setMute(true);
       toggleMute();
       expect(isMuted()).toBe(false);
+      toggleMute();
+      expect(isMuted()).toBe(true);
     });
   });
 });

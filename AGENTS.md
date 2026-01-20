@@ -4,6 +4,7 @@
 - [[README.md]] - Project overview
 - [[HACK.md]] - High-level vision and inspirations
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
+- [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
 - [[spec/2026-01-15-myth-engine.md]] - Myth engine
 

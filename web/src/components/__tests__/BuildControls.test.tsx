@@ -60,6 +60,8 @@ describe("BuildControls", () => {
     expect(screen.getByText("Resource:")).toBeInTheDocument();
     expect(screen.getByText("Wood")).toBeInTheDocument();
     expect(screen.getByText("Food")).toBeInTheDocument();
+    expect(screen.getByText("Fruit")).toBeInTheDocument();
+    expect(screen.getByText("Log")).toBeInTheDocument();
   });
 
   it("shows stockpile capacity input", () => {
@@ -195,10 +197,10 @@ describe("BuildControls", () => {
 
     const resourceSelector = screen.getByRole("combobox");
     
-    fireEvent.change(resourceSelector, { target: { value: "food" } });
+    fireEvent.change(resourceSelector, { target: { value: "log" } });
     
     fireEvent.click(screen.getByText("Place Stockpile"));
-    expect(onPlaceStockpile).toHaveBeenCalledWith([5, 10], "food", 100);
+    expect(onPlaceStockpile).toHaveBeenCalledWith([5, 10], "log", 100);
   });
 
   it("allows changing stockpile capacity", () => {

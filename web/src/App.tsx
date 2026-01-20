@@ -1,23 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
-import { playTone, markUserInteraction } from "./audio";
-  import {
-      AgentCard,
-      AgentList,
-      AttributionPanel,
-      EventFeed,
-      LedgerPanel,
-      LeverControls,
-      RawJSONFeedPanel,
-      SelectedPanel,
-      SimulationCanvas,
-      StatusBar,
-      TickControls,
-      BuildControls,
-      BuildingPalette,
-      JobQueuePanel,
-      TreeSpreadControls,
-    } from "./components";
+import { playDeathTone, playTone, markUserInteraction } from "./audio";
+import {
+  AgentCard,
+  AgentList,
+  AttributionPanel,
+  EventFeed,
+  LedgerPanel,
+  LeverControls,
+  RawJSONFeedPanel,
+  SelectedPanel,
+  SimulationCanvas,
+  StatusBar,
+  TickControls,
+  BuildControls,
+  BuildingPalette,
+  JobQueuePanel,
+  TreeSpreadControls,
+  WorldInfoPanel,
+} from "./components";
 import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
@@ -34,6 +35,10 @@ export function App() {
   const [traces, setTraces] = useState<Trace[]>([]);
     const [events, setEvents] = useState<any[]>([]);
     const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
+  const aliveAgentsRef = useRef<Set<number>>(new Set());
+  const initialFocusRef = useRef(false);
+  const [focusPos, setFocusPos] = useState<[number, number] | null>(null);
+  const [focusTrigger, setFocusTrigger] = useState(0);
 
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
@@ -44,7 +49,7 @@ export function App() {
 
    const [buildMode, setBuildMode] = useState(false);
     const [stockpileMode, setStockpileMode] = useState(false);
-    const [fps, setFps] = useState(60);
+    const [fps, setFps] = useState(15);
 
   const [fireToPatron, setFireToPatron] = useState(0.8);
   const [lightningToStorm, setLightningToStorm] = useState(0.75);
@@ -57,6 +62,65 @@ export function App() {
   const [worldWidth, setWorldWidth] = useState<number | null>(null);
   const [worldHeight, setWorldHeight] = useState<number | null>(null);
   const [treeDensity, setTreeDensity] = useState<number>(CONFIG.data.DEFAULT_TREE_DENSITY);
+
+  const getAliveAgents = useCallback((state: any) => {
+    const alive = new Set<number>();
+    if (!state?.agents) return alive;
+    state.agents.forEach((agent: any) => {
+      const status = agent?.status ?? {};
+      const aliveFlag = status["alive?"] ?? status.alive ?? true;
+      if (aliveFlag && typeof agent.id === "number") {
+        alive.add(agent.id);
+      }
+    });
+    return alive;
+  }, []);
+
+  const handleDeathTone = useCallback((nextSnapshot: any) => {
+    if (!nextSnapshot) return;
+    const previousAlive = aliveAgentsRef.current;
+    const currentAlive = getAliveAgents(nextSnapshot);
+    const died = [...previousAlive].some((id) => !currentAlive.has(id));
+    if (died) {
+      playDeathTone();
+    }
+    aliveAgentsRef.current = currentAlive;
+  }, [getAliveAgents]);
+
+  const focusOnAgent = useCallback((agent: Agent) => {
+    if (!hasPos(agent)) return;
+    const [q, r] = agent.pos as AxialCoords;
+    setSelectedAgentId(agent.id);
+    setSelectedCell([q, r]);
+    setFocusPos([q, r]);
+    setFocusTrigger((prev) => prev + 1);
+  }, []);
+
+  const findTownCenter = useCallback((state: any): [number, number] | null => {
+    if (!state) return null;
+    if (Array.isArray(state.shrine) && state.shrine.length === 2) {
+      return [Number(state.shrine[0]), Number(state.shrine[1])];
+    }
+    const tiles = state.tiles ?? {};
+    const entry = Object.entries(tiles).find(([, tile]) => {
+      const structure = (tile as any)?.structure;
+      return structure === "campfire";
+    });
+    if (!entry) return null;
+    const [key] = entry;
+    const [q, r] = key.split(",").map((val) => Number(val)) as [number, number];
+    if (Number.isNaN(q) || Number.isNaN(r)) return null;
+    return [q, r];
+  }, []);
+
+  const focusOnTownCenter = useCallback((state: any) => {
+    const center = findTownCenter(state);
+    if (!center) return;
+    setSelectedAgentId(null);
+    setSelectedCell(center);
+    setFocusPos(center);
+    setFocusTrigger((prev) => prev + 1);
+  }, [findTownCenter]);
 
    const [tracesCollapsed, setTracesCollapsed] = useState(true);
    const [jobsCollapsed, setJobsCollapsed] = useState(true);
@@ -95,11 +159,17 @@ export function App() {
           if (state.map) {
             setMapConfig(state.map as HexConfig);
           }
+          handleDeathTone(state);
+          if (!initialFocusRef.current) {
+            focusOnTownCenter(state);
+            initialFocusRef.current = true;
+          }
         }
         if (m.op === "tick") {
           setTick(m.data?.tick ?? 0);
           setSnapshot(m.data?.snapshot ?? null);
           playTone(440, 0.08);
+          handleDeathTone(m.data?.snapshot ?? null);
         }
         if (m.op === "trace") {
           const incoming = m.data as Trace;
@@ -124,7 +194,11 @@ export function App() {
            if (state.map) {
              setMapConfig(state.map as HexConfig);
            }
-         }
+           aliveAgentsRef.current = getAliveAgents(state);
+           initialFocusRef.current = false;
+           focusOnTownCenter(state);
+           initialFocusRef.current = true;
+          }
         if (m.op === "tiles") {
            setSnapshot((prev: any) => {
              if (!prev) return prev;
@@ -188,9 +262,13 @@ export function App() {
              if (state.map) {
                setMapConfig(state.map as HexConfig);
              }
-           } else {
-             createNewSnapshot();
-           }
+             if (!initialFocusRef.current) {
+               focusOnTownCenter(state);
+               initialFocusRef.current = true;
+             }
+            } else {
+              createNewSnapshot();
+            }
          } else {
            createNewSnapshot();
          }
@@ -311,6 +389,10 @@ export function App() {
     if (!snapshot?.attribution) return {};
     return snapshot.attribution ?? {};
   }, [snapshot?.attribution]);
+  const calendar = useMemo(() => {
+    if (!snapshot?.calendar) return null;
+    return snapshot.calendar;
+  }, [snapshot?.calendar]);
 
   const selectedTile = useMemo(() => {
     try {
@@ -412,6 +494,8 @@ export function App() {
           selectedAgentId={selectedAgentId}
           agentPaths={agentPaths}
           onCellSelect={handleCellSelect}
+          focusPos={focusPos}
+          focusTrigger={focusTrigger}
         />
         {selectedCell && (
           <div style={{
@@ -465,7 +549,7 @@ export function App() {
               <div>
                 <div><strong>Agents ({selectedTileAgents.length}):</strong></div>
                 {selectedTileAgents.map((agent: Agent) => (
-                  <AgentCard key={agent.id} agent={agent} />
+                  <AgentCard key={agent.id} agent={agent} onSelect={focusOnAgent} />
                 ))}
               </div>
             )}
@@ -478,6 +562,8 @@ export function App() {
 
       <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
         <StatusBar status={status} />
+
+        <WorldInfoPanel calendar={calendar} />
 
         {/* Time controls */}
         <TickControls
@@ -521,7 +607,7 @@ export function App() {
             mouthpieceId={mouthpieceId}
           />
           <div style={{ marginTop: 12 }}>
-            <AgentList agents={agents} jobs={jobs} collapsible />
+            <AgentList agents={agents} jobs={jobs} collapsible onFocusAgent={focusOnAgent} />
           </div>
         </div>
         <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />

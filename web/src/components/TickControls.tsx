@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toggleMute, isMuted, playTone } from "../audio";
+import { toggleMute, isMuted, markUserInteraction, playTone } from "../audio";
 
  type TickControlsProps = {
    onTick: (amount: number) => void;
@@ -25,12 +25,16 @@ import { toggleMute, isMuted, playTone } from "../audio";
   const [localMuted, setLocalMuted] = useState(isMuted());
 
   const handleToggleMute = () => {
+    markUserInteraction();
     const newState = toggleMute();
     setLocalMuted(newState);
-    playTone(440, 0.1);
+    if (!newState) {
+      playTone(440, 0.1);
+    }
   };
 
   const handleToggleRun = () => {
+    markUserInteraction();
     onToggleRun();
     if (isRunning) {
       playTone(293.66, 0.15);
@@ -59,5 +63,4 @@ import { toggleMute, isMuted, playTone } from "../audio";
      </div>
    );
  }
-
 

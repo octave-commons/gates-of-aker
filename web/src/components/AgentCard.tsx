@@ -5,40 +5,79 @@ type AgentCardProps = {
   agent: Agent;
   compact?: boolean;
   currentJob?: any;
+  onSelect?: (agent: Agent) => void;
 };
 
 const jobTypeNames: Record<string, string> = {
   ":job/eat": "Eating",
+  ":job/warm-up": "Warming up",
   ":job/sleep": "Sleeping",
   ":job/chop-tree": "Chopping",
   ":job/haul": "Hauling",
-  ":job/build-wall": "Building"
+  ":job/build-wall": "Building",
+  ":job/build-house": "Building house",
+  ":job/build-structure": "Building",
+  ":job/harvest-wood": "Harvesting wood",
+  ":job/harvest-fruit": "Harvesting fruit",
+  ":job/harvest-grain": "Harvesting grain",
+  ":job/harvest-stone": "Harvesting stone"
 };
 
-export const AgentCard = memo(function AgentCard({ agent, compact = false, currentJob }: AgentCardProps) {
+export const AgentCard = memo(function AgentCard({ agent, compact = false, currentJob, onSelect }: AgentCardProps) {
   const topFacets = (agent["top-facets"] ?? agent.topFacets ?? []);
   const facetNames = topFacets.map((f: any) => f.facet).filter(Boolean);
   const needs = (agent as any).needs ?? {};
   const inventory = (agent as any).inventory ?? {};
   const isAsleep = (agent as any).asleep ?? false;
+  const status = (agent as any).status ?? {};
+  const alive = status["alive?"] ?? status.alive ?? true;
+  const causeOfDeath = status["cause-of-death"] ?? status.causeOfDeath ?? null;
 
   const jobTypeName = currentJob ? (jobTypeNames[currentJob.type] ?? String(currentJob.type).replace(":job/", "")) : null;
 
+  const clickable = typeof onSelect === "function";
+
   return (
-    <div style={{
-      backgroundColor: isAsleep ? "#e8f0fe" : "#fff",
-      border: `1px solid ${isAsleep ? "#4285f4" : "#ccc"}`,
+    <div
+      onClick={clickable ? () => onSelect?.(agent) : undefined}
+      style={{
+      backgroundColor: alive ? (isAsleep ? "#e8f0fe" : "#fff") : "#f3f3f3",
+      border: `1px solid ${alive ? (isAsleep ? "#4285f4" : "#ccc") : "#c62828"}`,
       borderRadius: 6,
       padding: 8,
       marginBottom: compact ? 4 : 8,
       fontSize: 13,
-      opacity: isAsleep ? 0.8 : 1
-    }}>
+      opacity: alive ? (isAsleep ? 0.8 : 1) : 0.7,
+      cursor: clickable ? "pointer" : "default"
+    }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <div style={{ fontWeight: "bold", color: "#333" }}>
           #{agent.id} <span style={{ fontWeight: "normal", color: "#666" }}>{agent.role ?? "unknown"}</span>
           {isAsleep && <span style={{ marginLeft: 4, color: "#4285f4", fontSize: 11 }}>💤</span>}
         </div>
+        <div style={{
+          backgroundColor: alive ? "#e8f5e9" : "#ffebee",
+          color: alive ? "#2e7d32" : "#c62828",
+          padding: "2px 6px",
+          borderRadius: 4,
+          fontSize: 11,
+          fontWeight: 600
+        }}>
+          {alive ? "ALIVE" : "DEAD"}
+        </div>
+        {!alive && causeOfDeath && (
+          <div style={{
+            fontSize: 11,
+            color: "#b71c1c",
+            padding: "2px 6px",
+            borderRadius: 4,
+            backgroundColor: "#ffebee",
+            fontWeight: 600
+          }}>
+            {String(causeOfDeath).replace(":", "").replace(/_/g, " ")}
+          </div>
+        )}
         {hasPos(agent) ? (
           <div style={{
             backgroundColor: "#e8e8e8",

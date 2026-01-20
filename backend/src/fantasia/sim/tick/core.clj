@@ -6,6 +6,7 @@
             [fantasia.sim.jobs :as jobs]
             [fantasia.sim.hex :as hex]
             [fantasia.sim.pathing]
+            [fantasia.sim.time :as sim-time]
             [fantasia.sim.tick.initial :as initial]
             [fantasia.sim.tick.trees :as trees]
             [fantasia.sim.tick.movement :as movement]
@@ -31,7 +32,15 @@
 
 (defn ^:dynamic tick-once [world]
     (let [t (inc (:tick world))
-           w1 (assoc world :tick t)
+          temperature (sim-time/temperature-at (:seed world) t)
+          daylight (sim-time/daylight-at (:seed world) t)
+          cold-snap (sim-time/clamp01 (- 1.0 temperature))
+          w1 (-> world
+                 (assoc :tick t)
+                 (assoc :temperature temperature)
+                 (assoc :daylight daylight)
+                 (assoc :cold-snap cold-snap))
+          w1 (assoc w1 :calendar (sim-time/calendar-info w1))
            w2 (-> w1
                     (trees/spread-trees!)
                     (mortality/process-mortality!)
@@ -39,14 +48,14 @@
                     (jobs/auto-assign-jobs!)
                     (trees/drop-tree-fruits!))
          [w3 agents1] (loop [w w2
-                               agents (:agents w2)
-                               acc-w w2
-                               acc-a []]
-                          (if (empty? agents)
-                            [acc-w acc-a]
-                            (let [[w' a'] (movement/move-agent-with-job w (first agents))
-                                  a'' (agents/update-needs w' a')]
-                              (recur w' (rest agents) w' (conj acc-a a'')))))
+                             agents (:agents w2)
+                             acc-w w2
+                             acc-a []]
+                        (if (empty? agents)
+                          [acc-w acc-a]
+                          (let [[w' a'] (movement/move-agent-with-job w (first agents))
+                                a'' (agents/update-needs w' a')]
+                            (recur w' (rest agents) w' (conj acc-a a'')))))
         ev (runtime/generate w3 agents1)
        ev-step (if ev
                  (reduce

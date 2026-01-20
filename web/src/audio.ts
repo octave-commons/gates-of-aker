@@ -13,7 +13,7 @@ type AudioState = {
 const state: AudioState = {
   context: null,
   masterGain: null,
-  isMuted: false,
+  isMuted: true,
   isInitialized: false,
   hasUserInteracted: false,
 };
@@ -127,6 +127,49 @@ export function playTone(frequency: number, duration: number = 0.1): void {
     };
   } catch (e) {
     console.error("[AUDIO] Failed to play tone:", e);
+  }
+}
+
+export function playDeathTone(): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  try {
+    const duration = 0.8;
+    const oscillator = state.context.createOscillator();
+    const gainNode = state.context.createGain();
+
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(220, state.context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(110, state.context.currentTime + duration);
+
+    gainNode.gain.setValueAtTime(0, state.context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(CONFIG.audio.MASTER_GAIN * 1.4, state.context.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, state.context.currentTime + duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(state.masterGain);
+
+    oscillator.start(state.context.currentTime);
+    oscillator.stop(state.context.currentTime + duration);
+
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
+  } catch (e) {
+    console.error("[AUDIO] Failed to play death tone:", e);
   }
 }
 

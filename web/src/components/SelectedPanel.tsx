@@ -41,6 +41,18 @@ export function SelectedPanel({
       type: "number" as const,
     },
   ];
+  const statusLabel = (agent: Agent | null) => {
+    if (!agent) return "None";
+    const status = (agent as any).status ?? {};
+    const alive = status["alive?"] ?? status.alive ?? true;
+    return alive ? "Alive" : "Dead";
+  };
+  const statusCause = (agent: Agent | null) => {
+    if (!agent) return "None";
+    const status = (agent as any).status ?? {};
+    const cause = status["cause-of-death"] ?? status.causeOfDeath ?? null;
+    return cause ? String(cause).replace(":", "").replace(/_/g, " ") : "None";
+  };
 
   return (
     <div className="selected-panel" style={style}>
@@ -101,6 +113,8 @@ export function SelectedPanel({
             <div style={{ display: "grid", gap: 6 }}>
               <div><strong>ID:</strong> {selectedAgent.id}</div>
               <div><strong>Role:</strong> {selectedAgent.role}</div>
+              <div><strong>Status:</strong> {statusLabel(selectedAgent)}</div>
+              <div><strong>Cause of Death:</strong> {statusCause(selectedAgent)}</div>
               <div><strong>Position:</strong> {selectedAgent.pos ? `(${selectedAgent.pos[0]}, ${selectedAgent.pos[1]})` : "None"}</div>
               
               {selectedAgent.needs && Object.keys(selectedAgent.needs).length > 0 && (

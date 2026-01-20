@@ -4,7 +4,7 @@ export const CONFIG = {
     HEX_SPACING: 1,
     ZOOM_MIN: 0.1,
     ZOOM_MAX: 5.0,
-    ZOOM_STEP: 0.1,
+    ZOOM_STEP: 0.2,
     PAN_SPEED: 10,
   },
   data: {
@@ -44,12 +44,19 @@ export const CONFIG = {
       rock: "#757575",
       wood: "#8d6e63",
       food: "#ff9800",
+      fruit: "#ffb74d",
+      log: "#6d4c41",
       unknown: "#9e9e9e",
     },
     STRUCTURE: {
       wallGhost: "#ffae00",
       wall: "#666",
       wallStroke: "#444",
+      house: "#8d6e63",
+      lumberyard: "#6d4c41",
+      orchard: "#f57c00",
+      granary: "#fbc02d",
+      quarry: "#757575",
     },
     ROLE: {
       priest: "#d7263d",

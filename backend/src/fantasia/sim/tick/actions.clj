@@ -52,8 +52,12 @@
         tile (get-in world [:tiles tile-key])]
     (when (and (hex/in-bounds? (:map world) pos)
                (nil? (:structure tile)))
-      (swap! fantasia.sim.tick.core/*state assoc-in [:tiles tile-key]
-             {:terrain :ground :structure :campfire :resource nil}))))
+      (swap! fantasia.sim.tick.core/*state
+             (fn [w]
+               (-> w
+                   (assoc :campfire pos)
+                   (assoc-in [:tiles tile-key]
+                             {:terrain :ground :structure :campfire :resource nil})))))))
 
 (defn place-statue-dog! [pos]
   (let [world (core/get-state)
