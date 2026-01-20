@@ -418,13 +418,18 @@
             jobs-to-add)))
 
 (defn generate-chop-jobs! [world]
-  (let [tree-tiles (keep (fn [[k tile]]
-                           (when (= (:resource tile) :tree)
-                             [(parse-key-pos k) tile]))
-                         (:tiles world))
-        jobs-to-add (map (fn [[pos _]]
-                           (create-job :job/chop-tree pos))
-                         tree-tiles)]
+   (let [existing-targets (->> (:jobs world)
+                               (filter #(= (:type %) :job/chop-tree))
+                               (map :target)
+                               set)
+         tree-tiles (keep (fn [[k tile]]
+                            (when (= (:resource tile) :tree)
+                              [(parse-key-pos k) tile]))
+                          (:tiles world))
+         jobs-to-add (->> tree-tiles
+                          (map first)
+                          (remove existing-targets)
+                          (map (fn [pos] (create-job :job/chop-tree pos))))]
     (when (seq jobs-to-add)
       (println "[JOB:GENERATE]"
                {:type :job/chop-tree

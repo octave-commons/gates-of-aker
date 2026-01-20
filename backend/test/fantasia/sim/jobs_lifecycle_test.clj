@@ -50,3 +50,13 @@
                   (jobs/generate-need-jobs!))
         eat-job (some #(when (= (:type %) :job/eat) %) (:jobs world))]
     (is eat-job)))
+
+(deftest chop-jobs-skip-existing-targets
+  (let [world (-> (initial/initial-world {:seed 1 :tree-density 0})
+                  (assoc :jobs [])
+                  (update :tiles assoc "2,0" {:terrain :ground :resource :tree}))
+        job (jobs/create-job :job/chop-tree [2 0])
+        world (update world :jobs conj job)
+        world (jobs/generate-chop-jobs! world)
+        chop-jobs (filter #(= (:type %) :job/chop-tree) (:jobs world))]
+    (is (= 1 (count chop-jobs)))))
