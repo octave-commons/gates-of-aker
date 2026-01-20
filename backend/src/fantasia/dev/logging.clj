@@ -10,7 +10,7 @@
   (or (some-> (System/getenv "LOG_LEVEL")
               keyword
               log-levels)
-      1))
+      0))
 
 (defn should-log?
   [level]

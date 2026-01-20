@@ -74,6 +74,7 @@ describe("audio", () => {
 
   describe("mute control", () => {
     it("isMuted returns true by default", () => {
+      setMute(true);
       expect(isMuted()).toBe(true);
     });
 

@@ -56,29 +56,20 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
     }}
     >
        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-         <div style={{ fontWeight: "bold", color: "#333" }}>
-           {(agent as any).name || <span>#{agent.id} <span style={{ fontWeight: "normal", color: "#666" }}>{agent.role ?? "unknown"}</span></span>}
-         </div>
-         <div style={{
-           backgroundColor: alive ? "#e8f5e9" : "#ffebee",
-           color: alive ? "#2e7d32" : "#c62828",
-           padding: "2px 6px",
-           borderRadius: 4,
-           fontSize: 11,
-           fontWeight: 600
-         }}>
-           {alive ? "ALIVE" : "DEAD"}
-         </div>
-        <div style={{
-          backgroundColor: alive ? "#e8f5e9" : "#ffebee",
-          color: alive ? "#2e7d32" : "#c62828",
-          padding: "2px 6px",
-          borderRadius: 4,
-          fontSize: 11,
-          fontWeight: 600
-        }}>
-          {alive ? "ALIVE" : "DEAD"}
-        </div>
+          <div style={{ fontWeight: "bold", color: "#333" }}>
+            {(agent as any).name || <span>#{agent.id} <span style={{ fontWeight: "normal", color: "#666" }}>{agent.role ?? "unknown"}</span></span>}
+            {isAsleep && <span> 💤</span>}
+          </div>
+          <div style={{
+            backgroundColor: alive ? "#e8f5e9" : "#ffebee",
+            color: alive ? "#2e7d32" : "#c62828",
+            padding: "2px 6px",
+            borderRadius: 4,
+            fontSize: 11,
+            fontWeight: 600
+          }}>
+            {alive ? "ALIVE" : "DEAD"}
+          </div>
         {!alive && causeOfDeath && (
           <div style={{
             fontSize: 11,

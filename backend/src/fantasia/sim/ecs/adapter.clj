@@ -69,7 +69,7 @@
    [ecs-world]
    (reduce (fn [acc tile-id]
                (let [position (get-comp ecs-world tile-id :position)
-                     tile-key (vector (:q position) (:r position))
+                     tile-key (str (:q position) "," (:r position))
                      tile-data (ecs->tile-map ecs-world tile-id)]
                  (assoc acc tile-key tile-data)))
            {}
@@ -82,7 +82,7 @@
     (reduce (fn [acc entity-id]
               (let [stockpile (get-comp ecs-world entity-id :stockpile)
                     index (get-comp ecs-world entity-id :tile-index)]
-                (assoc acc (:entity-id index) (:contents stockpile))))
+                (assoc acc (str (:q index) "," (:r index)) (:contents stockpile))))
             {}
             (be/get-all-entities-with-component ecs-world stockpile-type))))
 

@@ -79,6 +79,25 @@
        (remove #(= % pos))
        (sort-by (fn [p] (hex/distance pos p)))))
 
+(defn- quarry-position [world]
+  (some (fn [[k tile]]
+          (when (= (:structure tile) :quarry)
+            k))
+        (:tiles world)))
+
+(defn- ensure-quarry-resource [world rng]
+  (if-let [quarry-pos (quarry-position world)]
+    (let [tile (get-in world [:tiles quarry-pos])]
+      (if (and tile (contains? jobs/mineral-types (:resource tile)))
+        world
+        (if tile
+          (let [resource (if (< (.nextDouble rng) 0.35)
+                           (nth jobs/ore-types (.nextInt rng (count jobs/ore-types)))
+                           :rock)]
+            (assoc-in world [:tiles quarry-pos :resource] resource))
+          world)))
+    world))
+
 (defn- scatter-fruit! [world rng]
   (let [hex-map (:map world)
         total-tiles (bounds-tile-count hex-map)
@@ -93,9 +112,9 @@
 
 (defn initial-world [opts]
    (let [{:keys [seed bounds tree-density]} opts
-         actual-seed (or seed 1)
-         tree-density (or tree-density 0.05)
-         r (rng actual-seed)
+          actual-seed (or seed 1)
+          tree-density (or tree-density 0.05)
+          rand-gen (rng actual-seed)
          hex-bounds (hex/normalize-bounds bounds {:shape :rect :w 128 :h 128})
          hex-map {:kind :hex
                    :layout :pointy
@@ -141,8 +160,8 @@
           world-with-biomes (biomes/generate-biomes! base-world)
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)
           world-with-trees (trees/spawn-initial-trees! world-with-resources tree-density)
-           world-with-fruit (scatter-fruit! world-with-trees r)
-           campfire-pos (biomes/rand-pos-in-biome r hex-map :village (:tiles world-with-fruit))
+            world-with-fruit (scatter-fruit! world-with-trees rand-gen)
+            campfire-pos (biomes/rand-pos-in-biome rand-gen hex-map :village (:tiles world-with-fruit))
            [q r] campfire-pos
            campfire-key (tile-key q r)
             world-with-campfire (-> world-with-fruit
@@ -177,10 +196,11 @@
                             w'))))
                    world-with-houses
                    (map vector building-tiles building-types))
-             world-with-warehouse (update-in world-with-buildings
+             world-with-quarry-resource (ensure-quarry-resource world-with-buildings rand-gen)
+             world-with-warehouse (update-in world-with-quarry-resource
                                             [:tiles (tile-key 0 0)] merge {:structure :warehouse})
-            world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
-            world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 40)]
+             world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
+             world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 40)]
        (println "Warehouse created:" (get-in world-with-food [:tiles (tile-key 0 0)]))
       (println "Stockpiles:" (:stockpiles world-with-food))
       (println "Items:" (:items world-with-food))

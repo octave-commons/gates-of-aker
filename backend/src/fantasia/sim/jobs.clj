@@ -74,11 +74,6 @@
                   :required 1.0
                   :state :pending
                   :priority (get job-priorities job-type 50)}]
-         (println "[JOB:CREATE]"
-                  {:type (:type job)
-                   :id (:id job)
-                   :target (:target job)
-                   :priority (:priority job)})
          job))))
 
 (defn- add-job-to-world! [world job]
@@ -131,11 +126,6 @@
         job (first sorted)]
     (if job
       (let [job' (assoc job :state :claimed)]
-        (println "[JOB:ASSIGN]"
-                 {:agent-id agent-id
-                  :job-id (:id job)
-                  :type (:type job)
-                  :priority (:priority job)})
         (assign-job! world job' agent-id))
       world)))
 
@@ -150,12 +140,6 @@
                           w)))
                       world
                       (:agents world))]
-    (when (not= world result)
-      (println "[JOB:AUTO-ASSIGN]"
-               {:assigned (->> (:agents result)
-                              (filter #(not= (:current-job %) (get-in world [:agents (:id %) :current-job])))
-                              count)
-                :tick (:tick result)}))
     result))
 
 (defn add-item! [world pos resource qty]
@@ -263,8 +247,8 @@
                       set)
             next (set/difference next visited)]
         (recur next (into visited next) (inc step))))))
- 
- 
+
+
  (defn find-nearest-stockpile-with-qty [world pos resource]
   (let [entries (filter (fn [[_ sp]] (stockpile-accepts? sp resource)) (:stockpiles world))
         entries (filter (fn [[_ sp]] (pos? (:current-qty sp))) entries)]
@@ -438,10 +422,6 @@
                             (update-in [:items k :wood] - wood-required)
                             (cond-> (zero? (- wood-qty wood-required))
                               (update :items dissoc k)))]
-               (println "[JOB:COMPLETE]"
-                        {:type :job/build-wall
-                         :target target
-                         :outcome (format "Wall built at %s, consumed 1 wood" (pr-str target))})
                world')
               world)))
        world)))
@@ -463,10 +443,6 @@
                         (assoc-in [:tiles k :structure] :house)
                         (assoc-in [:tiles k :resource] nil)
                         (assoc-in [:tiles k :level] 1))]
-        (println "[JOB:COMPLETE]"
-                 {:type :job/build-house
-                  :target target
-                  :outcome (format "House built at %s, consumed %d logs and %d wood" (pr-str target) log-use wood-use)})
         world')
       world)))
 
@@ -506,12 +482,6 @@
                     :rock (harvest-resource! world :rock (:building-pos job) yield)
                     world)
                   world)]
-     (when has-resource?
-       (println "[JOB:COMPLETE]"
-                {:type (:type job)
-                 :target target
-                 :resource resource
-                 :outcome (format "Harvested %s at %s" (name resource) (pr-str target))}))
      world'))
 
 (defn complete-mine! [world job]
@@ -527,12 +497,6 @@
          world'' (if (and has-resource? resource provider-pos)
                    (add-item! world' provider-pos resource 1)
                    world')]
-     (when has-resource?
-       (println "[JOB:COMPLETE]"
-                {:type :job/mine
-                 :target target
-                 :resource resource
-                 :outcome (format "Mined %s at %s" (name resource) (pr-str target))}))
      world''))
 
 (defn- structure-level [tile]
@@ -549,11 +513,6 @@
               (< level max-structure-level))
        (let [new-level (inc level)
              world' (assoc-in world [:tiles k :level] new-level)]
-         (println "[JOB:COMPLETE]"
-                  {:type :job/improve
-                   :target target
-                   :structure structure
-                   :outcome (format "Improved %s to level %d" (name structure) new-level)})
          world')
        world)))
 
@@ -564,12 +523,6 @@
         [w' consumed] (consume-resource-global! world resource 1)]
     (if (and (pos? consumed) output)
       (let [world' (add-item! w' target output 1)]
-        (println "[JOB:COMPLETE]"
-                 {:type :job/smelt
-                  :target target
-                  :resource resource
-                  :output output
-                  :outcome (format "Smelted %s into %s" (name resource) (name output))})
         world')
       w')))
 
@@ -585,11 +538,6 @@
             resource (or resource :log)
             max-qty (or max-qty 120)
             world' (create-stockpile! world target resource max-qty)]
-        (println "[JOB:COMPLETE]"
-                 {:type :job/build-structure
-                  :structure structure
-                  :target target
-                  :outcome (format "Stockpile created at %s" (pr-str target))})
         world')
 
        (:lumberyard :orchard :granary :quarry :warehouse :smelter :improvement-hall :workshop)
@@ -600,40 +548,22 @@
              world' (if resource
                       (create-stockpile! world' target resource max-qty)
                       world')]
-        (println "[JOB:COMPLETE]"
-                 {:type :job/build-structure
-                  :structure structure
-                  :target target
-                  :outcome (format "%s built at %s" (name structure) (pr-str target))})
         world')
 
        :campfire
        (let [world' (-> world
                         (assoc :campfire target)
                         (assoc-in [:tiles k] {:terrain :ground :structure :campfire :resource nil :level 1}))]
-        (println "[JOB:COMPLETE]"
-                 {:type :job/build-structure
-                  :structure structure
-                  :target target
-                  :outcome (format "Campfire lit at %s" (pr-str target))})
         world')
 
        :statue/dog
        (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :statue/dog :resource nil :level 1})]
-        (println "[JOB:COMPLETE]"
-                 {:type :job/build-structure
-                  :structure structure
-                  :target target
-                  :outcome (format "Statue raised at %s" (pr-str target))})
+
         world')
 
        :wall
        (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :wall :resource nil :level 1})]
-        (println "[JOB:COMPLETE]"
-                 {:type :job/build-structure
-                  :structure structure
-                  :target target
-                  :outcome (format "Wall built at %s" (pr-str target))})
+
         world')
 
       world)))
@@ -651,10 +581,7 @@
                         (assoc-in [:tiles k :resource] nil)
                         (assoc-in [:tiles k :last-log-drop] (:tick world)))
              world'' (reduce (fn [w pos] (add-item! w pos :log 1)) world' log-targets)]
-           (println "[JOB:COMPLETE]"
-                    {:type :job/chop-tree
-                     :target target
-                     :outcome (format "Dropped %d logs near %s" (count log-targets) (pr-str target))})
+
           world')
         world)))
 
@@ -677,11 +604,6 @@
                     (add-item! w pos res qty)))]
 
 
-     (when (seq items-hauled)
-       (println "[JOB:COMPLETE]"
-                {:type :job/haul
-                 :target to-pos
-                 :outcome (format "Hauled %d item types to %s" (count items-hauled) (pr-str to-pos))}))
       (-> (reduce (fn [w [res qty]]
                     (if (pos? qty)
                       (add-fn w to-pos res qty)
@@ -710,30 +632,19 @@
                     :else "food")]
      (if (pos? total)
        (let [world' (assoc-in w''' [:agents agent-id :needs :food] 1.0)]
-         (println "[JOB:COMPLETE]"
-                  {:type :job/eat
-                   :target target
-                   :outcome (format "Consumed 1 %s, need food=1.0" food-type)})
          world')
        w''')))
 
 (defn complete-warm-up! [world job agent-id]
   (let [target (:target job)
         world' (assoc-in world [:agents agent-id :needs :warmth] 1.0)]
-    (println "[JOB:COMPLETE]"
-             {:type :job/warm-up
-              :target target
-              :outcome "Warmed up at campfire, need warmth=1.0"})
     world'))
 
 (defn complete-sleep! [world agent-id]
    (let [world' (-> world
                    (assoc-in [:agents agent-id :status :asleep?] false)
                    (assoc-in [:agents agent-id :needs :sleep] 1.0))]
-     (println "[JOB:COMPLETE]"
-              {:type :job/sleep
-               :agent-id agent-id
-               :outcome "Agent woke up, need sleep=1.0"})
+
      world'))
 
 (defn complete-deliver-food! [world job agent-id]
@@ -748,11 +659,6 @@
                     (add-to-stockpile! w' target :food to-store)
                     w')
               new-inventory (- food-in-inventory to-store)]
-          (when (pos? to-store)
-            (println "[JOB:COMPLETE]"
-                     {:type :job/deliver-food
-                      :target target
-                      :outcome (format "Delivered %d food to stockpile at %s" to-store (pr-str target))}))
           (let [w-final (-> w''
                              (assoc-in [:agents agent-id :inventories :hauling :food] new-inventory)
                              (assoc-in [:agents agent-id :inventory :food] new-inventory))]
@@ -805,12 +711,7 @@
                world' (if (= (:type job) :job/sleep)
                         (assoc-in world' [:agents agent-id :status :asleep?] true)
                         world')]
-           (println "[JOB:PROGRESS]"
-                    {:agent-id agent-id
-                     :job-id job-id
-                     :delta delta
-                     :new-progress new-progress
-                     :required (:required job)})
+
            (if (>= new-progress (:required job))
              (complete-job! world' agent-id)
              world'))
@@ -878,10 +779,7 @@
                                   :from-pos pos :to-pos sp-pos :resource res :qty min-qty
                                   :state :pickup :stage :pickup))))))]
     (when (seq jobs-to-add)
-      (println "[JOB:GENERATE]"
-               {:type :job/haul
-                :count (count jobs-to-add)
-                :tick (:tick world)}))
+      )
     (reduce (fn [w job] (update w :jobs conj job))
             world
             jobs-to-add)))
@@ -1059,12 +957,6 @@
                           (remove existing-targets)
                           (take desired)
                           (map (fn [pos] (create-job :job/chop-tree pos))))]
-     (when (seq jobs-to-add)
-       (println "[JOB:GENERATE]"
-                {:type :job/chop-tree
-                 :count (count jobs-to-add)
-                 :tick (:tick world)
-                 :demand demand}))
      (reduce (fn [w job] (update w :jobs conj job))
              world
              jobs-to-add)))

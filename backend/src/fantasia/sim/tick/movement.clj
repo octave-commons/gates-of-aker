@@ -13,14 +13,7 @@
       agent
       (let [next-pos (pathing/next-step-toward world current-pos target-pos)]
         (if (not= next-pos current-pos)
-          (do (println "[MOVEMENT:AGENT]"
-                       {:agent-id (:id agent)
-                       :from current-pos
-                       :to next-pos
-                       :job-type (:type job)
-                       :stage stage
-                       :job-target target-pos})
-              (assoc agent :pos next-pos))
+          (do (assoc agent :pos next-pos))
           agent)))))
 
 (defn move-agent-with-job
@@ -37,27 +30,10 @@
                  job-target (:target job)]
              (if (= current-pos job-target)
                (let [world' (jobs/advance-job! world (:id agent) 0.2)]
-                 (println "[MOVEMENT:AGENT]"
-                          {:agent-id (:id agent)
-                           :current-pos current-pos
-                           :job-target job-target
-                           :moved? false
-                           :reason "Working on job"})
                  [world' (get-in world' [:agents (:id agent)])])
                 (let [next-pos (pathing/next-step-toward world current-pos job-target)]
                  (if (not= next-pos current-pos)
-                   (do (println "[MOVEMENT:AGENT]"
-                                {:agent-id (:id agent)
-                                 :from current-pos
-                                 :to next-pos
-                                 :job-type (:type job)
-                                 :job-target job-target})
-                       [world (assoc agent :pos next-pos)])
+                   (do [world (assoc agent :pos next-pos)])
                    [world agent])))))
          (let [agent' (spatial/move-agent world agent)]
-           (when (not= (:pos agent') (:pos agent))
-             (println "[MOVEMENT:RANDOM]"
-                      {:agent-id (:id agent)
-                       :from (:pos agent)
-                       :to (:pos agent')}))
            [world agent'])))))

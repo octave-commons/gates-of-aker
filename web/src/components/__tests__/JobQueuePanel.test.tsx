@@ -69,7 +69,7 @@ describe("JobQueuePanel", () => {
     render(<JobQueuePanel jobs={jobs} />);
 
     expect(screen.getByText("Chop Tree")).toBeInTheDocument();
-    expect(screen.getByText(/Unassigned/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Unassigned/)).toHaveLength(2);
   });
 
   it("displays job with haul type including from position", () => {
