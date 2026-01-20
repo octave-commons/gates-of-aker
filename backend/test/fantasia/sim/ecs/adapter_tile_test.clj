@@ -32,7 +32,7 @@
 (println "Tile IDs:" all-tiles)
 
 (println "\nTesting get-tile-at-pos...")
-(def tile-at-0-0 (fantasia.sim.ecs.core/get-tile-at-pos final-world 0 0))
+(def tile-at-0-0 (fantasia.sim.ecs.core/get-tile-at-pos final-world [0 0]))
 (println "Tile at (0,0):" tile-at-0-0)
 
 (println "\nTesting ecs->tile-map...")

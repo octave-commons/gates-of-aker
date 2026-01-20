@@ -9,7 +9,6 @@ obsidian explicitly recognizes `tags:` properties in
 front matter for tagging documents.
 ### Obsidian docs
 - https://blacksmithgu.github.io/obsidian-dataview/
-- 
 ## Related Documentation
 - [[README.md]] - Project overview
 - [[HACK.md]] - High-level vision and inspirations

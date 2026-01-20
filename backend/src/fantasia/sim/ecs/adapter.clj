@@ -18,7 +18,7 @@
      :stockpile (be/get-component-type (fantasia.sim.ecs.components/->Stockpile {}))
      :wall-ghost (be/get-component-type (fantasia.sim.ecs.components/->WallGhost nil))
      :agent (be/get-component-type (fantasia.sim.ecs.components/->Agent "test"))
-     :tile-index (be/get-component-type (fantasia.sim.ecs.components/->TileIndex "0,0"))}))
+      :tile-index (be/get-component-type (fantasia.sim.ecs.components/->TileIndex 0 0))}))
 
 (defn get-comp
   "Helper to get component from entity by type key."

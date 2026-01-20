@@ -19,50 +19,45 @@
   ([system id q r role]
    (create-agent system id q r role {}))
   ([system id q r role opts]
-   (let [entity-id (or id (java.util.UUID/randomUUID))
-         {:keys [warmth food sleep wood]
-                needs status inventory frontier recall path job-id]} opts
-         needs' (or needs (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
-         status' (or status (c/->AgentStatus true false false nil))
-         inventory' (or inventory (c/->PersonalInventory wood food {}))
-         frontier' (or frontier (c/->Frontier {}))
-         recall' (or recall (c/->Recall {}))
-         system' (-> system
-                       (be/add-entity entity-id)
-                       (be/add-component entity-id (c/->AgentInfo id (str "agent-" id)))
-                       (be/add-component entity-id (c/->Position q r))
-                       (be/add-component entity-id (c/->Role role))
-                       (be/add-component entity-id needs')
-                       (be/add-component entity-id inventory')
-                       (be/add-component entity-id status')
-                       (be/add-component entity-id frontier')
-                       (be/add-component entity-id recall'))]
-     (when job-id
-       (be/add-component system' entity-id (c/->JobAssignment job-id 0.0)))
-     (when path
-       (be/add-component system' entity-id (c/->Path path 0)))
-     [entity-id system']))
+     (let [entity-id (or id (java.util.UUID/randomUUID))
+           {:keys [warmth food sleep wood needs status inventory frontier recall path job-id]} opts
+           needs' (or needs (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
+           status' (or status (c/->AgentStatus true false false nil))
+           inventory' (or inventory (c/->PersonalInventory wood food {}))
+           frontier' (or frontier (c/->Frontier {}))
+           recall' (or recall (c/->Recall {}))
+           system' (-> system
+                         (be/add-entity entity-id)
+                         (be/add-component entity-id (c/->AgentInfo id (str "agent-" id)))
+                         (be/add-component entity-id (c/->Position q r))
+                         (be/add-component entity-id (c/->Role role))
+                         (be/add-component entity-id needs')
+                         (be/add-component entity-id inventory')
+                         (be/add-component entity-id status')
+                         (be/add-component entity-id frontier')
+                         (be/add-component entity-id recall'))
+           system'' (cond-> system'
+                       job-id (be/add-component entity-id (c/->JobAssignment job-id 0.0))
+                       path (be/add-component entity-id (c/->Path path 0)))]
+       [entity-id system''])))
 
 (defn create-tile
   "Create a tile entity with optional components."
-  ([system [q r] terrain biome structure resource]
-   (create-tile system [q r] terrain biome structure resource {}))
-  ([system [q r] terrain biome structure resource opts]
+  ([system q r terrain biome structure resource]
+   (create-tile system q r terrain biome structure resource {}))
+  ([system q r terrain biome structure resource opts]
    (let [entity-id (java.util.UUID/randomUUID)
          {:keys [tile-resources structure-state campfire-state shrine-state]} opts
          system' (-> system
                        (be/add-entity entity-id)
                        (be/add-component entity-id (c/->Tile terrain biome structure resource))
-                       (be/add-component entity-id (c/->TileIndex [q r])))]
-     (when tile-resources
-       (be/add-component system' entity-id tile-resources))
-     (when structure-state
-       (be/add-component system' entity-id structure-state))
-     (when (= structure :campfire)
-       (be/add-component system' entity-id (c/->CampfireState const/campfire-radius true (:tick system))))
-     (when (= structure :shrine)
-       (be/add-component system' entity-id (c/->ShrineState nil)))
-     [entity-id system'])))
+                       (be/add-component entity-id (c/->TileIndex q r)))]
+     (cond-> system'
+             tile-resources (be/add-component entity-id tile-resources)
+             structure-state (be/add-component entity-id structure-state)
+             (= structure :campfire) (be/add-component entity-id (c/->CampfireState const/campfire-radius true (:tick system)))
+             (= structure :shrine) (be/add-component entity-id (c/->ShrineState nil)))
+     [(str q "," r) entity-id system'])))
 
 (defn create-building
   "Create a building entity (job provider) with JobQueue."
@@ -79,40 +74,38 @@
          system' (-> system
                        (be/add-entity entity-id)
                        (be/add-component entity-id (c/->Position q r))
-                       (be/add-component entity-id (c/->TileIndex [q r]))
+                        (be/add-component entity-id (c/->TileIndex q r))
                        (be/add-component entity-id (c/->Tile :ground :plains structure-type nil))
                        (be/add-component entity-id structure-state)
-                       (c/->JobQueue [] {}))]
-     (when stockpile-config
-       (be/add-component system' entity-id (c/->StockpileInventory 
-                                                   (:resource stockpile-config)
-                                                   (:max-qty stockpile-config)
-                                                   0
-                                                   {})))
-     (when job-queue
-       (be/add-component system' entity-id job-queue))
-     [entity-id system']))
+                       (be/add-component entity-id (c/->JobQueue [] {})))
+         system'' (cond-> system'
+                     stockpile-config (be/add-component entity-id (c/->Stockpile
+                                                                {(:resource stockpile-config) 0})))
+         system''' (if job-queue
+                     (be/add-component system'' entity-id job-queue)
+                     system'')]
+     [entity-id system'''])))
 
 (defn create-stockpile
   "Create a stockpile entity at given position."
-  [system [q r]]
+  [system q r]
   (let [entity-id (java.util.UUID/randomUUID)
         system' (-> system
                       (be/add-entity entity-id)
-                      (be/add-component entity-id (c/->TileIndex [q r]))
-                      (be/add-component entity-id (c/->StockpileInventory :log 120 0 {})))]
-    [entity-id system']))
+                      (be/add-component entity-id (c/->TileIndex q r))
+                      (be/add-component entity-id (c/->Stockpile {:log 0})))]
+    [entity-id (str q "," r) system']))
 
 (defn create-world-item
   "Create a dropped item entity."
-  [system [q r] resource qty]
+  [system q r resource qty]
   (let [entity-id (java.util.UUID/randomUUID)
         tick (:tick system)
         system' (-> system
                       (be/add-entity entity-id)
                       (be/add-component entity-id (c/->Position q r))
                       (be/add-component entity-id (c/->WorldItem resource qty [q r] tick)))]
-    [entity-id system']))
+    [entity-id (str q "," r) system']))
 
 (defn get-all-agents [system]
   "Get all entities with Role component (agents)."
@@ -129,12 +122,12 @@
 (defn get-tile-at-pos
   "Get tile entity ID at hex position using vector key."
   [system [q r]]
-  (let [index-instance (c/->TileIndex [q r])
+   (let [index-instance (c/->TileIndex q r)
         index-type (component-class index-instance)
         position-instance (c/->Position q r)
         position-type (component-class position-instance)
         position-entities (be/get-all-entities-with-component system position-type)
-        index-entities (be/get-all-entities-with-component system index-type)]
+        index-entities (be/get-all-entities-with-component system index-type)
         matching-ids (into #{} (map #(hash-map :entity-id (:entity-id (be/get-component system % index-type))) index-entities))]
     (first (filter #(= [q r] (get matching-ids %)) position-entities))))
 
