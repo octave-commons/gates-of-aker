@@ -228,10 +228,17 @@
               :jobs []
               :items {}
               :stockpiles {}
-            :levers {:iconography {:fire->patron 0.80
+             :levers {:iconography {:fire->patron 0.80
                                     :lightning->storm 0.75
                                     :storm->deity 0.85}
-                       :mouthpiece-agent-id nil}
+                       :mouthpiece-agent-id nil
+                       :ollama-url "http://localhost:11434/api/generate"
+                       :ollama-model "qwen3:4b"
+                       :ollama-timeout-ms 60000
+                       :ollama-retries 1
+                       :ollama-retry-delay-ms 2000
+                       :ollama-keep-alive-enabled true
+                       :ollama-keep-alive-interval-ms 300000}
            :institutions
            {:temple {:id :temple
                      :name "Temple of Embers"

@@ -59,17 +59,19 @@ Agents now receive passive mood boosts from pleasant environments without explic
 - `backend/src/fantasia/sim/jobs/providers.clj` - scribe job provider generation
 - `backend/src/fantasia/sim/agents.clj` - passive mood environment sampling
 - `backend/src/fantasia/sim/scribes.clj` - new file for Ollama + meta-myths integration:
-  - `load-myths!` - loads myths from `myths.jsonl`
-  - `save-myth!` - appends new myth to `myths.jsonl`
+  - `get-myths-file-path` - checks .myth/ directory, defaults to `.myth/myths.jsonl`
+  - `load-myths!` - loads myths from configurable path
+  - `save-myth!` - appends new myth to file
   - `get-random-myths` - returns up to 5 random ancient myths for Ollama context
   - `build-myths-context` - formats ancient myths as context string
   - `generate-book-text` - includes ancient myths in Ollama prompts
   - `generate-book-content-async!` - async generation + myth persistence
-  - `complete-scribe-job!` - creates placeholder book, starts async generation
-- `backend/src/fantasia/sim/tick/initial.clj` - books in initial world state
+  - `complete-scribe-job!` - creates placeholder book, awards 0.01 favor, starts async generation
+- `backend/src/fantasia/sim/tick/initial.clj` - books in initial world state, favor/faith tracking
 - `backend/src/fantasia/sim/tick/core.clj` - books in tick output
 - `backend/src/fantasia/sim/server.clj` - books broadcast
-- `myths.jsonl` - new file for persistent meta-myths across world restarts (JSONL format)
+- `.myth/` - new directory structure with README and sample myth
+- `myths.jsonl` - legacy path for backward compatibility (checked if `.myth/` directory exists first)
 - `web/src/components/SimulationCanvas.tsx` - temple/school/library rendering
 - `web/src/components/JobQueuePanel.tsx` - scribe job labels
 - `web/src/components/AgentCard.tsx` - scribe job labels
@@ -77,6 +79,11 @@ Agents now receive passive mood boosts from pleasant environments without explic
 - `web/src/components/index.tsx` - LibraryPanel export
 - `web/src/App.tsx` - books state, selected book, LibraryPanel integration, books message handling
 - `spec/2026-01-20-civic-growth-scribes.md` - updated spec file
+
+## Known Issues
+- Scribes namespace has intermittent Clojure compilation issues on some systems (file appears corrupted in some editors but loads in CLI)
+- Recommend checking scribes.clj if experiencing issues - file is ASCII and should be valid
+- Clean version stored in `/tmp/scribes_clean_final.clj` can be used for recovery if needed
 
 ## Definition of Done
 ✓ Houses and civic buildings appear via builder jobs during play

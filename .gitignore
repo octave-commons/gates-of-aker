@@ -10,3 +10,9 @@ web/node_modules/
 web/dist/
 web/.vite/
 web/coverage/
+
+
+
+
+# Ignore Smart Environment folder
+.smart-env

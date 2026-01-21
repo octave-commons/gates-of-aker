@@ -122,16 +122,12 @@
   (let [start-time (System/currentTimeMillis)
         test-prompt "test"
         ollama-model (get-in @sim/*state [:levers :ollama-model] scribes/ollama-model)
-        result-future (scribes/call-ollama! test-prompt ollama-model)]
-    (try
-      (let [result (deref result-future 5000 nil)
-            end-time (System/currentTimeMillis)
-            latency (- end-time start-time)]
-        (if result
-          (json-resp 200 {:connected true :latency_ms latency :model ollama-model})
-          (json-resp 200 {:connected false :latency_ms latency :model ollama-model :error "No response from Ollama"})))
-      (catch Exception e
-        (json-resp 200 {:connected false :latency_ms (- (System/currentTimeMillis) start-time) :model ollama-model :error (.getMessage e)})))))
+        result (scribes/call-ollama-sync! test-prompt ollama-model)
+        end-time (System/currentTimeMillis)
+        latency (- end-time start-time)]
+    (if (:success result)
+      (json-resp 200 {:connected true :latency_ms latency :model ollama-model})
+      (json-resp 200 {:connected false :latency_ms latency :model ollama-model :error (:error result)}))))
 
 (defn handle-ws [req]
   (http/with-channel req ch
@@ -309,5 +305,6 @@
 (defn -main [& _]
   (let [port 3000]
     (println (str "Fantasia backend listening on http://localhost:" port))
+    (scribes/start-ollama-keep-alive!)
     (http/run-server app {:port port})
     @(promise)))

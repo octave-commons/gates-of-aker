@@ -7,29 +7,34 @@
             [clojure.java.io :as io]))
 
 (def ollama-url "http://localhost:11434/api/generate")
+
 (def ollama-model "qwen3:4b")
-(def ^:private myths-file-path "myths.jsonl")
+
+(def ^:private myths-file-path ".myth/myths.jsonl")
+
 (def ^:private max-myths-for-prompt 5)
 
-(defonce ^:private *ollama-keep-alive (atom {:future nil :running? false}))
-
-(defn- get-ollama-config
-  "Get Ollama configuration from world levers with sensible defaults."
-  [state]
-  {:timeout-ms (get-in state [:levers :ollama-timeout-ms] 60000)
-   :retries (get-in state [:levers :ollama-retries] 1)
-   :retry-delay-ms (get-in state [:levers :ollama-retry-delay-ms] 2000)
-   :keep-alive-enabled (get-in state [:levers :ollama-keep-alive-enabled] true)
-   :keep-alive-interval-ms (get-in state [:levers :ollama-keep-alive-interval-ms] 300000)
-   :url (get-in state [:levers :ollama-url] ollama-url)
-   :model (get-in state [:levers :ollama-model] ollama-model)})
-
-(defn- load-myths!
-  "Load all myths from the persistent myths file."
+(defn get-myths-file-path
+  "Get the actual path to the myths file, checking .myth/ directory first."
   []
-  (when (.exists (io/file myths-file-path))
+  (let [myth-dir ".myth"
+        myth-file-in-dir (str myth-dir "/myths.jsonl")]
+    (if (.exists (io/file myth-file-in-dir))
+      myth-file-in-dir
+      
+      (if (.exists (io/file myth-dir))
+        (do
+          (log/log-warn "[MYTHS:FALLBACK]" {:fallback-to "myths.jsonl" :reason ".myth/ directory exists"})
+          "myths.jsonl")
+      
+      "myths.jsonl")))
+
+(defn load-myths!
+  "Load all myths from the persistent myths file using the actual path."
+  []
+  (when (.exists (io/file (get-myths-file-path)))
     (try
-      (with-open [rdr (io/reader myths-file-path)]
+      (with-open [rdr (io/reader (get-myths-file-path))]
         (->> (line-seq rdr)
              (filter (complement str/blank?))
              (map #(json/parse-string % true))))
@@ -37,17 +42,18 @@
         (log/log-warn "[MYTHS:LOAD-FAILED]" {:error (.getMessage e)})
         []))))
 
-(defn- save-myth!
+(defn save-myth!
   "Append a new myth to the persistent myths file."
   [myth]
   (try
-    (io/make-parents myths-file-path)
-    (spit myths-file-path (str (json/generate-string myth) "\n") :append true)
-    (log/log-info "[MYTHS:SAVED]" {:title (:title myth) :themes (:facets myth)})
+    (let [path (get-myths-file-path)]
+      (io/make-parents path)
+      (spit path (str (json/generate-string myth) "\n") :append true)
+      (log/log-info "[MYTHS:SAVED]" {:title (:title myth) :themes (:facets myth)}))
     (catch Exception e
       (log/log-error "[MYTHS:SAVE-FAILED]" {:error (.getMessage e)}))))
 
-(defn- get-random-myths
+(defn get-random-myths
   "Get N random myths from loaded myths for Ollama context."
   [n]
   (let [myths (load-myths!)]
@@ -59,149 +65,27 @@
         (mapv #(nth myths %) indices)))))
 
 (defn call-ollama!
-  "Make an async call to the Ollama API."
+  "Make a single HTTP call to Ollama API."
   [prompt model]
-  (future
-    (try
-      (let [response (http/post ollama-url
-                                {:content-type :json
-                                 :body (json/generate-string {:model model
-                                                                :prompt prompt
-                                                                :stream false})
-                                 :throw-exceptions false
-                                 :socket-timeout 10000
-                                 :connection-timeout 5000})]
-        (if (= (:status response) 200)
-          (let [body (json/parse-string (:body response) true)
-                text (get-in body [:response] "")]
-            (log/log-info "[OLLAMA:SUCCESS]" {:model model :length (count text)})
-            text)
-          (do
-            (log/log-warn "[OLLAMA:FAILED]" {:status (:status response)})
-            nil)))
-      (catch Exception e
-        (log/log-error "[OLLAMA:ERROR]" {:error (.getMessage e)})
-         nil))))
-
-(defn- call-ollama-raw!
-  "Make a single raw HTTP call to Ollama API with given options."
-  [prompt model timeout-ms opts]
   (try
     (let [response (http/post ollama-url
-                              {:content-type :json
-                               :body (json/generate-string (merge {:model model
-                                                                     :prompt prompt
-                                                                     :stream false}
-                                                                    opts))
-                               :throw-exceptions false
-                               :socket-timeout timeout-ms
-                               :connection-timeout 5000})]
+                               {:content-type :json
+                                :body (json/generate-string {:model model
+                                                                :prompt prompt
+                                                                :stream false})
+                                :throw-exceptions false
+                                :socket-timeout 10000
+                                :connection-timeout 5000})]
       (if (= (:status response) 200)
         (let [body (json/parse-string (:body response) true)
-              text (or (get-in body [:response] "")
-                       (get-in body [:thinking] "")
-                       "")]
+              text (get-in body [:response] "")]
           (log/log-info "[OLLAMA:SUCCESS]" {:model model :length (count text)})
           {:success true :text text})
-        {:success false :error (str "HTTP " (:status response))}))
+        {:success false :error (str "HTTP " (:status response))})))
     (catch Exception e
       (log/log-error "[OLLAMA:ERROR]" {:error (.getMessage e)})
       {:success false :error (.getMessage e)})))
 
-(defn- call-ollama-with-retry!
-  "Make a call to Ollama API with retry logic for cold starts."
-  [prompt model config]
-  (let [{:keys [timeout-ms retries retry-delay-ms]} config]
-    (letfn [(retry-call [attempt]
-              (let [result (call-ollama-raw! prompt model timeout-ms {:options {:num_predict 50 :temperature 0.7}})]
-                (if (:success result)
-                  result
-                  (if (< attempt retries)
-                    (do
-                      (log/log-warn "[OLLAMA:RETRY]" {:attempt (inc attempt) :max retries :error (:error result)})
-                      (Thread/sleep retry-delay-ms)
-                      (retry-call (inc attempt)))
-                    result))))]
-      (retry-call 0))))
-
-(defn call-ollama!
-  "Make an async call to the Ollama API with retry logic."
-  [prompt model]
-  (future
-    (let [config (when-let [state-var (find-var 'fantasia.sim.tick.core/*state)]
-                   (when state-var (get-ollama-config @state-var)))
-          {:keys [success text]} (call-ollama-with-retry! prompt model (or config {}))]
-      (when success text))))
-
-(defn call-ollama-sync!
-  "Make a synchronous call to Ollama API for testing with configurable timeout."
-  [prompt model]
-  (let [config (when-let [state-var (find-var 'fantasia.sim.tick.core/*state)]
-                 (when state-var (get-ollama-config @state-var)))
-        {:keys [timeout-ms]} (or config {})
-        actual-timeout (or timeout-ms 60000)]
-    (try
-      (let [response (http/post ollama-url
-                                {:content-type :json
-                                 :body (json/generate-string {:model model
-                                                                :prompt prompt
-                                                                :stream false
-                                                                :options {:num_predict 10 :temperature 0.1}})
-                                 :throw-exceptions false
-                                 :socket-timeout actual-timeout
-                                 :connection-timeout 5000})]
-        (if (= (:status response) 200)
-          (let [body (json/parse-string (:body response) true)
-                text (or (get-in body [:response] "")
-                         (get-in body [:thinking] "")
-                         "")]
-            (log/log-info "[OLLAMA:TEST-SUCCESS]" {:model model :length (count text)})
-            {:success true :text text})
-          {:success false :error (str "HTTP " (:status response))}))
-      (catch Exception e
-        (log/log-error "[OLLAMA:TEST-ERROR]" {:error (.getMessage e)})
-        {:success false :error (.getMessage e)}))))
-
-(defn- keep-alive-ping!
-  "Send a minimal keep-alive request to Ollama to keep model in memory."
-  [config]
-  (let [{:keys [url model]} config
-        result (call-ollama-raw! "." model 5000 {:options {:num_predict 1 :temperature 0.0}})]
-    (when (:success result)
-      (log/log-debug "[KEEP-ALIVE:PING]" {:model model}))
-    result))
-
-(defn start-ollama-keep-alive!
-  "Start Ollama keep-alive heartbeat to prevent model unloading."
-  []
-  (let [config (when-let [state-var (find-var 'fantasia.sim.tick.core/*state)]
-                 (when state-var (get-ollama-config @state-var)))]
-    (when (and config (:keep-alive-enabled config))
-      (reset! *ollama-keep-alive {:future nil :running? true})
-      (let [{:keys [keep-alive-interval-ms]} config
-            fut (future
-                  (try
-                    (log/log-info "[KEEP-ALIVE:STARTED]" {:interval-ms keep-alive-interval-ms})
-                    (keep-alive-ping! config)
-                    (while (:running? @*ollama-keep-alive)
-                      (Thread/sleep keep-alive-interval-ms)
-                      (when (:running? @*ollama-keep-alive)
-                        (keep-alive-ping! config)))
-                    (catch Exception e
-                      (log/log-error "[KEEP-ALIVE:ERROR]" {:error (.getMessage e)}))
-                    (finally
-                      (log/log-info "[KEEP-ALIVE:STOPPED]")
-                      (swap! *ollama-keep-alive assoc :future nil :running? false))))]
-        (swap! *ollama-keep-alive assoc :future fut)))))
-
-(defn stop-ollama-keep-alive!
-  "Stop Ollama keep-alive heartbeat."
-  []
-  (when (:running? @*ollama-keep-alive)
-    (swap! *ollama-keep-alive assoc :running? false)
-    (when-let [fut (:future @*ollama-keep-alive)]
-      (future-cancel fut))))
- 
 (defn generate-book-title
   "Generate a book title based on facets and events."
   [facets event-facets]
@@ -218,8 +102,14 @@
   "Build context string from ancient myths for Ollama prompt."
   [myths]
   (when (seq myths)
-    (let [lines (map (fn [m] (str "- " (:title m) ": " (:text m))) myths)]
-      (str "\n\nAncient echoes from worlds before:\n" (str/join "\n" lines)))))
+    (let [myth-strings (mapv (fn [m]
+                                     (let [text-preview (if (:text m)
+                                                                (subs (:text m) 0 (min 80 (count (:text m)))
+                                                                "")]
+                                           (str "- " (:title m) ": " text-preview "...")))
+                                 myths)]
+      (str "\n\nAncient echoes from worlds before:\n"
+           (str/join "\n" myth-strings)))))
 
 (defn generate-book-text
   "Generate a mythological short story from traces and facets."
@@ -266,15 +156,13 @@
                        "\nThe story should reflect these themes: " facet-str 
                        ". Keep it poetic and atmospheric."
                        myths-context) 
-            ollama-future (call-ollama! prompt ollama-model)]
-         (try
-           (let [generated (deref ollama-future 30000 fallback-text)]
+            ollama-result (call-ollama! prompt ollama-model)]
+        (if (:success ollama-result)
+          (let [generated (:text ollama-result)]
             (if (and generated (pos? (count generated)))
               (str (subs generated 0 (min 200 (count generated))) ".")
               fallback-text))
-          (catch Exception e
-            (log/log-warn "[SCRIBE:OLLAMA-TIMEOUT]" {:fallback true})
-            fallback-text)))
+          fallback-text))
       fallback-text)))
 
 (defn create-book-placeholder
@@ -379,5 +267,6 @@
                    :title title
                    :trace-ids trace-ids
                    :favor-gained favor-gain})
-    (generate-book-content-async! book-id selected-traces facets title)
-    (update-in world-initial [:favor] + favor-gain)))
+    (-> world-initial
+        (update-in [:favor] + favor-gain)
+        (generate-book-content-async! book-id selected-traces facets title))))

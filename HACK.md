@@ -114,13 +114,6 @@ The more faith you have with a diety, the less favor it will require to get abil
 Each diety has some facets associated with it.
 As with everything else in this hack to gether guide on something that doesn't exist yet
 ''
-## Mother: Gaia
-- food grows faster in your claimed territory (passive)
-- can spend faith to improve ground (active)
-## Patron :  Hermes
-- Agents who are faithful to hermes can be heard from further away and are remembered for longer when communicating (passive)
-## Day : Apollo
-## Night: Artemis
 # Champions
 
 # Thoughts
