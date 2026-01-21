@@ -12,30 +12,83 @@
     (if (not alive?)
       agent
        (let [temperature (double (or (:temperature world) 0.6))
-             cold (max 0.0 (- 1.0 temperature))
-             asleep? (get-in agent [:status :asleep?] false)
-             warmth (get-in agent [:needs :warmth] 0.6)
-              pos (:pos agent)
-              campfire-pos (:campfire world)
-               campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) const/campfire-radius))
-              tile-key (when pos (vector (first pos) (second pos)))
-              house-near?
-              (and pos
-                   (or (= :house (get-in world [:tiles tile-key :structure]))
-                       (some (fn [n]
-                               (= :house (get-in world [:tiles (vector (first n) (second n))] :structure)))
-                             (hex/neighbors pos))))
-              warmth-bonus (cond
-                             campfire-near? const/warmth-bonus-campfire
-                             house-near? const/warmth-bonus-house
-                             :else 0.0)
+              cold (max 0.0 (- 1.0 temperature))
+              asleep? (get-in agent [:status :asleep?] false)
+              warmth (get-in agent [:needs :warmth] 0.6)
+               pos (:pos agent)
+                campfire-pos (:campfire world)
+                 campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) const/campfire-radius))
+                tile-key (when pos (vector (first pos) (second pos)))
+                house-near?
+                (and pos
+                     (or (= :house (get-in world [:tiles tile-key :structure]))
+                         (some (fn [n]
+                                 (= :house (get-in world [:tiles (vector (first n) (second n))] :structure)))
+                               (hex/neighbors pos))))
+                warmth-bonus (cond
+                               campfire-near? const/warmth-bonus-campfire
+                               house-near? const/warmth-bonus-house
+                               :else 0.0)
               warmth-decay (+ const/base-warmth-decay (* const/cold-warmth-decay-factor cold))
-               food-decay (if asleep? const/base-food-decay-asleep const/base-food-decay-awake)
+              food-decay (if asleep? const/base-food-decay-asleep const/base-food-decay-awake)
                sleep-decay (if asleep? 0.0 const/base-sleep-decay)
-             warmth' (f/clamp01 (+ (- warmth warmth-decay) warmth-bonus))
-             food' (f/clamp01 (- (get-in agent [:needs :food] 0.7) food-decay))
-             sleep' (f/clamp01 (- (get-in agent [:needs :sleep] 0.7) sleep-decay))]
-        (assoc-in agent [:needs] {:warmth warmth' :food food' :sleep sleep'})))))
+               rest-change (if asleep?
+                             (+ const/base-rest-recovery
+                                (if house-near? const/house-rest-bonus 0.0))
+                             (- const/base-rest-decay))
+               social-decay const/base-social-decay
+               warmth' (f/clamp01 (+ (- warmth warmth-decay) warmth-bonus))
+                current-needs (:needs agent)
+                food' (f/clamp01 (- (get current-needs :food 0.7) food-decay))
+                sleep' (f/clamp01 (- (get current-needs :sleep 0.7) sleep-decay))
+                rest' (f/clamp01 (+ (get current-needs :rest 0.7) rest-change))
+                social' (f/clamp01 (- (get current-needs :social 0.55) social-decay))
+                health (get current-needs :health 1.0)
+                heat-damage (if (> warmth' const/heat-damage-threshold) const/heat-damage-per-tick 0.0)
+                health' (f/clamp01 (- health heat-damage))
+                current-mood (get current-needs :mood 0.5)
+                mood-change (+ (cond
+                                (< warmth' 0.25) -0.015
+                                (< warmth' 0.4) -0.008
+                                (> warmth' const/heat-damage-threshold) -0.02
+                                (> warmth' 0.75) 0.008
+                                (> warmth' 0.65) 0.004
+                                :else 0.0)
+                              (cond
+                                (< social' 0.3) -0.01
+                                (> social' 0.7) 0.005
+                                :else 0.0)
+                              (cond
+                                (< rest' 0.3) -0.012
+                                (> rest' 0.75) 0.006
+                                :else 0.0))
+                mood' (f/clamp01 (+ current-mood mood-change))
+                warmth-thoughts (cond
+                                  (< warmth' 0.15) ["I can't feel my toes" "It's unbearable cold"]
+                                  (< warmth' 0.3) ["Need warmth soon" "Shaking from cold"]
+                                  (< warmth' 0.5) ["The chill bites" "Could use some heat"]
+                                  (> warmth' const/heat-damage-threshold) ["Too hot! Burning up!" "Get me away from this fire!"]
+                                  (> warmth' 0.9) ["Sweating profusely" "Way too warm"]
+                                  (> warmth' 0.75) ["Nice and toasty" "This fire feels good"]
+                                  (> warmth' 0.6) ["Finally comfortable" "Just right"]
+                                  :else [])
+                mood-thoughts (cond
+                                (> mood' 0.85) ["Feeling bright" "Life feels good" "So happy today"]
+                                (> mood' 0.7) ["Spirits are lifted" "A good moment"]
+                                (< mood' 0.25) ["Everything feels heavy" "Hard to smile"]
+                                (< mood' 0.4) ["A bit down" "Need a little joy"]
+                                :else [])
+                rest-thoughts (cond
+                                (> rest' 0.8) ["Rested and ready" "Fully recharged"]
+                                (< rest' 0.3) ["So tired" "Need proper rest"]
+                                :else [])
+                thoughts (vec (concat warmth-thoughts mood-thoughts rest-thoughts))
+                 random-thought (when (seq thoughts)
+                                  (rand-nth thoughts))
+                updated-needs (assoc current-needs :warmth warmth' :food food' :sleep sleep' :rest rest' :mood mood' :social social' :health health')]
+          (-> agent
+              (assoc :needs updated-needs)
+              (assoc :last-thought random-thought))))))
 
 (defn choose-packet
   "Convert agent state + local context into a broadcast packet."

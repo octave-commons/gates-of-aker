@@ -1,8 +1,9 @@
 (ns fantasia.sim.tick.core
-   (:require [fantasia.sim.agents :as agents]
-             [fantasia.sim.events.runtime :as runtime]
-             [fantasia.sim.institutions :as institutions]
-             [fantasia.sim.world :as world]
+  (:require [fantasia.sim.agents :as agents]
+            [fantasia.sim.social :as social]
+            [fantasia.sim.events.runtime :as runtime]
+            [fantasia.sim.institutions :as institutions]
+            [fantasia.sim.world :as world]
              [fantasia.sim.jobs :as jobs]
              [fantasia.sim.jobs.providers :as job-providers]
              [fantasia.sim.hex :as hex]
@@ -87,22 +88,34 @@
         player-agents (filter #(= (:faction %) :player) agents3)
         pairs (agents/interactions player-agents)
         talk-step (reduce
-                   (fn [{:keys [agents mentions traces]} [speaker listener]]
-                     (let [packet (agents/choose-packet w4 speaker)
-                           res (agents/apply-packet-to-listener w4 listener speaker packet)
-                           agents' (assoc agents (:id listener) (:listener res))]
-                       {:agents agents'
+                   (fn [{:keys [world agents mentions traces]} [speaker listener]]
+                     (let [speaker' (get agents (:id speaker) speaker)
+                           listener' (get agents (:id listener) listener)
+                           social-step (social/trigger-social-interaction! world speaker' listener')
+                           world' (:world social-step)
+                           agent-1 (:agent-1 social-step)
+                           agent-2 (:agent-2 social-step)
+                           agents' (-> agents
+                                       (assoc (:id agent-1) agent-1)
+                                       (assoc (:id agent-2) agent-2))
+                           packet (agents/choose-packet world' agent-1)
+                           res (agents/apply-packet-to-listener world' agent-2 agent-1 packet)
+                           agents'' (assoc agents' (:id agent-2) (:listener res))]
+                       {:world world'
+                        :agents agents''
                         :mentions (into mentions (:mentions res))
                         :traces (into traces (:traces res))}))
-                 {:agents (vec agents3)
+                 {:world w4
+                  :agents (vec agents3)
                   :mentions (:mentions ev-step)
                   :traces (:traces ev-step)}
                  pairs)
-       agents4 (:agents talk-step)
-       reproduction-step (reduce
-                          (fn [{:keys [agents next-agent-id] :as acc} [parent1 parent2]]
-                            (let [world-with-next-id (assoc w4 :next-agent-id next-agent-id)
-                                  can-reproduce? (reproduction/can-reproduce? world-with-next-id parent1 parent2)]
+        agents4 (:agents talk-step)
+        w5 (:world talk-step)
+        reproduction-step (reduce
+                           (fn [{:keys [agents next-agent-id] :as acc} [parent1 parent2]]
+                             (let [world-with-next-id (assoc w5 :next-agent-id next-agent-id)
+                                   can-reproduce? (reproduction/can-reproduce? world-with-next-id parent1 parent2)]
                               (if can-reproduce?
                                 (let [{:keys [child-agent next-agent-id]} (reproduction/create-child-agent world-with-next-id parent1 parent2 t)
                                       agents' (conj agents child-agent)
@@ -143,36 +156,36 @@
                                     :world world'})
                                  acc))
                              acc)))
-                       {:agents agents6 :world w4}
-                       agents6)
-       agents7 (:agents housing-step)
-       bcasts (institutions/broadcasts w4)
-         inst-step (reduce
-                    (fn [{:keys [agents mentions traces]} b]
-                      (let [res (institutions/apply-broadcast w4 agents b)]
-                        {:agents (:agents res)
-                         :mentions (into mentions (:mentions res))
-                         :traces (into traces (:traces res))}))
-                  {:agents agents7
-                    :mentions (:mentions talk-step)
-                    :traces (:traces talk-step)}
-                  bcasts)
-       agents8 (:agents inst-step)
-       ledger-info (world/update-ledger w4 (:mentions inst-step))
-         ledger2 (:ledger ledger-info)
-         attr (:attribution ledger-info)
-       recent' (if ev
-                  (->> (concat (:recent-events w4)
+                        {:agents agents6 :world w5}
+                        agents6)
+        agents7 (:agents housing-step)
+        bcasts (institutions/broadcasts w5)
+          inst-step (reduce
+                     (fn [{:keys [agents mentions traces]} b]
+                       (let [res (institutions/apply-broadcast w5 agents b)]
+                         {:agents (:agents res)
+                          :mentions (into mentions (:mentions res))
+                          :traces (into traces (:traces res))}))
+                   {:agents agents7
+                     :mentions (:mentions talk-step)
+                     :traces (:traces talk-step)}
+                   bcasts)
+        agents8 (:agents inst-step)
+        ledger-info (world/update-ledger w5 (:mentions inst-step))
+        ledger2 (:ledger ledger-info)
+        attr (:attribution ledger-info)
+        recent' (if ev
+                  (->> (concat (:recent-events w5)
                                [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
-                       (take-last (:recent-max w4))
-                       vec)
-                  (:recent-events w4))
-       traces' (->> (concat (:traces w4) (:traces inst-step))
-                     (take-last (:trace-max w4))
-                     vec)
-       world' (-> w4
-                  (assoc :agents agents8)
-                  (assoc :next-agent-id (:next-agent-id reproduction-step))
+                         (take-last (:recent-max w5))
+                        vec)
+                  (:recent-events w5))
+        traces' (->> (concat (:traces w5) (:traces inst-step))
+                      (take-last (:trace-max w5))
+                      vec)
+        world' (-> w5
+                   (assoc :agents agents8)
+                   (assoc :next-agent-id (:next-agent-id reproduction-step))
                   (assoc :ledger ledger2)
                   (assoc :recent-events recent')
                   (assoc :traces traces'))]
@@ -205,6 +218,7 @@
         [q r] pos]
     (update world :agents conj 
             {:id agent-id
+             :name (initial/agent-name agent-id :wolf)
              :pos [q r]
              :role :wolf
              :faction :wilderness
@@ -225,6 +239,7 @@
         [q r] pos]
     (update world :agents conj
             {:id agent-id
+             :name (initial/agent-name agent-id :deer)
              :pos [q r]
              :role :deer
              :faction :wilderness
@@ -245,6 +260,7 @@
         [q r] pos]
     (update world :agents conj 
             {:id agent-id
+             :name (initial/agent-name agent-id :bear)
              :pos [q r]
              :role :bear
              :faction :wilderness

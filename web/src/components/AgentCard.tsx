@@ -38,6 +38,15 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
   const status = (agent as any).status ?? {};
   const alive = status["alive?"] ?? status.alive ?? true;
   const causeOfDeath = status["cause-of-death"] ?? status.causeOfDeath ?? null;
+  const relationships = (agent as any).relationships ?? [];
+  const topRelationship = Array.isArray(relationships) ? relationships[0] : null;
+  const lastSocialThought = (agent as any).lastSocialThought ?? (agent as any)["last-social-thought"] ?? null;
+  const stats = (agent as any).stats ?? {};
+  const statKeys = ["strength", "dexterity", "fortitude", "charisma"];
+  const statLine = statKeys
+    .filter((key) => typeof stats[key] === "number")
+    .map((key) => `${key.slice(0, 3).toUpperCase()} ${Math.round(stats[key] * 100)}`)
+    .join(" · ");
 
   const jobTypeName = currentJob ? (jobTypeNames[currentJob.type] ?? String(currentJob.type).replace(":job/", "")) : null;
 
@@ -204,16 +213,17 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
 
        {Object.keys(needs).length > 0 && (
         <div style={{ marginBottom: 4 }}>
-          {["mood", "food", "sleep", "warmth"].map((needKey) => {
+           {["mood", "social", "food", "sleep", "warmth"].map((needKey) => {
             const value = needs[needKey];
             if (value === undefined) return null;
             
-            const colors: Record<string, { high: string; mid: string; low: string }> = {
-              mood: { high: "#9C27B0", mid: "#7B1FA2", low: "#4A148C" },
-              food: { high: "#4CAF50", mid: "#FFC107", low: "#f44336" },
-              sleep: { high: "#2196F3", mid: "#FF9800", low: "#9C27B0" },
-              warmth: { high: "#FF5722", mid: "#607D8B", low: "#E91E63" }
-            };
+             const colors: Record<string, { high: string; mid: string; low: string }> = {
+               mood: { high: "#9C27B0", mid: "#7B1FA2", low: "#4A148C" },
+               social: { high: "#26A69A", mid: "#00796B", low: "#004D40" },
+               food: { high: "#4CAF50", mid: "#FFC107", low: "#f44336" },
+               sleep: { high: "#2196F3", mid: "#FF9800", low: "#9C27B0" },
+               warmth: { high: "#FF5722", mid: "#607D8B", low: "#E91E63" }
+             };
             
             let color = colors[needKey]?.mid;
             if (value > 0.7) color = colors[needKey]?.high;
@@ -247,6 +257,34 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
       {Object.keys(inventory).length > 0 && (
         <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>
           <strong>Inventory:</strong> {Object.entries(inventory).map(([k, v]) => `${k}:${v}`).join(", ")}
+        </div>
+      )}
+
+      {statLine && (
+        <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>
+          <strong>Stats:</strong> {statLine}
+        </div>
+      )}
+
+      {topRelationship && (
+        <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>
+          <strong>Bond:</strong> {topRelationship.name ?? `#${topRelationship.agentId ?? topRelationship["agent-id"]}`} · {Math.round(((topRelationship.affinity ?? 0) as number) * 100)}%
+        </div>
+      )}
+
+      {Array.isArray(relationships) && relationships.length > 1 && (
+        <div style={{ fontSize: 11, color: "#777", marginBottom: 4 }}>
+          <strong>Links:</strong> {relationships.slice(1, 3).map((rel: any) => {
+            const label = rel.name ?? `#${rel.agentId ?? rel["agent-id"]}`;
+            const affinity = Math.round(((rel.affinity ?? 0) as number) * 100);
+            return `${label} ${affinity}%`;
+          }).join(", ")}
+        </div>
+      )}
+
+      {lastSocialThought && (
+        <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>
+          <strong>Social:</strong> {String(lastSocialThought)}
         </div>
       )}
 

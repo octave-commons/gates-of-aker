@@ -10,6 +10,8 @@ const colorForRole = (role?: string): string => {
       return CONFIG.colors.ROLE.priest;
     case "knight":
       return CONFIG.colors.ROLE.knight;
+    case "champion":
+      return "#0f766e";
     case "wolf":
       return "#795548";
     case "bear":
@@ -27,6 +29,8 @@ const getAgentIcon = (role?: string): string => {
       return "✝";
     case "knight":
       return "⚔";
+    case "champion":
+      return "🜂";
     case "wolf":
       return "🐺";
     case "bear":

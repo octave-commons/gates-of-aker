@@ -132,10 +132,24 @@ export function SelectedPanel({
               </div>
               <div style={{ display: "grid", gap: 6 }}>
                 <div><strong>ID:</strong> {selectedAgent.id}</div>
+                <div><strong>Name:</strong> {(selectedAgent as any).name ?? "Unknown"}</div>
                 <div><strong>Role:</strong> {selectedAgent.role}</div>
                 <div><strong>Status:</strong> {statusLabel(selectedAgent)}</div>
                 <div><strong>Cause of Death:</strong> {statusCause(selectedAgent)}</div>
                 <div><strong>Position:</strong> {selectedAgent.pos ? `(${selectedAgent.pos[0]}, ${selectedAgent.pos[1]})` : "None"}</div>
+
+                {(selectedAgent as any).stats && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Stats:</strong>
+                    <div style={{ marginLeft: 12, marginTop: 4, fontSize: "0.9em" }}>
+                      {Object.entries((selectedAgent as any).stats).map(([key, value]) => (
+                        <div key={key}>
+                          {key}: {typeof value === "number" ? value.toFixed(3) : String(value)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {selectedAgent.needs && Object.keys(selectedAgent.needs).length > 0 && (
                   <div style={{ marginTop: 8 }}>
@@ -144,6 +158,19 @@ export function SelectedPanel({
                       {Object.entries(selectedAgent.needs).map(([key, value]) => (
                         <div key={key}>
                           {key}: {typeof value === "number" ? value.toFixed(3) : value}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {Array.isArray((selectedAgent as any).relationships) && (selectedAgent as any).relationships.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Relationships:</strong>
+                    <div style={{ marginLeft: 12, marginTop: 4, fontSize: "0.9em" }}>
+                      {(selectedAgent as any).relationships.map((rel: any) => (
+                        <div key={rel.agentId ?? rel["agent-id"]}>
+                          {(rel.name ?? `#${rel.agentId ?? rel["agent-id"]}`)}: {typeof rel.affinity === "number" ? rel.affinity.toFixed(2) : rel.affinity}
                         </div>
                       ))}
                     </div>

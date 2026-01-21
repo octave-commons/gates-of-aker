@@ -37,6 +37,7 @@ const NEED_THRESHOLD_KEYS: Record<string, string> = {
   health: "health-low",
   security: "security-unsettled",
   mood: "mood-low",
+  social: "social-low",
 };
 
 const NEED_TONE_SEQUENCES: Record<string, number[]> = {
@@ -48,6 +49,7 @@ const NEED_TONE_SEQUENCES: Record<string, number[]> = {
   health: [5, 3, 1],
   security: [2, 4, 5],
   mood: [1, 4, 2],
+  social: [0, 1, 4],
 };
 
 const JOB_TONE_SEQUENCES: Record<string, number[]> = {
@@ -118,6 +120,10 @@ export function App() {
   const initialFocusRef = useRef(false);
   const [focusPos, setFocusPos] = useState<[number, number] | null>(null);
   const [focusTrigger, setFocusTrigger] = useState(0);
+
+  const [showRelationships, setShowRelationships] = useState(true);
+  const [showNames, setShowNames] = useState(true);
+  const [showStats, setShowStats] = useState(true);
 
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
@@ -639,6 +645,9 @@ export function App() {
           onCellSelect={handleCellSelect}
           focusPos={focusPos}
           focusTrigger={focusTrigger}
+          showRelationships={showRelationships}
+          showNames={showNames}
+          showStats={showStats}
         />
       </div>
 
@@ -679,11 +688,41 @@ export function App() {
          <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />
        </div>
 
-       <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
+        <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
           <BuildingPalette
             onQueueBuild={handleQueueBuild}
             selectedCell={selectedCell}
           />
+
+          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Overlays</h3>
+            <div style={{ display: "grid", gap: 8, fontSize: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={showRelationships}
+                  onChange={(e) => setShowRelationships(e.target.checked)}
+                />
+                Relationship links
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={showNames}
+                  onChange={(e) => setShowNames(e.target.checked)}
+                />
+                Name labels
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={showStats}
+                  onChange={(e) => setShowStats(e.target.checked)}
+                />
+                Stat pips
+              </label>
+            </div>
+          </div>
 
          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>

@@ -4,9 +4,11 @@ export type AxialCoords = [number, number];
 
 export type Agent = {
   id: number;
+  name?: string;
   pos: [number, number] | null;
   role: string;
   faction?: string;
+  stats?: Record<string, number>;
   needs: Record<string, number>;
   recall: Record<string, number>;
   [key: string]: any;

@@ -22,9 +22,24 @@ type SimulationCanvasProps = {
   onCellSelect: (cell: [number, number], agentId: number | null) => void;
   focusPos?: [number, number] | null;
   focusTrigger?: number;
+  showRelationships?: boolean;
+  showNames?: boolean;
+  showStats?: boolean;
 };
 
-export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAgentId, agentPaths, onCellSelect, focusPos, focusTrigger }: SimulationCanvasProps) {
+export function SimulationCanvas({
+  snapshot,
+  mapConfig,
+  selectedCell,
+  selectedAgentId,
+  agentPaths,
+  onCellSelect,
+  focusPos,
+  focusTrigger,
+  showRelationships = true,
+  showNames = true,
+  showStats = true,
+}: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -500,22 +515,128 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       ctx.lineWidth = 1;
     }
 
-    const colorForRole = (role?: string) => {
+    const rolePalette = (role?: string) => {
       switch (role) {
         case "priest":
-          return "#d7263d";
+          return { body: "#c62828", armor: "#f5c06b", accent: "#8e0000" };
         case "knight":
-          return "#3366ff";
+          return { body: "#1e40af", armor: "#d0d4da", accent: "#0f172a" };
+        case "champion":
+          return { body: "#0f766e", armor: "#f97316", accent: "#0b3b38" };
         case "wolf":
-          return "#795548";
+          return { body: "#795548", armor: "#4e342e", accent: "#3e2723" };
         case "bear":
-          return "#5d4037";
+          return { body: "#5d4037", armor: "#3e2723", accent: "#2c1c18" };
         case "deer":
-          return "#8d6e63";
+          return { body: "#8d6e63", armor: "#6d4c41", accent: "#4e342e" };
         default:
-          return "#111";
+          return { body: "#222", armor: "#607d8b", accent: "#111" };
       }
     };
+
+    const drawDot = (x: number, y: number, r: number, color: string) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    const drawStatPips = (x: number, y: number, stats: Record<string, number> | undefined, baseSize: number) => {
+      if (!stats || !showStats) return;
+      const pipRadius = baseSize * 0.35;
+      const offsets = [
+        [-baseSize * 1.6, -baseSize * 0.4],
+        [baseSize * 1.6, -baseSize * 0.4],
+        [-baseSize * 1.4, baseSize * 0.9],
+        [baseSize * 1.4, baseSize * 0.9],
+      ];
+      const colors: Array<[string, number]> = [
+        ["#ef4444", stats.strength ?? 0],
+        ["#3b82f6", stats.dexterity ?? 0],
+        ["#22c55e", stats.fortitude ?? 0],
+        ["#f59e0b", stats.charisma ?? 0],
+      ];
+
+      colors.forEach(([color, value], idx) => {
+        if (value <= 0) return;
+        const scale = Math.max(0.4, Math.min(1, value));
+        const [ox, oy] = offsets[idx];
+        drawDot(x + ox, y + oy, pipRadius * scale, color);
+      });
+    };
+
+    const drawColonist = (x: number, y: number, role?: string, stats?: Record<string, number>) => {
+      const palette = rolePalette(role);
+      const baseSize = CONFIG.canvas.HEX_SIZE * 0.12;
+      const headOffset = CONFIG.canvas.HEX_SIZE * -0.22;
+      const bodyOffset = CONFIG.canvas.HEX_SIZE * 0.02;
+      const legOffset = CONFIG.canvas.HEX_SIZE * 0.26;
+
+      drawDot(x, y + headOffset, baseSize * 0.9, "#f2d6c9");
+      drawDot(x, y + bodyOffset, baseSize, palette.body);
+      drawDot(x, y + legOffset, baseSize * 0.8, palette.accent);
+
+      if (role === "knight" || role === "champion") {
+        ctx.strokeStyle = palette.armor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y + bodyOffset, baseSize * 1.4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.fillStyle = palette.armor;
+        ctx.fillRect(x - baseSize * 0.9, y + headOffset - baseSize * 0.7, baseSize * 1.8, baseSize * 0.5);
+      }
+
+      if (role === "priest") {
+        ctx.fillStyle = palette.armor;
+        ctx.beginPath();
+        ctx.moveTo(x - baseSize * 0.8, y + bodyOffset);
+        ctx.lineTo(x, y + legOffset + baseSize * 0.1);
+        ctx.lineTo(x + baseSize * 0.8, y + bodyOffset);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      drawStatPips(x, y, stats, baseSize);
+    };
+
+    const drawRelationshipLinks = () => {
+      if (!showRelationships) return;
+      const agents = snapshot.agents ?? [];
+      const agentById = new Map<number, Agent>();
+      agents.forEach((agent: Agent) => agentById.set(agent.id, agent));
+
+      ctx.save();
+      ctx.lineWidth = Math.max(1, 1 / camera.zoom);
+      for (const agent of agents) {
+        const rels = (agent as any).relationships ?? [];
+        if (!hasPos(agent) || !Array.isArray(rels)) continue;
+        for (const rel of rels) {
+          const targetId = rel.agentId ?? rel["agent-id"];
+          if (typeof targetId !== "number" || agent.id > targetId) continue;
+          const target = agentById.get(targetId);
+          if (!target || !hasPos(target)) continue;
+          const affinity = Number(rel.affinity ?? 0.5);
+          const intensity = Math.min(1, Math.abs(affinity - 0.5) * 2);
+          const isPositive = affinity >= 0.5;
+          const baseAlpha = 0.12 + intensity * 0.35;
+          const isSelected = selectedAgentId === agent.id || selectedAgentId === targetId;
+          const alpha = selectedAgentId ? (isSelected ? baseAlpha + 0.2 : baseAlpha * 0.4) : baseAlpha;
+          ctx.strokeStyle = isPositive
+            ? `rgba(46, 125, 80, ${alpha})`
+            : `rgba(198, 40, 40, ${alpha})`;
+          const [sx, sy] = axialToPixel(agent.pos as AxialCoords, size);
+          const [tx, ty] = axialToPixel(target.pos as AxialCoords, size);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    };
+
+    drawRelationshipLinks();
 
     for (const agent of snapshot.agents ?? []) {
       if (!hasPos(agent)) continue;
@@ -525,20 +646,25 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
       const path = agentPaths[agentId] ?? [];
       const status = agent.status as any;
       const alive = status?.["alive?"] ?? status?.alive ?? true;
-      ctx.beginPath();
-      const agentColor = alive ? colorForRole(agent.role) : "#555";
-      ctx.fillStyle = agentColor;
-      ctx.arc(ax, ay, CONFIG.canvas.HEX_SIZE * 0.35, 0, Math.PI * 2);
-      ctx.fill();
+      const isColonist = ["peasant", "priest", "knight", "champion"].includes(String(agent.role));
 
-      // Draw agent icon
-      ctx.fillStyle = "white";
-      const fontSize = CONFIG.canvas.HEX_SIZE * 0.4;
-      ctx.font = `${fontSize}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const icon = alive ? getAgentIcon(agent.role) : "X";
-      ctx.fillText(icon, ax, ay);
+      if (alive && isColonist) {
+        drawColonist(ax, ay, String(agent.role), (agent as any).stats);
+      } else {
+        const agentColor = alive ? rolePalette(agent.role).body : "#555";
+        ctx.beginPath();
+        ctx.fillStyle = agentColor;
+        ctx.arc(ax, ay, CONFIG.canvas.HEX_SIZE * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        const fontSize = CONFIG.canvas.HEX_SIZE * 0.4;
+        ctx.font = `${fontSize}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const icon = alive ? getAgentIcon(agent.role) : "X";
+        ctx.fillText(icon, ax, ay);
+      }
 
       if (!alive) {
         ctx.beginPath();
@@ -571,6 +697,14 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
           ctx.stroke();
           ctx.setLineDash([]);
         }
+      }
+
+      if (showNames && camera.zoom > 1.1 && agent.name) {
+        ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
+        ctx.font = `${CONFIG.canvas.HEX_SIZE * 0.22}px serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(String(agent.name), ax, ay - CONFIG.canvas.HEX_SIZE * 0.45);
       }
     }
 

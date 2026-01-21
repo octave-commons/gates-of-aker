@@ -16,3 +16,4 @@ export { WorldInfoPanel } from "./WorldInfoPanel";
 export { ThoughtsPanel } from "./ThoughtsPanel";
 export { ResourceTotalsPanel } from "./ResourceTotalsPanel";
 export { FactionsPanel } from "./FactionsPanel";
+export { TabPanel } from "./TabPanel";

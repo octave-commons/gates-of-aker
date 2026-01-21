@@ -1,5 +1,6 @@
 (ns fantasia.sim.tick.initial
    (:require [clojure.set :as set]
+             [clojure.string :as str]
              [fantasia.sim.hex :as hex]
              [fantasia.sim.biomes :as biomes]
              [fantasia.sim.time :as sim-time]
@@ -20,6 +21,19 @@
    :fortitude 0.4
    :charisma 0.4})
 
+(def base-names
+  ["Aren" "Bela" "Cato" "Dara" "Elda" "Fenn" "Galen" "Hara"
+   "Ilya" "Jori" "Kara" "Leto" "Mira" "Nico" "Orin" "Pela"
+   "Quin" "Rhea" "Soren" "Tala" "Ulric" "Vera" "Wren" "Xara"
+   "Yuna" "Zane"])
+
+(defn agent-name
+  [id role]
+  (if (#{:wolf :bear :deer} role)
+    (str (str/capitalize (name role)) "-" id)
+    (let [base (nth base-names (mod id (count base-names)))]
+      (str base "-" id))))
+
 (def default-agent-needs
   {:food 0.7
    :water 0.7
@@ -27,6 +41,7 @@
    :health 1.0
    :security 0.6
    :mood 0.5
+   :social 0.55
    :warmth 0.6})
 
 (def default-need-thresholds
@@ -36,10 +51,12 @@
    :health-critical 0.0 :health-low 0.4 :health-stable 0.8
    :security-panic 0.0 :security-unsettled 0.4 :security-safe 0.9
    :mood-depressed 0.0 :mood-low 0.3 :mood-uplifted 0.8
+   :social-lonely 0.0 :social-low 0.3 :social-sated 0.8
    :warmth-freeze 0.0 :warmth-cold 0.3 :warmth-comfort 0.8})
 
 (defn ->agent [id q r role]
    {:id id
+    :name (agent-name id role)
     :pos [q r]
     :role role
     :faction :player
@@ -51,6 +68,9 @@
                   :equipment {}}
     :status {:alive? true :asleep? false :idle? false}
     :inventory {:wood 0 :food 0}
+    :relationships {}
+    :last-social-tick nil
+    :last-social-thought nil
     :frontier {}
     :recall {}
     :events []})
@@ -66,6 +86,7 @@
   (let [[q r] pos
         agent-id (next-agent-id world)]
     {:id agent-id
+     :name (agent-name agent-id role)
      :pos [q r]
      :role role
      :faction :wilderness
@@ -77,6 +98,9 @@
                    :equipment {}}
      :status {:alive? true :asleep? false :idle? false}
      :inventory {:wood 0 :food 0}
+     :relationships {}
+     :last-social-tick nil
+     :last-social-thought nil
      :frontier {}
      :recall {}
      :events []}))
@@ -201,8 +225,9 @@
                    [:patron/fire :judgment] 0.35
                    [:deity/storm :awe] 0.25
                    [:judgment :awe] 0.25}
-            :ledger {}
-             :recent-events []
+             :ledger {}
+             :memories {}
+              :recent-events []
              :recent-max const/default-recent-max
              :traces []
              :trace-max const/default-trace-max

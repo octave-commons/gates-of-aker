@@ -1,14 +1,31 @@
 (ns fantasia.sim.constants)
 
-;; Agent needs constants
+ ;; Agent needs constants
 (def ^:const campfire-radius 2)
 (def ^:const warmth-bonus-campfire 0.04)
 (def ^:const warmth-bonus-house 0.02)
 (def ^:const base-warmth-decay 0.004)
 (def ^:const cold-warmth-decay-factor 0.012)
- (def ^:const base-food-decay-awake 0.0004)
- (def ^:const base-food-decay-asleep 0.0001)
+(def ^:const heat-damage-threshold 0.85)
+(def ^:const heat-damage-per-tick 0.05)
+(def ^:const base-food-decay-awake 0.0004)
+(def ^:const base-food-decay-asleep 0.0001)
 (def ^:const base-sleep-decay 0.0032)
+(def ^:const base-rest-decay 0.0024)
+(def ^:const base-rest-recovery 0.014)
+(def ^:const house-rest-bonus 0.006)
+(def ^:const base-social-decay 0.0024)
+
+;; Wildlife needs constants
+(def ^:const deer-food-decay 0.003)
+(def ^:const wolf-food-decay 0.0006)
+(def ^:const deer-forage-range 6)
+(def ^:const wolf-hunt-range 8)
+(def ^:const wildlife-starvation-health-decay 0.05)
+(def ^:const fawn-growth-ticks 300)
+(def ^:const pup-growth-ticks 350)
+(def ^:const baby-stat-multiplier 0.4)
+(def ^:const baby-vulnerability-multiplier 2.0)
 
 ;; Facet constants
 (def ^:const max-active-facets 24)
@@ -19,6 +36,13 @@
 
 ;; Pathfinding constants
 (def ^:const pathfinding-max-steps 1000)
+(def ^:const road-move-cost 0.35)
+
+;; Movement constants
+(def ^:const base-move-steps 1)
+(def ^:const dex-move-step-multiplier 2.0)
+(def ^:const road-dex-move-step-multiplier 3.0)
+(def ^:const road-move-step-bonus 1)
 
 ;; Job constants
 (def ^:const job-progress-required 1.0)

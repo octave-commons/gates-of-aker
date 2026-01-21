@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AgentCard } from "../AgentCard";
@@ -117,8 +118,9 @@ describe("AgentCard", () => {
       const { container } = render(<AgentCard agent={agentWithNeeds} />);
 
       const foodLabel = screen.getByText("food:");
-      const progressBars = container.querySelectorAll('[style*="height: 100%"]');
-      const foodProgressBar = progressBars[0];
+      const row = foodLabel.parentElement as HTMLElement | null;
+      const barContainer = row?.querySelector("div");
+      const foodProgressBar = barContainer?.querySelector("div") as HTMLElement | null;
       expect(foodProgressBar).toHaveStyle({ backgroundColor: "#4CAF50" });
     });
 
@@ -128,8 +130,9 @@ describe("AgentCard", () => {
       const { container } = render(<AgentCard agent={agentWithNeeds} />);
 
       const foodLabel = screen.getByText("food:");
-      const progressBars = container.querySelectorAll('[style*="height: 100%"]');
-      const foodProgressBar = progressBars[0];
+      const row = foodLabel.parentElement as HTMLElement | null;
+      const barContainer = row?.querySelector("div");
+      const foodProgressBar = barContainer?.querySelector("div") as HTMLElement | null;
       expect(foodProgressBar).toHaveStyle({ backgroundColor: "#f44336" });
     });
 
@@ -139,8 +142,9 @@ describe("AgentCard", () => {
       const { container } = render(<AgentCard agent={agentWithNeeds} />);
 
       const foodLabel = screen.getByText("food:");
-      const progressBars = container.querySelectorAll('[style*="height: 100%"]');
-      const foodProgressBar = progressBars[0];
+      const row = foodLabel.parentElement as HTMLElement | null;
+      const barContainer = row?.querySelector("div");
+      const foodProgressBar = barContainer?.querySelector("div") as HTMLElement | null;
       expect(foodProgressBar).toHaveStyle({ backgroundColor: "#FFC107" });
     });
   });

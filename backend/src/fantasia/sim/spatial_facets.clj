@@ -169,7 +169,11 @@
   (register-entity-facets! :agent/weak
     ["weak" "vulnerable" "frail" "helpless" "unskilled" "inexperienced"])
   (register-entity-facets! :memory/danger
-    ["death" "tragedy" "loss" "warning" "fear" "danger" "blood" "corpse"]))
+     ["death" "tragedy" "loss" "warning" "fear" "danger" "blood" "corpse"])
+  (register-entity-facets! :memory/social-bond
+    ["friendship" "bond" "trust" "support" "community" "connection" "comfort"])
+  (register-entity-facets! :memory/social-conflict
+    ["conflict" "argument" "tension" "hostile" "betrayal" "unease" "rivalry"]))
 
 (defn tile->entity-facets
   "Return facet word list for a tile based on its contents."
