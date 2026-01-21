@@ -18,3 +18,6 @@ export { ThoughtsPanel } from "./ThoughtsPanel";
 export { ResourceTotalsPanel } from "./ResourceTotalsPanel";
 export { FactionsPanel } from "./FactionsPanel";
 export { TabPanel } from "./TabPanel";
+export { SplashScreen } from "./SplashScreen";
+export { MainMenu } from "./MainMenu";
+export { OllamaTestPage } from "./OllamaTestPage";

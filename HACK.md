@@ -89,9 +89,38 @@ You must also at least describe your champion, you may also describe their start
 # Dieties
 # Default Pantheon
 All factions have a set of dieties who can influence them.
+Part of the fun is that we can collaborate with the AI system to create an interesting mythology together. 
+
+There is no such thing as "balence" Just a good story, a good experience.
+You only ruin it for your self if you miss the point.
+
+These are what I think make a good place to start giving them powers and beginning their own mythical journey. Who knows where the AI will take it from this starting base!
+
+I want to provide a minimal set of interesting story moments with the panethon's powers
+
+## Faith vs Favor
+
+Faith is for a specific deity
+Favor is a narrative currency
+
+Most things that create faith will also create favor.
+
+Some acts are just generally favorable (A birth, a child growing up, a marriage)
+These all give you an instant bonus favor points
+
+You can spend favor to specifically get abilities from a diety
+The more faith you have with a diety, the less favor it will require to get abilities from those dieties.
+
+Each diety has some facets associated with it.
+As with everything else in this hack to gether guide on something that doesn't exist yet
+''
+## Mother: Gaia
+- food grows faster in your claimed territory (passive)
+- can spend faith to improve ground (active)
 ## Patron :  Hermes
-## Major : Apollo
-## Lesser: Artemis
+- Agents who are faithful to hermes can be heard from further away and are remembered for longer when communicating (passive)
+## Day : Apollo
+## Night: Artemis
 # Champions
 
 # Thoughts

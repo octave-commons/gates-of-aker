@@ -16,10 +16,15 @@ import {
   WorldInfoPanel,
   ThoughtsPanel,
   LibraryPanel,
+  SplashScreen,
+  MainMenu,
+  OllamaTestPage,
 } from "./components";
 import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
+
+type AppState = "splash" | "menu" | "simulation" | "ollama-test";
 
 type SpeechBubble = {
   agentId: number;
@@ -125,6 +130,7 @@ const normalizeSnapshot = (state: any) => {
 };
 
 export function App() {
+  const [appState, setAppState] = useState<AppState>("splash");
    const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
    const [tick, setTick] = useState(0);
     const [snapshot, setSnapshot] = useState<any>(null);
@@ -313,6 +319,22 @@ export function App() {
     const [jobsCollapsed, setJobsCollapsed] = useState(true);
     const [thoughtsCollapsed, setThoughtsCollapsed] = useState(true);
     const [isInitializing, setIsInitializing] = useState(false);
+
+  const handleSplashComplete = useCallback(() => {
+    setAppState("menu");
+  }, []);
+
+  const handleNewGame = useCallback(() => {
+    setAppState("simulation");
+  }, []);
+
+  const handleOllamaTest = useCallback(() => {
+    setAppState("ollama-test");
+  }, []);
+
+  const handleBackToMenu = useCallback(() => {
+    setAppState("menu");
+  }, []);
    const [isRunning, setIsRunning] = useState(false);
    const [tickHealth, setTickHealth] = useState<{
      targetMs: number;
@@ -675,10 +697,22 @@ export function App() {
     }
   }, [agents, jobs, selectedAgent]);
 
-   const applyWorldSize = () => {
-     if (worldWidth == null || worldHeight == null) return;
-     reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
-   };
+  const applyWorldSize = () => {
+      if (worldWidth == null || worldHeight == null) return;
+      reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
+    };
+
+  if (appState === "splash") {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
+  if (appState === "menu") {
+    return <MainMenu onNewGame={handleNewGame} onOllamaTest={handleOllamaTest} />;
+  }
+
+  if (appState === "ollama-test") {
+    return <OllamaTestPage onBack={handleBackToMenu} />;
+  }
 
   return (
     <div

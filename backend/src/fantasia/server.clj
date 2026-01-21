@@ -6,7 +6,8 @@
     [org.httpkit.server :as http]
     [reitit.ring :as ring]
     [fantasia.sim.tick :as sim]
-    [fantasia.sim.jobs :as jobs]))
+    [fantasia.sim.jobs :as jobs]
+    [fantasia.sim.scribes :as scribes]))
 
 (defn json-resp
   ([m] (json-resp 200 m))
@@ -116,6 +117,21 @@
 (defn stop-runner! []
   (swap! *runner assoc :running? false)
   true)
+
+(defn handle-ollama-test []
+  (let [start-time (System/currentTimeMillis)
+        test-prompt "test"
+        ollama-model (get-in @sim/*state [:levers :ollama-model] scribes/ollama-model)
+        result-future (scribes/call-ollama! test-prompt ollama-model)]
+    (try
+      (let [result (deref result-future 5000 nil)
+            end-time (System/currentTimeMillis)
+            latency (- end-time start-time)]
+        (if result
+          (json-resp 200 {:connected true :latency_ms latency :model ollama-model})
+          (json-resp 200 {:connected false :latency_ms latency :model ollama-model :error "No response from Ollama"})))
+      (catch Exception e
+        (json-resp 200 {:connected false :latency_ms (- (System/currentTimeMillis) start-time) :model ollama-model :error (.getMessage e)})))))
 
 (defn handle-ws [req]
   (http/with-channel req ch
@@ -277,13 +293,18 @@
                    (json-resp 200 {:ok true :last (last outs)})))
          :options (fn [_] (json-resp 200 {:ok true}))}]
 
-       ["/sim/run"
-        {:post (fn [_] (start-runner!) (json-resp 200 {:ok true :running true}))
-         :options (fn [_] (json-resp 200 {:ok true}))}]
+        ["/sim/run"
+         {:post (fn [_] (start-runner!) (json-resp 200 {:ok true :running true}))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
 
-       ["/sim/pause"
-        {:post (fn [_] (stop-runner!) (json-resp 200 {:ok true :running false}))
-         :options (fn [_] (json-resp 200 {:ok true}))}]])))
+        ["/sim/pause"
+         {:post (fn [_] (stop-runner!) (json-resp 200 {:ok true :running false}))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
+
+        ["/api/ollama/test"
+         {:get (fn [_] (handle-ollama-test))
+          :post (fn [_] (handle-ollama-test))
+          :options (fn [_] (json-resp 200 {:ok true}))}]])))
 
 (defn -main [& _]
   (let [port 3000]

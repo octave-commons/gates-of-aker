@@ -216,30 +216,30 @@
          hex-map {:kind :hex
                    :layout :pointy
                    :bounds hex-bounds}
-           base-world
-            {:seed actual-seed
-             :tick 0
-             :map hex-map
-             :tiles {}
-             :shrine nil
-             :temperature 0.6
-             :cold-snap 0.4
-             :daylight 0.7
-             :jobs []
-             :items {}
-             :stockpiles {}
-           :levers {:iconography {:fire->patron 0.80
-                                   :lightning->storm 0.75
-                                   :storm->deity 0.85}
-                      :mouthpiece-agent-id nil}
-          :institutions
-          {:temple {:id :temple
-                    :name "Temple of Embers"
-                    :entropy 0.2
-                    :broadcast-every 6
-                    :canonical {:facets [:fire :judgment :winter]
-                                :claim-hint :claim/winter-judgment-flame}}}
-           :edges {[:cold :fire] 0.60
+            base-world
+             {:seed actual-seed
+              :tick 0
+              :map hex-map
+              :tiles {}
+              :shrine nil
+              :temperature 0.6
+              :cold-snap 0.4
+              :daylight 0.7
+              :jobs []
+              :items {}
+              :stockpiles {}
+            :levers {:iconography {:fire->patron 0.80
+                                    :lightning->storm 0.75
+                                    :storm->deity 0.85}
+                       :mouthpiece-agent-id nil}
+           :institutions
+           {:temple {:id :temple
+                     :name "Temple of Embers"
+                     :entropy 0.2
+                     :broadcast-every 6
+                     :canonical {:facets [:fire :judgment :winter]
+                                 :claim-hint :claim/winter-judgment-flame}}}
+            :edges {[:cold :fire] 0.60
                    [:trees :fire] 0.45
                    [:lightning :storm] 0.70
                    [:storm :deity/storm] 0.80
@@ -247,19 +247,23 @@
                    [:patron/fire :judgment] 0.35
                    [:deity/storm :awe] 0.25
                    [:judgment :awe] 0.25}
-               :ledger {}
-               :memories {}
-                :recent-events []
-               :recent-max const/default-recent-max
-               :traces []
-               :trace-max const/default-trace-max
-               :books {}
-               :books-list []
-              :cultures {"culture-1" (traces/create-culture "culture-1"
-                                                         "The Northern Covenant"
-                                                         [:fire :winter :judgment :community :sacrifice]
-                                                         ["revelation" "covenant" "judgment" "test" "sacred" "embers" "cold" "judgment"])}
-              :jobs-by-id {}}
+                :ledger {}
+                :memories {}
+                 :recent-events []
+                :recent-max const/default-recent-max
+                :traces []
+                :trace-max const/default-trace-max
+                :books {}
+                :books-list []
+                :favor 0.0
+                :faith 0.0
+                :deities {}
+                :champions []
+               :cultures {"culture-1" (traces/create-culture "culture-1"
+                                                          "The Northern Covenant"
+                                                          [:fire :winter :judgment :community :sacrifice]
+                                                          ["revelation" "covenant" "judgment" "test" "sacred" "embers" "cold" "judgment"])}
+               :jobs-by-id {}}
            base-world (assoc base-world :calendar (sim-time/calendar-info base-world))
           world-with-biomes (biomes/generate-biomes! base-world)
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)
