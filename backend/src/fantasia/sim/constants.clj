@@ -33,6 +33,9 @@
 (def ^:const baby-stat-multiplier 0.4)
 (def ^:const baby-vulnerability-multiplier 2.0)
 
+;; Reproduction constants
+(def ^:const reproduction-affinity-threshold 0.75)
+
 ;; Facet constants
 (def ^:const max-active-facets 24)
 (def ^:const default-decay-rate 0.92)

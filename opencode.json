@@ -14,11 +14,14 @@
     },
     "opencode": {
       "models": {
+        "gpt-5-nano":{
+        },
         "glm-4.7-free": {
           "limit": {
             "output":100000,
             "context":150000
           }
+
         }
       }
     }

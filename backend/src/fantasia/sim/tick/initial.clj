@@ -52,58 +52,33 @@
    :health-critical 0.0 :health-low 0.4 :health-stable 0.8
    :security-panic 0.0 :security-unsettled 0.4 :security-safe 0.9
    :mood-depressed 0.0 :mood-low 0.3 :mood-uplifted 0.8
-   :social-lonely 0.0 :social-low 0.3 :social-sated 0.8
-   :warmth-freeze 0.0 :warmth-cold 0.3 :warmth-comfort 0.8})
+    :social-lonely 0.0 :social-low 0.3 :social-sated 0.8
+    :warmth-freeze 0.0 :warmth-cold 0.3 :warmth-comfort 0.8})
+
+(defn generate-voice [id]
+   (let [rng (rng id)
+         waveform-types [:sine :triangle :square :sawtooth]
+         waveform (nth waveform-types (rand-int* rng (count waveform-types)))
+         pitch-offset (+ -12 (* 24 (/ (rand-int* rng 100) 100.0)))
+         vibrato-depth (/ (rand-int* rng 30) 100.0)
+         attack-time (/ (rand-int* rng 50) 1000.0)]
+     {:waveform waveform
+      :pitch-offset pitch-offset
+      :vibrato-depth vibrato-depth
+      :attack-time attack-time}))
+
+(defn generate-sex [id]
+   (let [rng (rng id)
+         sex-choice (rand-int* rng 2)]
+     (if (zero? sex-choice) :male :female)))
 
 (defn ->agent [id q r role]
    {:id id
-    :name (agent-name id role)
-    :pos [q r]
-    :role role
-    :faction :player
-    :stats default-agent-stats
-    :needs default-agent-needs
-    :need-thresholds default-need-thresholds
-    :inventories {:personal {:wood 0 :food 0}
-                  :hauling {}
-                  :equipment {}}
-    :status {:alive? true :asleep? false :idle? false}
-    :inventory {:wood 0 :food 0}
-    :relationships {}
-    :last-social-tick nil
-    :last-social-thought nil
-    :frontier {}
-    :recall {}
-    :events []
-    :voice (generate-voice id)})
-
-(defn- next-agent-id [world]
-  (if-let [agents (:agents world)]
-    (if (empty? agents)
-      0
-      (inc (apply max (map :id agents))))
-    0))
-
-(defn generate-voice [id]
-  (let [rng (rng id)
-        waveform-types [:sine :triangle :square :sawtooth]
-        waveform (nth waveform-types (rand-int* rng (count waveform-types)))
-        pitch-offset (+ -12 (* 24 (/ (rand-int* rng 100) 100.0)))
-        vibrato-depth (/ (rand-int* rng 30) 100.0)
-        attack-time (/ (rand-int* rng 50) 1000.0)]
-    {:waveform waveform
-     :pitch-offset pitch-offset
-     :vibrato-depth vibrato-depth
-     :attack-time attack-time}))
-
-(defn- ->wildlife-agent [world pos role]
-  (let [[q r] pos
-        agent-id (next-agent-id world)]
-    {:id agent-id
-     :name (agent-name agent-id role)
+     :name (agent-name id role)
      :pos [q r]
      :role role
-     :faction :wilderness
+     :faction :player
+     :sex (generate-sex id)
      :stats default-agent-stats
      :needs default-agent-needs
      :need-thresholds default-need-thresholds
@@ -117,7 +92,40 @@
      :last-social-thought nil
      :frontier {}
      :recall {}
-     :events []}))
+     :events []
+     :voice (generate-voice id)})
+
+(defn- next-agent-id [world]
+  (if-let [agents (:agents world)]
+    (if (empty? agents)
+      0
+      (inc (apply max (map :id agents))))
+     0))
+
+(defn ->wildlife-agent [world pos role]
+   (let [[q r] pos
+         agent-id (next-agent-id world)]
+     {:id agent-id
+      :name (agent-name agent-id role)
+      :pos [q r]
+      :role role
+      :faction :wilderness
+      :sex (generate-sex agent-id)
+      :stats default-agent-stats
+      :needs default-agent-needs
+      :need-thresholds default-need-thresholds
+      :inventories {:personal {:wood 0 :food 0}
+                    :hauling {}
+                    :equipment {}}
+      :status {:alive? true :asleep? false :idle? false}
+      :inventory {:wood 0 :food 0}
+      :relationships {}
+      :last-social-tick nil
+      :last-social-thought nil
+      :frontier {}
+      :recall {}
+      :events []
+      :voice (generate-voice agent-id)}))
 
 (defn- bounds-tile-count [hex-map]
   (let [{:keys [bounds]} hex-map

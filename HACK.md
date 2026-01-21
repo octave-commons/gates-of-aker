@@ -87,13 +87,13 @@ You must also at least describe your champion, you may also describe their start
 
 
 # Dieties
-# Pantheon
+# Default Pantheon
 All factions have a set of dieties who can influence them.
-
-## Patron
-## Major
-## Lesser
+## Patron :  Hermes
+## Major : Apollo
+## Lesser: Artemis
 # Champions
+
 # Thoughts
 # Factions
 

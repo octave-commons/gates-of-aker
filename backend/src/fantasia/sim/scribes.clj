@@ -15,7 +15,7 @@
 (def ^:private max-myths-for-prompt 5)
 
 (defn- load-myths!
-  "Load all myths from the myths file."
+  "Load all myths from myths file."
   []
   (when (.exists (io/file myths-file-path))
     (try
@@ -28,7 +28,7 @@
         []))))
 
 (defn- save-myth!
-  "Append a new myth to the myths file."
+  "Append a new myth to myths file."
   [myth]
   (try
     (io/make-parents myths-file-path)
@@ -49,7 +49,7 @@
         (mapv #(nth myths %) indices)))))
 
 (defn call-ollama!
-  "Make an async call to the Ollama API."
+  "Make an async call to Ollama API."
   [prompt model]
   (future
     (try
@@ -89,18 +89,12 @@
   "Build context string from ancient myths for Ollama prompt."
   [myths]
   (when (seq myths)
-(defn- build-myths-context
-  "Build context string from ancient myths for Ollama prompt."
-  [myths]
-  (when (seq myths)
-    (let [myth-parts (for [m myths]
-                           (let [text-preview (if (:text m)
-                                              (subs (:text m) 0 (min 80 (count (:text m)))
-                                              "")]
-                             (str "- " (:title m) ": " text-preview "...")))]
-      (str "\n\nAncient echoes from worlds before:\n"
-           (str/join "\n" myth-parts)))))
+    (let [lines (map (fn [m] (str "- " (:title m) ": " (:text m))) myths)]
+      (str "\n\nAncient echoes from worlds before:\n" (str/join "\n" lines)))))
 
+(defn generate-book-text
+  "Generate a mythological short story from traces and facets.
+  Uses Ollama asynchronously with fallback to local generation.
   Draws from persistent myths for context."
   [selected-traces facets title]
   (let [facet-str (str/join ", " (map name facets))
@@ -117,30 +111,30 @@
                           (let [trace-title (:title first-trace)
                                 primary-facet (or (first (concat facets (:facets first-trace))) :memory)]
                             (case primary-facet
-                              :fire (str "The flames remember: \"" trace-title "\". "
+                              :fire (str "The flames remember: "" trace-title "". "
                                          "Our ancestors watched the sacred fire dance, "
                                          "and in its glow we found strength and community. "
                                          "This flame that once warmed cold nights now illuminates our shared history.")
-                              :death (str "The departed speak through \"" trace-title "\": "
+                              :death (str "The departed speak through "" trace-title "": "
                                          "They are not gone, merely transformed. "
                                          "Each spirit carries forward the lessons of their life, "
                                          "a torch passed from generation to generation.")
-                              :harvest (str "The bounty is celebrated: \"" trace-title "\". "
+                              :harvest (str "The bounty is celebrated: "" trace-title "". "
                                           "From the earth's generosity we draw life, "
                                           "and with gratitude we remember that every fruit, every grain "
                                           "carries the blessing of those who cultivated it before us.")
-                              :community (str "The village echoes: \"" trace-title "\". "
+                              :community (str "The village echoes: "" trace-title "". "
                                            "We are many voices, one heart. "
                                            "In our shared stories, in our gathered memories, "
                                            "we find the wisdom that no single person could hold alone.")
-                              :otherwise (str "The scribes record: \"" trace-title "\". "
+                              :otherwise (str "The scribes record: "" trace-title "". "
                                            "In this moment we capture what might otherwise fade, "
                                            "preserving for future generations the essence of who we are.")))
                         
                         :else "The scribes sit with empty quills. The library grows quiet, waiting for events worth remembering.")]
     (if (and (seq selected-traces) (seq facets))
       (let [trace-titles (str/join "; " (map :title selected-traces))
-            prompt (str "Write a short mythological story (2-3 sentences max) with title: \"" title "\"\n"
+            prompt (str "Write a short mythological story (2-3 sentences max) with title: "" title ""\n"
                        "Inspired by these events: " trace-titles 
                        "\nThe story should reflect these themes: " facet-str 
                        ". Keep it poetic and atmospheric."
@@ -224,7 +218,7 @@
    :read-count 0})
 
 (defn add-book-to-world!
-  "Add a book to the world's library."
+  "Add a book to world's library."
   [world book]
   (let [book-id (:book/id book)]
     (-> world

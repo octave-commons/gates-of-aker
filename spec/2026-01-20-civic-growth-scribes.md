@@ -49,13 +49,17 @@ Enable colony growth by adding house construction to provider job loop, introduc
 2. Add constants for mood bonuses per structure/facet (house, temple, school, library, trees).
 3. Include mood feedback text when buffs apply.
 
-### Phase 3 — Scribe + Book Loop (Ollama Integration)
+### Phase 3 — Scribe + Book Loop (Ollama + Meta-Myths Integration)
 1. Add library structure to build options and job-provider-config.
 2. Add a scribe job type + provider tied to library (job-type :job/scribe, max-jobs 1-2).
-3. Implement Ollama client for text generation (clj-http calls to localhost:11434).
+3. Implement Ollama client for text generation (clj-http calls to localhost:11434) with qwen3:4b model.
 4. Scribe job periodically creates a "book" record based on traces + facets.
-5. Prompt Ollama with traces + facets to generate mythologized short stories.
+5. Prompt Ollama with traces + facets + ancient myths for context to generate mythologized short stories.
 6. Store books in world state with references to source traces/facets.
+7. Save every generated book to `myths.jsonl` file for persistent meta-myths across world restarts.
+8. Load up to 5 random ancient myths from previous worlds to seed Ollama prompts.
+9. Library UI exposes book contents to player for reading world lore.
+10. Async generation ensures tick loop never blocks on Ollama calls.
 7. Library UI exposes book contents to player for reading world lore.
 
 ### Phase 4 — UI + Docs

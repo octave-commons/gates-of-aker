@@ -7,6 +7,11 @@
 ## Meta Myth
 - The stories the scribes generates follow us as we keep rebuilding the world.
 - Their civilization may have just started, but their gods have seen an infinite dawn
+- In game prestiege system
+- powers are generated when scribes write texts
+	- buffs to your civilization
+	- buffs to your champion
+	- debuffs to your antagonists
 # Brainstorming
 - Colonists have a diet component, the name of a list of foods they can like to eat:
 	- vegitarian,
