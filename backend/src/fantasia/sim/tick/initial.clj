@@ -74,7 +74,8 @@
     :last-social-thought nil
     :frontier {}
     :recall {}
-    :events []})
+    :events []
+    :voice (generate-voice id)})
 
 (defn- next-agent-id [world]
   (if-let [agents (:agents world)]
@@ -82,6 +83,18 @@
       0
       (inc (apply max (map :id agents))))
     0))
+
+(defn generate-voice [id]
+  (let [rng (rng id)
+        waveform-types [:sine :triangle :square :sawtooth]
+        waveform (nth waveform-types (rand-int* rng (count waveform-types)))
+        pitch-offset (+ -12 (* 24 (/ (rand-int* rng 100) 100.0)))
+        vibrato-depth (/ (rand-int* rng 30) 100.0)
+        attack-time (/ (rand-int* rng 50) 1000.0)]
+    {:waveform waveform
+     :pitch-offset pitch-offset
+     :vibrato-depth vibrato-depth
+     :attack-time attack-time}))
 
 (defn- ->wildlife-agent [world pos role]
   (let [[q r] pos

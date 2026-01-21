@@ -233,11 +233,12 @@
              :inventories {:personal {:wood 0 :food 0}
                            :hauling {}
                            :equipment {}}
-             :status {:alive? true :asleep? false :idle? false}
-             :inventory {:wood 0 :food 0}
-             :frontier {}
-             :recall {}
-             :events []})))
+              :status {:alive? true :asleep? false :idle? false}
+              :inventory {:wood 0 :food 0}
+              :frontier {}
+              :recall {}
+              :events []
+              :voice (initial/generate-voice agent-id)})))
 
 (defn spawn-deer! [world pos]
   (let [agent-id (next-agent-id)
@@ -254,11 +255,12 @@
              :inventories {:personal {:wood 0 :food 0}
                            :hauling {}
                            :equipment {}}
-             :status {:alive? true :asleep? false :idle? false}
-             :inventory {:wood 0 :food 0}
-             :frontier {}
-             :recall {}
-             :events []})))
+              :status {:alive? true :asleep? false :idle? false}
+              :inventory {:wood 0 :food 0}
+              :frontier {}
+              :recall {}
+              :events []
+              :voice (initial/generate-voice agent-id)})))
 
 (defn spawn-bear! [world pos]
   (let [agent-id (next-agent-id)
@@ -275,11 +277,12 @@
              :inventories {:personal {:wood 0 :food 0}
                            :hauling {}
                            :equipment {}}
-             :status {:alive? true :asleep? false :idle? false}
-             :inventory {:wood 0 :food 0}
-             :frontier {}
-             :recall {}
-             :events []})))
+              :status {:alive? true :asleep? false :idle? false}
+              :inventory {:wood 0 :food 0}
+              :frontier {}
+              :recall {}
+              :events []
+              :voice (initial/generate-voice agent-id)})))
 
 (defn get-agent-path! [agent-id]
   (let [world (get-state)

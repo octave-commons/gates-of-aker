@@ -15,8 +15,7 @@
 (def ^:private max-myths-for-prompt 5)
 
 (defn- load-myths!
-  "Load all myths from the myths file.
-  Returns a lazy sequence of myth maps."
+  "Load all myths from the myths file."
   []
   (when (.exists (io/file myths-file-path))
     (try
@@ -50,7 +49,7 @@
         (mapv #(nth myths %) indices)))))
 
 (defn call-ollama!
-  "Make an async call to Ollama API and return a future with the response."
+  "Make an async call to the Ollama API."
   [prompt model]
   (future
     (try
@@ -75,14 +74,14 @@
         nil))))
 
 (defn generate-book-title
-  "Generate a book title for a book based on facets and events."
+  "Generate a book title based on facets and events."
   [facets event-facets]
   (let [facet-str (str/join ", " (map name facets))
         event-facet-str (str/join ", " (map name event-facets))
         primary-facet (or (first (seq (concat event-facets facets))) :community)]
     (cond
-      (contains? (set event-facets) :fire) "Tales of the Ember"
-      (contains? (set event-facets) :death) "Echoes of the Departed"
+      (contains? (set event-facets) :fire) "Tales of Ember"
+      (contains? (set event-facets) :death) "Echoes of Departed"
       (contains? (set event-facets) :harvest) "Songs of Plenty"
       :else "Chronicles of Our People")))
 
@@ -90,18 +89,18 @@
   "Build context string from ancient myths for Ollama prompt."
   [myths]
   (when (seq myths)
-    (str "\n\nAncient echoes from worlds before:\n"
-          (str/join "\n"
-                    (map (fn [m]
+(defn- build-myths-context
+  "Build context string from ancient myths for Ollama prompt."
+  [myths]
+  (when (seq myths)
+    (let [myth-parts (for [m myths]
                            (let [text-preview (if (:text m)
                                               (subs (:text m) 0 (min 80 (count (:text m)))
                                               "")]
-                             (str "- " (:title m) ": " text-preview "...")))
-                        myths)))
+                             (str "- " (:title m) ": " text-preview "...")))]
+      (str "\n\nAncient echoes from worlds before:\n"
+           (str/join "\n" myth-parts)))))
 
-(defn generate-book-text
-  "Generate a mythological short story from traces and facets.
-  Uses Ollama asynchronously with fallback to local generation.
   Draws from persistent myths for context."
   [selected-traces facets title]
   (let [facet-str (str/join ", " (map name facets))
@@ -158,7 +157,7 @@
       fallback-text)))
 
 (defn create-book-placeholder
-  "Create a placeholder book that will be filled with Ollama-generated content."
+  "Create a placeholder book."
   [book-id trace-ids title facets created-at created-by]
   {:book/id book-id
    :trace-ids trace-ids
@@ -171,8 +170,7 @@
    :generating? true})
 
 (defn generate-book-content-async!
-  "Generate book content asynchronously, update world, and persist as myth.
-  Returns book-id for tracking purposes."
+  "Generate book content asynchronously and persist as myth."
   [book-id selected-traces facets title]
   (future
     (let [book-text (generate-book-text selected-traces facets title)
@@ -214,7 +212,7 @@
          (take n))))
 
 (defn create-book
-  "Create a new book record with generated title and text."
+  "Create a new book record."
   [book-id trace-ids title text facets created-at created-by]
   {:book/id book-id
    :trace-ids trace-ids
@@ -226,7 +224,7 @@
    :read-count 0})
 
 (defn add-book-to-world!
-  "Add a book to world's library collection."
+  "Add a book to the world's library."
   [world book]
   (let [book-id (:book/id book)]
     (-> world

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
-import { playDeathTone, playTone, playToneSequence, getScaleFrequency, markUserInteraction } from "./audio";
+import { playDeathTone, playTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction } from "./audio";
 import {
   AgentList,
   FactionsPanel,
@@ -256,13 +256,21 @@ export function App() {
     });
   }, []);
 
-  const handleSocialSound = useCallback((interactionType: string) => {
+  const handleSocialSound = useCallback((interactionType: string, agent: any) => {
     const notes = SOCIAL_TONE_SEQUENCES[interactionType] ?? [0, 2, 0];
     const sequence = toSequence(notes);
-    playToneSequence(sequence, {
+    const voiceData = agent?.voice;
+    const voice = voiceData ? {
+      waveform: (voiceData.waveform || "sine") as OscillatorType,
+      pitchOffset: voiceData["pitch-offset"] ?? 0,
+      vibratoDepth: voiceData["vibrato-depth"] ?? 0,
+      attackTime: voiceData["attack-time"] ?? 0,
+    } : undefined;
+    playToneSequenceWithVoice(sequence, {
       noteDuration: NOTE_DURATION,
       gap: NOTE_GAP,
       gain: 0.6,
+      voice,
     });
   }, []);
 
@@ -395,7 +403,11 @@ export function App() {
            const si = m.data as any;
            if (si && typeof si.agent_1_id === "number" && typeof si.agent_2_id === "number") {
              const interactionName = (si.interaction_type || "social") as string;
-             handleSocialSound(interactionName);
+             const agents = snapshot?.agents ?? [];
+             const agent1 = agents.find((a: any) => a.id === si.agent_1_id);
+             const agent2 = agents.find((a: any) => a.id === si.agent_2_id);
+             if (agent1) handleSocialSound(interactionName, agent1);
+             if (agent2) handleSocialSound(interactionName, agent2);
              setSpeechBubbles((prev) => [
                ...prev,
                {
@@ -412,7 +424,7 @@ export function App() {
                }
              ]);
            }
-         }
+          }
         if (m.op === "tiles") {
            setSnapshot((prev: any) => {
              if (!prev) return prev;

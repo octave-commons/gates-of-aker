@@ -259,3 +259,150 @@ export function toggleMute(): boolean {
   setMute(newState);
   return newState;
 }
+
+type VoiceParams = {
+  waveform?: OscillatorType;
+  pitchOffset?: number;
+  vibratoDepth?: number;
+  attackTime?: number;
+};
+
+export function playToneWithVoice(
+  frequency: number,
+  duration: number = 0.1,
+  voice?: VoiceParams
+): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  try {
+    const oscillator = state.context.createOscillator();
+    const gainNode = state.context.createGain();
+
+    oscillator.type = voice?.waveform ?? "sine";
+
+    const adjustedFrequency = frequency * Math.pow(2, (voice?.pitchOffset ?? 0) / 12);
+    oscillator.frequency.setValueAtTime(
+      Math.max(CONFIG.audio.MIN_FREQUENCY, Math.min(CONFIG.audio.MAX_FREQUENCY, adjustedFrequency)),
+      state.context.currentTime
+    );
+
+    if (voice && voice.vibratoDepth && voice.vibratoDepth > 0) {
+      const lfo = state.context.createOscillator();
+      const lfoGain = state.context.createGain();
+      lfo.frequency.value = 5;
+      lfoGain.gain.value = voice.vibratoDepth * 10;
+      lfo.connect(lfoGain);
+      lfoGain.connect(oscillator.frequency);
+      lfo.start(state.context.currentTime);
+      lfo.stop(state.context.currentTime + duration);
+    }
+
+    const attackTime = voice?.attackTime ?? 0;
+    gainNode.gain.setValueAtTime(0, state.context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(
+      CONFIG.audio.MASTER_GAIN,
+      state.context.currentTime + Math.max(0, attackTime)
+    );
+    gainNode.gain.exponentialRampToValueAtTime(0.01, state.context.currentTime + duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(state.masterGain);
+
+    oscillator.start(state.context.currentTime);
+    oscillator.stop(state.context.currentTime + duration);
+
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
+  } catch (e) {
+    console.error("[AUDIO] Failed to play tone with voice:", e);
+  }
+}
+
+export function playToneSequenceWithVoice(
+  frequencies: number[],
+  options: ToneSequenceOptions & { voice?: VoiceParams } = {}
+): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  const noteDuration = options.noteDuration ?? DEFAULT_NOTE_DURATION;
+  const gap = options.gap ?? DEFAULT_NOTE_GAP;
+  const startDelay = options.startDelay ?? 0;
+  const voice = options.voice;
+  const oscillatorType = voice?.waveform ?? options.type ?? "sine";
+  const gainMultiplier = options.gain ?? 1.0;
+
+  try {
+    const baseTime = state.context.currentTime + startDelay;
+    frequencies.forEach((frequency, idx) => {
+      const startTime = baseTime + idx * (noteDuration + gap);
+      const oscillator = state.context!.createOscillator();
+      const gainNode = state.context!.createGain();
+
+      oscillator.type = oscillatorType;
+
+      const adjustedFrequency = frequency * Math.pow(2, (voice?.pitchOffset ?? 0) / 12);
+      oscillator.frequency.setValueAtTime(
+        Math.max(CONFIG.audio.MIN_FREQUENCY, Math.min(CONFIG.audio.MAX_FREQUENCY, adjustedFrequency)),
+        startTime
+      );
+
+      if (voice && voice.vibratoDepth && voice.vibratoDepth > 0) {
+        const lfo = state.context!.createOscillator();
+        const lfoGain = state.context!.createGain();
+        lfo.frequency.value = 5;
+        lfoGain.gain.value = voice.vibratoDepth * 10;
+        lfo.connect(lfoGain);
+        lfoGain.connect(oscillator.frequency);
+        lfo.start(startTime);
+        lfo.stop(startTime + noteDuration);
+      }
+
+      const attackTime = voice?.attackTime ?? 0;
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(
+        CONFIG.audio.MASTER_GAIN * gainMultiplier,
+        startTime + Math.max(0, attackTime)
+      );
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + noteDuration);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(state.masterGain!);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + noteDuration);
+
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      };
+    });
+  } catch (e) {
+    console.error("[AUDIO] Failed to play tone sequence with voice:", e);
+  }
+}

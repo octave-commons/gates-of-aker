@@ -76,9 +76,10 @@
                       :parent-ids parent-ids
                       :children-ids []
                       :carrying-child nil
-                      :house-id nil}]
-     {:child-agent child-agent
-      :next-agent-id (inc next-id)}))
+                       :house-id nil
+                       :voice (initial/generate-voice next-id)}]
+      {:child-agent child-agent
+       :next-agent-id (inc next-id)}))
 
 (defn advance-child-growth
    "Advance child growth stage based on ticks since birth."
