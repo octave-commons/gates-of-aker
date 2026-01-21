@@ -278,8 +278,8 @@
       fallback-text)))
 
 (defn create-book-placeholder
-  "Create a placeholder book."
-  [book-id trace-ids title facets created-at created-by]
+   "Create a placeholder book."
+   [book-id trace-ids title facets created-at created-by]
   {:book/id book-id
    :trace-ids trace-ids
    :title title
@@ -288,6 +288,7 @@
    :created-at created-at
    :created-by created-by
    :read-count 0
+   :favor-per-tick 0.001
    :generating? true})
 
 (defn generate-book-content-async!
@@ -381,3 +382,18 @@
                    :favor-gained favor-gain})
     (generate-book-content-async! book-id selected-traces facets title)
     (update-in world-initial [:favor] + favor-gain)))
+
+(defn apply-book-favor!
+  "Generate favor from books each tick.
+   Each book generates favor_per_tick * (1 + read_count * 0.1)."
+  [world]
+  (let [books (vals (:books world))
+         favor-gain (reduce
+                      (fn [acc book]
+                        (let [favor-per-tick (get book :favor-per-tick 0.001)
+                              read-count (get book :read-count 0)
+                              multiplier (+ 1.0 (* read-count 0.1))]
+                          (+ acc (* favor-per-tick multiplier))))
+                      0.0
+                      books)]
+    (update-in world [:favor] + favor-gain)))

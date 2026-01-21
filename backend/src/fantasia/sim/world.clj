@@ -59,12 +59,15 @@
                                          (mapv (fn [[k v]] {:facet k :a (:a v)})))}))
                   (:agents world))
      :ledger (into {}
-                   (map (fn [[[et claim] v]]
-                          [(str (name et) "/" (name claim))
-                           {:buzz (:buzz v)
-                            :tradition (:tradition v)
-                            :mentions (:mentions v)}])
-                        (:ledger world)))}))
+                    (map (fn [[[et claim] v]]
+                           [(str (name et) "/" (name claim))
+                            {:buzz (:buzz v)
+                             :tradition (:tradition v)
+                             :mentions (:mentions v)}])
+                         (:ledger world)))
+      :favor (:favor world)
+      :faith (:faith world)
+      :deities (:deities world)}))
 
 (defn update-ledger
   "Apply decay + mentions to the ledger and return {:ledger ledger2 :attr {...}}"

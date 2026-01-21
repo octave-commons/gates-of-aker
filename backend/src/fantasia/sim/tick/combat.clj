@@ -2,11 +2,13 @@
   "Combat selection + resolution for agents."
   (:require [fantasia.sim.hex :as hex]
             [fantasia.sim.jobs :as jobs]
-            [fantasia.sim.tick.mortality :as mortality]))
+            [fantasia.sim.tick.mortality :as mortality]
+            [fantasia.sim.constants :as const]))
 
 (def ^:private attack-range 1)
 (def ^:private deer-sight-range 6)
 (def ^:private player-sight-range 4)
+(def ^:private wolf-sight-range const/wolf-sight-range)
 
 (def ^:private role-damage
   {:wolf 0.16
@@ -33,7 +35,7 @@
 
 (defn- wolf-target
   [world agent]
-  (or (nearest-agent world (:pos agent) #(= (:role %) :deer) deer-sight-range)
+  (or (nearest-agent world (:pos agent) #(= (:role %) :deer) wolf-sight-range)
       (nearest-agent world (:pos agent) #(= (:faction %) :player) player-sight-range)))
 
 (defn- hunt-job-target
@@ -64,13 +66,20 @@
 
 (defn- apply-kill-effects
   [world attacker target]
-  (let [world' (mortality/agent-died! world (:id target) :combat (:role attacker))]
-    (cond-> world'
-      (= (:role target) :deer)
-      (jobs/add-item! (:pos target) :raw-meat 1)
+  (let [world' (mortality/agent-died! world (:id target) :combat (:role attacker))
+        world' (cond-> world'
+                 (= (:role target) :deer)
+                 (jobs/add-item! (:pos target) :raw-meat 1)
 
-      (= (:role attacker) :wolf)
-      (assoc-in [:agents (:id attacker) :needs :food] 1.0))))
+                 (= (:role attacker) :wolf)
+                 (assoc-in [:agents (:id attacker) :needs :food] const/wolf-kill-food-gain))]
+    [world' {:type :hunt-kill
+             :attacker-id (:id attacker)
+             :attacker-role (:role attacker)
+             :target-id (:id target)
+             :target-role (:role target)
+             :pos (:pos target)
+             :tick (:tick world)}]))
 
 (defn- apply-attack
   [world attacker target]
@@ -78,23 +87,42 @@
         target-id (:id target)
         health (double (get-in world [:agents target-id :needs :health] 1.0))
         health' (max 0.0 (- health damage))
-        world' (assoc-in world [:agents target-id :needs :health] health')]
+        world' (assoc-in world [:agents target-id :needs :health] health')
+        world' (if (and (= (:role attacker) :wolf))
+                 (update-in world' [:agents (:id attacker) :needs :food] + const/wolf-attack-food-gain)
+                 world')]
     (if (<= health' 0.0)
       (apply-kill-effects world' attacker target)
-      world')))
+      [world' {:type :hunt-attack
+               :attacker-id (:id attacker)
+               :attacker-role (:role attacker)
+               :target-id (:id target)
+               :target-role (:role target)
+               :pos (:pos target)
+               :damage damage
+               :tick (:tick world)}])))
 
 (defn process-combat!
-  "Apply one combat step for all agents." 
+  "Apply one combat step for all agents. Returns [world events] tuple."
   [world]
   (reduce
-   (fn [w attacker]
+   (fn [[w acc-events] attacker]
      (if (and (alive-agent? attacker)
               (not= (:role attacker) :deer))
        (if-let [target (select-target w attacker)]
          (if (in-range? (:pos attacker) target attack-range)
-           (apply-attack w attacker target)
-           w)
-         w)
-       w))
-   world
+           (let [result (apply-attack w attacker target)]
+             (if (vector? result)
+               [(first result) (conj acc-events (second result))]
+               [result acc-events]))
+           [w (conj acc-events {:type :hunt-start
+                                 :attacker-id (:id attacker)
+                                 :attacker-role (:role attacker)
+                                 :target-id (:id target)
+                                 :target-role (:role target)
+                                 :pos (:pos target)
+                                 :tick (:tick w)})]))
+         [w acc-events])
+       [w acc-events]))
+   [world []]
    (:agents world)))

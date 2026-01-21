@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
-import { playDeathTone, playTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction } from "./audio";
+import { playDeathTone, playTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction, playBookCreatedTone, playHuntStartTone, playHuntAttackTone, playHuntKillTone } from "./audio";
 import {
   AgentList,
   FactionsPanel,
+  MythPanel,
   RawJSONFeedPanel,
   SelectedPanel,
   SimulationCanvas,
@@ -139,9 +140,10 @@ export function App() {
    const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
    const [books, setBooks] = useState<Record<string, any>>({});
    const [selectedBookId, setSelectedBookId] = useState<string | undefined>(undefined);
-  const aliveAgentsRef = useRef<Set<number>>(new Set());
-  const prevSnapshotRef = useRef<any>(null);
-  const initialFocusRef = useRef(false);
+   const aliveAgentsRef = useRef<Set<number>>(new Set());
+   const prevSnapshotRef = useRef<any>(null);
+   const initialFocusRef = useRef(false);
+   const prevBookCountRef = useRef<number>(0);
   const [focusPos, setFocusPos] = useState<[number, number] | null>(null);
   const [focusTrigger, setFocusTrigger] = useState(0);
 
@@ -318,6 +320,7 @@ export function App() {
     const [tracesCollapsed, setTracesCollapsed] = useState(true);
     const [jobsCollapsed, setJobsCollapsed] = useState(true);
     const [thoughtsCollapsed, setThoughtsCollapsed] = useState(true);
+    const [mythCollapsed, setMythCollapsed] = useState(true);
     const [isInitializing, setIsInitializing] = useState(false);
 
   const handleSplashComplete = useCallback(() => {
@@ -403,7 +406,13 @@ export function App() {
             });
          }
          if (m.op === "books") {
-           setBooks(m.data?.books ?? {});
+           const newBooks = m.data?.books ?? {};
+           const newBookCount = Object.keys(newBooks).length;
+           if (newBookCount > prevBookCountRef.current) {
+             playBookCreatedTone();
+           }
+           prevBookCountRef.current = newBookCount;
+           setBooks(newBooks);
          }
          if (m.op === "reset") {
               setTraces([]);
@@ -476,25 +485,36 @@ export function App() {
            setIsRunning(m.running);
            setFps(m.fps);
          }
-        if (m.op === "tick_health") {
-           const data = m.data ?? {};
-           const targetMs = typeof data.targetMs === "number"
-             ? data.targetMs
-             : typeof data["target-ms"] === "number"
-               ? data["target-ms"]
-               : undefined;
-           const tickMs = typeof data.tickMs === "number"
-             ? data.tickMs
-             : typeof data["tick-ms"] === "number"
-               ? data["tick-ms"]
-               : undefined;
-           const health = (data.health as "healthy" | "degraded" | "unhealthy" | "unknown") ?? "unknown";
-           if (targetMs != null && tickMs != null) {
-             setTickHealth({ targetMs, tickMs, health });
-           } else {
-             setTickHealth(null);
-           }
-         }
+         if (m.op === "tick_health") {
+            const data = m.data ?? {};
+            const targetMs = typeof data.targetMs === "number"
+              ? data.targetMs
+              : typeof data["target-ms"] === "number"
+                ? data["target-ms"]
+                : undefined;
+            const tickMs = typeof data.tickMs === "number"
+              ? data.tickMs
+              : typeof data["tick-ms"] === "number"
+                ? data["tick-ms"]
+                : undefined;
+            const health = (data.health as "healthy" | "degraded" | "unhealthy" | "unknown") ?? "unknown";
+            if (targetMs != null && tickMs != null) {
+              setTickHealth({ targetMs, tickMs, health });
+            } else {
+              setTickHealth(null);
+            }
+          }
+         if (m.op === "combat_event") {
+            const ce = m.data ?? {};
+            const eventType = ce.type as string;
+            if (eventType === "hunt-start") {
+              playHuntStartTone();
+            } else if (eventType === "hunt-attack") {
+              playHuntAttackTone();
+            } else if (eventType === "hunt-kill") {
+              playHuntKillTone();
+            }
+          }
        },
       (s) => setStatus(s)
     );
@@ -622,10 +642,17 @@ export function App() {
      if (!snapshot?.jobs) return [];
      return snapshot.jobs as any[];
    }, [snapshot?.jobs]);
-   const calendar = useMemo(() => {
-    if (!snapshot?.calendar) return null;
-    return snapshot.calendar;
+  const calendar = useMemo(() => {
+     if (!snapshot?.calendar) return null;
+     return snapshot.calendar;
   }, [snapshot?.calendar]);
+
+  const mythData = useMemo(() => {
+    return {
+      globalFavor: typeof snapshot?.favor === "number" ? snapshot.favor : 0.0,
+      deities: snapshot?.deities ?? {}
+    };
+  }, [snapshot?.favor, snapshot?.deities]);
 
   const stockpileTotals = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -799,6 +826,13 @@ export function App() {
        </div>
 
         <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
+          <MythPanel
+            deities={mythData.deities}
+            globalFavor={mythData.globalFavor}
+            collapsed={mythCollapsed}
+            onToggleCollapse={() => setMythCollapsed(!mythCollapsed)}
+          />
+
           <BuildingPalette
             onQueueBuild={handleQueueBuild}
             selectedCell={selectedCell}

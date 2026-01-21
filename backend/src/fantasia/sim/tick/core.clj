@@ -63,12 +63,12 @@
                           (let [[w' a'] (movement/move-agent-with-job w (first agents))
                                 a'' (agents/update-needs w' a')]
                             (recur w' (rest agents) w' (conj acc-a a'')))))
-        w3 (assoc w3 :agents agents1)
-        w4 (-> w3
-               (combat/process-combat!)
-               (jobs/cleanup-hunt-jobs!)
-               (mortality/process-mortality!))
-        agents2 (:agents w4)
+         w3 (assoc w3 :agents agents1)
+         [w4 combat-events] (combat/process-combat! w3)
+         w4 (-> w4
+                (jobs/cleanup-hunt-jobs!)
+                (mortality/process-mortality!))
+         agents2 (:agents w4)
         ev (runtime/generate w4 agents2)
         ev-step (if ev
                   (reduce
@@ -175,32 +175,33 @@
                    bcasts)
         agents8 (:agents inst-step)
         ledger-info (world/update-ledger w5 (:mentions inst-step))
-        ledger2 (:ledger ledger-info)
-        attr (:attribution ledger-info)
-        recent' (if ev
-                  (->> (concat (:recent-events w5)
-                               [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
-                         (take-last (:recent-max w5))
-                        vec)
-                  (:recent-events w5))
-        traces' (->> (concat (:traces w5) (:traces inst-step))
-                      (take-last (:trace-max w5))
-                      vec)
-        world' (-> w5
-                   (assoc :agents agents8)
-                   (assoc :next-agent-id (:next-agent-id reproduction-step))
-                  (assoc :ledger ledger2)
-                  (assoc :recent-events recent')
-                  (assoc :traces traces'))]
-     {:world world'
-     :out {:tick t
-           :event ev
-           :mentions (:mentions inst-step)
-           :traces (:traces inst-step)
-           :attribution attr
-           :social-interactions (:social-interactions talk-step)
-           :books (:books w5)
-           :snapshot (world/snapshot world' attr)}}))
+         ledger2 (:ledger ledger-info)
+         attr (:attribution ledger-info)
+         recent' (if ev
+                   (->> (concat (:recent-events w5)
+                                [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
+                          (take-last (:recent-max w5))
+                         vec)
+                   (:recent-events w5))
+         traces' (->> (concat (:traces w5) (:traces inst-step))
+                       (take-last (:trace-max w5))
+                       vec)
+         world' (-> w5
+                    (assoc :agents agents8)
+                    (assoc :next-agent-id (:next-agent-id reproduction-step))
+                   (assoc :ledger ledger2)
+                   (assoc :recent-events recent')
+                   (assoc :traces traces'))]
+      {:world world'
+      :out {:tick t
+            :event ev
+            :combat-events combat-events
+            :mentions (:mentions inst-step)
+            :traces (:traces inst-step)
+            :attribution attr
+            :social-interactions (:social-interactions talk-step)
+            :books (:books w5)
+            :snapshot (world/snapshot world' attr)}}))
 
 (defn tick! [n]
   (loop [i 0

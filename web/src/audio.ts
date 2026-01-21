@@ -243,6 +243,163 @@ export function playDeathTone(): void {
   }
 }
 
+export function playBookCreatedTone(): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  try {
+    const duration = 0.5;
+    const oscillator = state.context.createOscillator();
+    const gainNode = state.context.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(523.25, state.context.currentTime);
+    oscillator.frequency.linearRampToValueAtTime(783.99, state.context.currentTime + 0.15);
+    oscillator.frequency.linearRampToValueAtTime(1046.50, state.context.currentTime + 0.3);
+
+    gainNode.gain.setValueAtTime(0, state.context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(CONFIG.audio.MASTER_GAIN * 0.8, state.context.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, state.context.currentTime + duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(state.masterGain);
+
+    oscillator.start(state.context.currentTime);
+    oscillator.stop(state.context.currentTime + duration);
+
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
+  } catch (e) {
+    console.error("[AUDIO] Failed to play book created tone:", e);
+  }
+}
+
+export function playHuntStartTone(): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  try {
+    const duration = 0.25;
+    const oscillator = state.context.createOscillator();
+    const gainNode = state.context.createGain();
+
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(329.63, state.context.currentTime);
+    oscillator.frequency.linearRampToValueAtTime(293.66, state.context.currentTime + duration);
+
+    gainNode.gain.setValueAtTime(0, state.context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(CONFIG.audio.MASTER_GAIN * 1.1, state.context.currentTime + 0.03);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, state.context.currentTime + duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(state.masterGain);
+
+    oscillator.start(state.context.currentTime);
+    oscillator.stop(state.context.currentTime + duration);
+
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
+  } catch (e) {
+    console.error("[AUDIO] Failed to play hunt start tone:", e);
+  }
+}
+
+export function playHuntAttackTone(): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  try {
+    const duration = 0.15;
+    const oscillator = state.context.createOscillator();
+    const gainNode = state.context.createGain();
+
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(440.00, state.context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(220.00, state.context.currentTime + duration);
+
+    gainNode.gain.setValueAtTime(0, state.context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(CONFIG.audio.MASTER_GAIN * 1.2, state.context.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, state.context.currentTime + duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(state.masterGain);
+
+    oscillator.start(state.context.currentTime);
+    oscillator.stop(state.context.currentTime + duration);
+
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
+  } catch (e) {
+    console.error("[AUDIO] Failed to play hunt attack tone:", e);
+  }
+}
+
+export function playHuntKillTone(): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  try {
+    playToneSequence([392.00, 329.63, 261.63, 196.00], {
+      noteDuration: 0.08,
+      gap: 0.06,
+      type: "sawtooth",
+      gain: 1.1
+    });
+  } catch (e) {
+    console.error("[AUDIO] Failed to play hunt kill tone:", e);
+  }
+}
+
 export function setMute(muted: boolean): void {
   state.isMuted = muted;
   if (state.masterGain) {

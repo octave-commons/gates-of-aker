@@ -3,7 +3,7 @@
   "provider": {
     "zai-coding": {
       "models": {
-        "4.7-free": {
+        "glm-4.7": {
           "limit": {
             "output":100000,
             "context":150000
@@ -15,6 +15,27 @@
     "opencode": {
       "models": {
         "gpt-5-nano":{
+          "name":"Zen gpt 5 nano",
+          "variants": {
+            "default": {
+              "limit": {
+                "context": 400000,
+                "output": 128000
+              },
+              "reasoningEffort": "high",
+              "reasoningSummary": "auto",
+              "textVerbosity": "high"
+            },
+            "fast":{
+              "limit": {
+                "context": 200000,
+                "output": 64000
+              },
+              "reasoningEffort": "low",
+              "reasoningSummary": "auto",
+              "textVerbosity": "low"
+            }
+          }
         },
         "glm-4.7-free": {
           "limit": {

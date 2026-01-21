@@ -74,7 +74,7 @@
     :workshop {:job-type :job/builder :max-jobs 2}
     :improvement-hall {:job-type :job/improve :max-jobs 1}
     :smelter {:job-type :job/smelt :max-jobs 1}
-    :library {:job-type :job/scribe :max-jobs 1}})
+    :library {:job-type :job/scribe :max-jobs 3}})
 
 (def improvable-structures
   #{:lumberyard :orchard :granary :farm :quarry :workshop :smelter :warehouse :library})

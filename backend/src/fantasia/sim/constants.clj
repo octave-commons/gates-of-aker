@@ -22,16 +22,19 @@
 (def ^:const house-rest-bonus 0.006)
 (def ^:const base-social-decay 0.0024)
 
-;; Wildlife needs constants
-(def ^:const deer-food-decay 0.003)
-(def ^:const wolf-food-decay 0.0006)
-(def ^:const deer-forage-range 6)
-(def ^:const wolf-hunt-range 8)
-(def ^:const wildlife-starvation-health-decay 0.05)
-(def ^:const fawn-growth-ticks 300)
-(def ^:const pup-growth-ticks 350)
-(def ^:const baby-stat-multiplier 0.4)
-(def ^:const baby-vulnerability-multiplier 2.0)
+ ;; Wildlife needs constants
+ (def ^:const deer-food-decay 0.003)
+ (def ^:const wolf-food-decay 0.0006)
+ (def ^:const deer-forage-range 6)
+ (def ^:const wolf-sight-range 12)
+ (def ^:const wolf-hunt-range 8)
+ (def ^:const wildlife-starvation-health-decay 0.05)
+ (def ^:const fawn-growth-ticks 300)
+ (def ^:const pup-growth-ticks 350)
+ (def ^:const baby-stat-multiplier 0.4)
+ (def ^:const baby-vulnerability-multiplier 2.0)
+ (def ^:const wolf-attack-food-gain 0.05)
+ (def ^:const wolf-kill-food-gain 1.0)
 
 ;; Reproduction constants
 (def ^:const reproduction-affinity-threshold 0.75)

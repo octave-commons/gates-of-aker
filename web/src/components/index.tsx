@@ -17,6 +17,7 @@ export { WorldInfoPanel } from "./WorldInfoPanel";
 export { ThoughtsPanel } from "./ThoughtsPanel";
 export { ResourceTotalsPanel } from "./ResourceTotalsPanel";
 export { FactionsPanel } from "./FactionsPanel";
+export { MythPanel } from "./MythPanel";
 export { TabPanel } from "./TabPanel";
 export { SplashScreen } from "./SplashScreen";
 export { MainMenu } from "./MainMenu";

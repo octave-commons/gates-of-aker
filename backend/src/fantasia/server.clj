@@ -91,25 +91,27 @@
     (let [fut (future
                 (swap! *runner assoc :running? true)
                 (try
-                  (while (:running? @*runner)
-                    (let [start-time (System/currentTimeMillis)
-                          o (last (sim/tick! 1))
-                          end-time (System/currentTimeMillis)
-                          tick-ms (- end-time start-time)
-                          target-ms (:ms @*runner)
-                          health (compute-health-status tick-ms target-ms)]
-                      (swap! *runner assoc :tick-ms tick-ms)
-                      (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                      (broadcast! {:op "tick_health" :data {:target-ms target-ms :tick-ms tick-ms :health health}})
-                      (when-let [ev (:event o)]
-                        (broadcast! {:op "event" :data ev}))
-                       (doseq [tr (:traces o)]
-                          (broadcast! {:op "trace" :data tr}))
-                       (when-let [bs (:books o)]
-                          (broadcast! {:op "books" :data {:books bs}}))
-                      (doseq [si (:social-interactions o)]
-                         (broadcast! {:op "social_interaction" :data si}))
-                      (Thread/sleep (long (:ms @*runner)))))
+                   (while (:running? @*runner)
+                     (let [start-time (System/currentTimeMillis)
+                           o (last (sim/tick! 1))
+                           end-time (System/currentTimeMillis)
+                           tick-ms (- end-time start-time)
+                           target-ms (:ms @*runner)
+                           health (compute-health-status tick-ms target-ms)]
+                       (swap! *runner assoc :tick-ms tick-ms)
+                       (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                       (broadcast! {:op "tick_health" :data {:target-ms target-ms :tick-ms tick-ms :health health}})
+                       (when-let [ev (:event o)]
+                         (broadcast! {:op "event" :data ev}))
+                        (doseq [tr (:traces o)]
+                           (broadcast! {:op "trace" :data tr}))
+                        (when-let [bs (:books o)]
+                           (broadcast! {:op "books" :data {:books bs}}))
+                       (doseq [si (:social-interactions o)]
+                          (broadcast! {:op "social_interaction" :data si}))
+                       (doseq [ce (:combat-events o)]
+                          (broadcast! {:op "combat_event" :data ce}))
+                       (Thread/sleep (long (:ms @*runner)))))
                   (finally
                     (swap! *runner assoc :running? false :future nil))))]
       (swap! *runner assoc :future fut))))
@@ -141,17 +143,19 @@
                        (catch Exception _ nil))
               op (:op msg)]
           (case op
-            "tick"
-            (let [n (int (or (:n msg) 1))
-                  outs (sim/tick! n)]
-              (doseq [o outs]
-                 (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                 (when-let [ev (:event o)]
-                   (broadcast! {:op "event" :data ev}))
-                 (doseq [tr (:traces o)]
-                   (broadcast! {:op "trace" :data tr}))
-                 (doseq [si (:social-interactions o)]
-                   (broadcast! {:op "social_interaction" :data si}))))
+             "tick"
+             (let [n (int (or (:n msg) 1))
+                   outs (sim/tick! n)]
+               (doseq [o outs]
+                  (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                  (when-let [ev (:event o)]
+                    (broadcast! {:op "event" :data ev}))
+                  (doseq [tr (:traces o)]
+                    (broadcast! {:op "trace" :data tr}))
+                  (doseq [si (:social-interactions o)]
+                    (broadcast! {:op "social_interaction" :data si}))
+                  (doseq [ce (:combat-events o)]
+                    (broadcast! {:op "combat_event" :data ce}))))
 
             "reset"
             (let [opts {:seed (long (or (:seed msg) 1))

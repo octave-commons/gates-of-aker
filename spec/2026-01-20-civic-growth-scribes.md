@@ -74,3 +74,10 @@ Enable colony growth by adding house construction to provider job loop, introduc
 - Scribe job creates books via Ollama and stores them in library data.
 - UI shows new structures and library books can be read.
 - Documentation notes describe new mechanics.
+- Deities system created with 4 example gods (Apollo, Artemis, Gaia, Hermes) in .myth/dieties/
+- Each deity has: facets, resources, powers with costs, cooldowns, consequences, lore
+- Powers include: damage, mood, knowledge, summon, environment with effects
+- Balance system: favor-cost multipliers, corruption per use, max followers
+- Front matter: name, title for UI display
+- .myth/dieties/README.md - documentation for deity system
+- Deity files: Apollo.md, Artemis.md, Gaia.md, Hermes.md (one deity per file)

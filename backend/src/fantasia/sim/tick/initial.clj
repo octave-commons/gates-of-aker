@@ -46,14 +46,14 @@
    :warmth 0.6})
 
 (def default-need-thresholds
-  {:food-starve 0.0 :food-hungry 0.3 :food-satisfied 0.8
-   :water-dehydrate 0.0 :water-thirsty 0.3 :water-satisfied 0.8
-   :rest-collapse 0.0 :rest-tired 0.3 :rest-rested 0.8
-   :health-critical 0.0 :health-low 0.4 :health-stable 0.8
-   :security-panic 0.0 :security-unsettled 0.4 :security-safe 0.9
-   :mood-depressed 0.0 :mood-low 0.3 :mood-uplifted 0.8
-    :social-lonely 0.0 :social-low 0.3 :social-sated 0.8
-    :warmth-freeze 0.0 :warmth-cold 0.3 :warmth-comfort 0.8})
+   {:food-starve 0.05 :food-hungry 0.3 :food-satisfied 0.8
+    :water-dehydrate 0.0 :water-thirsty 0.3 :water-satisfied 0.8
+    :rest-collapse 0.0 :rest-tired 0.3 :rest-rested 0.8
+    :health-critical 0.05 :health-low 0.4 :health-stable 0.8
+    :security-panic 0.0 :security-unsettled 0.4 :security-safe 0.9
+    :mood-depressed 0.0 :mood-low 0.3 :mood-uplifted 0.8
+     :social-lonely 0.0 :social-low 0.3 :social-sated 0.8
+     :warmth-freeze 0.0 :warmth-cold 0.3 :warmth-comfort 0.8})
 
 (defn generate-voice [id]
    (let [rng (rng id)
@@ -228,17 +228,20 @@
               :jobs []
               :items {}
               :stockpiles {}
-             :levers {:iconography {:fire->patron 0.80
-                                    :lightning->storm 0.75
-                                    :storm->deity 0.85}
-                       :mouthpiece-agent-id nil
-                       :ollama-url "http://localhost:11434/api/generate"
-                       :ollama-model "qwen3:4b"
-                       :ollama-timeout-ms 60000
-                       :ollama-retries 1
-                       :ollama-retry-delay-ms 2000
-                       :ollama-keep-alive-enabled true
-                       :ollama-keep-alive-interval-ms 300000}
+              :levers {:iconography {:fire->patron 0.80
+                                     :lightning->storm 0.75
+                                     :storm->deity 0.85}
+                        :mouthpiece-agent-id nil
+                        :ollama-embed-url "http://localhost:11434/api/embed"
+                        :ollama-embed-model "nomic-embed-text"
+                        :ollama-embed-timeout-ms 10000
+                        :ollama-url "http://localhost:11434/api/generate"
+                        :ollama-model "qwen3:4b"
+                        :ollama-timeout-ms 60000
+                        :ollama-retries 1
+                        :ollama-retry-delay-ms 2000
+                        :ollama-keep-alive-enabled true
+                        :ollama-keep-alive-interval-ms 300000}
            :institutions
            {:temple {:id :temple
                      :name "Temple of Embers"
@@ -262,9 +265,10 @@
                 :trace-max const/default-trace-max
                 :books {}
                 :books-list []
-                :favor 0.0
-                :faith 0.0
-                :deities {}
+                 :favor 0.0
+                 :faith 0.0
+                 :deities {:patron/fire {:faith 0.0}
+                           :deity/storm {:faith 0.0}}
                 :champions []
                :cultures {"culture-1" (traces/create-culture "culture-1"
                                                           "The Northern Covenant"
