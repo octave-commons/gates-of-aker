@@ -51,6 +51,8 @@ export const CONFIG = {
       wallGhost: "#ffae00",
       wall: "#666",
       wallStroke: "#444",
+      road: "#a1887f",
+      roadStroke: "#6d4c41",
       house: "#8d6e63",
       lumberyard: "#6d4c41",
       orchard: "#f57c00",

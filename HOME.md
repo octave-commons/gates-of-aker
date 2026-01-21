@@ -16,6 +16,7 @@ it's what ever it needs to be
 	- carnivore
 - Colonists can upgrade from a tent by crafting a bed indoors (roof, walls, doors, no direct outside)
 - The UI should display the total available of each type of resource
-
+- milestone rewards to teach player how to play
+- 
 # Notes
 - "ghost" is a generic type of entity. It's how the user tells the agents to build a building, it's a blue print. There shouldn't be ghost versions of everything. Just one ghost type

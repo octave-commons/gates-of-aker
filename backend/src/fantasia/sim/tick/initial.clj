@@ -1,13 +1,14 @@
 (ns fantasia.sim.tick.initial
-   (:require [clojure.set :as set]
-             [clojure.string :as str]
-             [fantasia.sim.hex :as hex]
-             [fantasia.sim.biomes :as biomes]
-             [fantasia.sim.time :as sim-time]
-             [fantasia.sim.tick.trees :as trees]
-             [fantasia.sim.jobs :as jobs]
-             [fantasia.sim.jobs.providers :as job-providers]
-             [fantasia.sim.constants :as const]))
+    (:require [clojure.set :as set]
+              [clojure.string :as str]
+              [fantasia.sim.hex :as hex]
+              [fantasia.sim.biomes :as biomes]
+              [fantasia.sim.time :as sim-time]
+              [fantasia.sim.tick.trees :as trees]
+              [fantasia.sim.jobs :as jobs]
+              [fantasia.sim.jobs.providers :as job-providers]
+              [fantasia.sim.constants :as const]
+              [fantasia.sim.traces :as traces]))
 
 (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
@@ -225,14 +226,18 @@
                    [:patron/fire :judgment] 0.35
                    [:deity/storm :awe] 0.25
                    [:judgment :awe] 0.25}
-             :ledger {}
-             :memories {}
-              :recent-events []
-             :recent-max const/default-recent-max
-             :traces []
-             :trace-max const/default-trace-max
-             :jobs-by-id {}}
-          base-world (assoc base-world :calendar (sim-time/calendar-info base-world))
+              :ledger {}
+              :memories {}
+               :recent-events []
+              :recent-max const/default-recent-max
+              :traces []
+              :trace-max const/default-trace-max
+              :cultures {"culture-1" (traces/create-culture "culture-1"
+                                                         "The Northern Covenant"
+                                                         [:fire :winter :judgment :community :sacrifice]
+                                                         ["revelation" "covenant" "judgment" "test" "sacred" "embers" "cold" "judgment"])}
+              :jobs-by-id {}}
+           base-world (assoc base-world :calendar (sim-time/calendar-info base-world))
           world-with-biomes (biomes/generate-biomes! base-world)
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)
           world-with-trees (trees/spawn-initial-trees! world-with-resources tree-density)

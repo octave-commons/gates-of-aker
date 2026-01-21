@@ -76,7 +76,7 @@
   #{:lumberyard :orchard :granary :farm :quarry :workshop :smelter :warehouse})
 
 (def build-structure-options
-  [:stockpile :lumberyard :orchard :granary :farm :quarry :warehouse :smelter :improvement-hall :workshop])
+  [:stockpile :lumberyard :orchard :granary :farm :quarry :warehouse :smelter :improvement-hall :workshop :road])
 
 (def unique-structures
   #{:workshop :smelter :improvement-hall})
@@ -647,7 +647,11 @@
        :wall
        (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :wall :resource nil :level 1})]
 
-        world')
+         world')
+
+       :road
+       (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :road :resource nil :level 1})]
+         world')
 
       world)))
 
@@ -750,8 +754,9 @@
 
 (defn complete-sleep! [world job agent-id]
    (let [world' (-> world
-                   (assoc-in [:agents agent-id :status :asleep?] false)
-                   (assoc-in [:agents agent-id :needs :sleep] 1.0))]
+                    (assoc-in [:agents agent-id :status :asleep?] false)
+                    (assoc-in [:agents agent-id :needs :sleep] 1.0)
+                    (assoc-in [:agents agent-id :needs :rest] 1.0))]
 
      world'))
 
@@ -930,10 +935,13 @@
                     food (get needs :food 1.0)
                     warmth (get needs :warmth 1.0)
                     sleep (get needs :sleep 1.0)
+                    rest (get needs :rest 0.7)
                     food-hungry (get thresholds :food-hungry 0.3)
                     warmth-cold (get thresholds :warmth-cold 0.3)
                     sleep-tired (get thresholds :sleep-tired 0.3)
+                    rest-tired (get thresholds :rest-tired 0.3)
                     sleep-threshold (if night? (max sleep-tired 0.6) sleep-tired)
+                    rest-threshold (if night? (max rest-tired 0.6) rest-tired)
                      pos (:pos agent)
                      agent-id (:id agent)
                      campfire-pos (find-campfire-pos w)
@@ -972,7 +980,9 @@
                   (add-job-to-world! (create-job :job/warm-up campfire-pos))
                   fire-site
                   (add-job-to-world! (create-job :job/build-fire fire-site))
-                  (and (< sleep sleep-threshold) (not has-sleep-job?) (not already-has-job?))
+                  (and (or (< sleep sleep-threshold) (< rest rest-threshold))
+                       (not has-sleep-job?)
+                       (not already-has-job?))
                   (add-job-to-world! (create-job :job/sleep pos))))
               w))
           world
@@ -988,10 +998,13 @@
                       thresholds (or (:need-thresholds agent) {})
                       warmth (get needs :warmth 1.0)
                       sleep (get needs :sleep 1.0)
+                      rest (get needs :rest 0.7)
                       warmth-cold (get thresholds :warmth-cold 0.3)
-                      sleep-tired (get thresholds :sleep-tired 0.3)]
+                      sleep-tired (get thresholds :sleep-tired 0.3)
+                      rest-tired (get thresholds :rest-tired 0.3)]
                   (or (< warmth warmth-cold)
-                      (< sleep sleep-tired))))
+                      (< sleep sleep-tired)
+                      (< rest rest-tired))))
               (:agents world))
         has-job? (some #(= (:type %) :job/build-house) (:jobs world))
         has-house? (and campfire-pos (has-house-near? world campfire-pos 2))]

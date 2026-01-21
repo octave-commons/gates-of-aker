@@ -5,6 +5,7 @@ export type BuildingType =
   | "campfire"
   | "house"
   | "wall"
+  | "road"
   | "stockpile"
   | "warehouse"
   | "lumberyard"
@@ -70,6 +71,14 @@ const BUILDING_CONFIGS: BuildingConfig[] = [
     description: "Defensive structure that requires wood and labor to complete.",
     icon: "🧱",
     color: "#666",
+    requiresSelection: true,
+  },
+  {
+    id: "road",
+    name: "Road",
+    description: "Packed path that lets agents move faster across the map.",
+    icon: "🛣️",
+    color: "#a1887f",
     requiresSelection: true,
   },
   {

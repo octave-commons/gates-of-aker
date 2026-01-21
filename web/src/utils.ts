@@ -42,4 +42,21 @@ const getAgentIcon = (role?: string): string => {
   }
 };
 
-export { clamp01, fmt, colorForRole, getAgentIcon };
+const getDexterity = (stats?: Record<string, number>): number => {
+  if (stats && typeof stats.dexterity === "number") {
+    return stats.dexterity;
+  }
+  return 0.4;
+};
+
+const getMovementSteps = (stats?: Record<string, number>) => {
+  const dex = getDexterity(stats);
+  const base = 1 + Math.floor(dex * 2);
+  const roadBonus = 1 + Math.floor(dex * 3);
+  return {
+    base,
+    road: base + roadBonus,
+  };
+};
+
+export { clamp01, fmt, colorForRole, getAgentIcon, getMovementSteps };

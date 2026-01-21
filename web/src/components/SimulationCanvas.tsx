@@ -263,10 +263,10 @@ export function SimulationCanvas({
          ctx.setLineDash([]);
          ctx.lineWidth = 1;
        }
-         if (tile?.structure === "wall") {
-           ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
-           ctx.beginPath();
-           for (let i = 0; i < 6; i++) {
+        if (tile?.structure === "wall") {
+          ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
              const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE - 3, i);
              if (i === 0) {
                ctx.moveTo(cx, cy);
@@ -277,12 +277,31 @@ export function SimulationCanvas({
            ctx.closePath();
            ctx.fill();
            ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
-           ctx.lineWidth = 1;
-           ctx.stroke();
-         }
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
 
-         // Render additional structures
-          if (tile?.structure === "campfire") {
+        if (tile?.structure === "road") {
+          const roadWidth = Math.max(2, CONFIG.canvas.HEX_SIZE * 0.12);
+          ctx.strokeStyle = CONFIG.colors.STRUCTURE.road;
+          ctx.lineWidth = roadWidth;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.45, py);
+          ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.45, py);
+          ctx.stroke();
+          ctx.strokeStyle = CONFIG.colors.STRUCTURE.roadStroke;
+          ctx.lineWidth = roadWidth * 0.4;
+          ctx.beginPath();
+          ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py);
+          ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py);
+          ctx.stroke();
+          ctx.lineCap = "butt";
+          ctx.lineWidth = 1;
+        }
+
+        // Render additional structures
+        if (tile?.structure === "campfire") {
             ctx.fillStyle = "#ff6b00";
             ctx.beginPath();
             ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.3, 0, Math.PI * 2);

@@ -32,3 +32,12 @@
 - Rest decays and is restored when sleeping/house-resting; UI reflects changes.
 - Stat sheet shows base stats plus movement speed values.
 - `/docs/notes` includes a new entry summarizing the change.
+
+## Verification
+- `clojure -X:test` (fails: missing `fantasia/sim/fire_creation_test.clj` on classpath).
+
+## Open Items
+- Resolve or restore `fantasia/sim/fire_creation_test.clj` so the backend test runner can complete.
+
+## Change Log
+- 2026-01-20: Added road structure, rest decay/recovery, social mood boosts, and UI stat sheet updates.

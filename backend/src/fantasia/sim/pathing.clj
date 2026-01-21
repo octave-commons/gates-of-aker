@@ -31,6 +31,14 @@
                       queue' (concat (rest queue) new-paths)]
                   (recur queue' visited' (inc steps)))))))))))
 
+(defn- move-cost
+  [world pos]
+  (let [tile-key (vector (first pos) (second pos))
+        structure (get-in world [:tiles tile-key :structure])]
+    (if (= :road structure)
+      const/road-move-cost
+      1.0)))
+
 (defn a-star-path
   "Find shortest path from start to goal using A* algorithm.
    Returns sequence of positions from start to goal (inclusive).
@@ -60,9 +68,9 @@
                                      (filter #(spatial/in-bounds? world %))
                                      (filter #(spatial/passable? world %))
                                      (remove closed-set))
-                      process-neighbor (fn [os neighbor]
-                                        (let [tentative-g (+ (:g current-data) 1)
-                                              neighbor-f (+ tentative-g (heuristic neighbor))]
+                       process-neighbor (fn [os neighbor]
+                                         (let [tentative-g (+ (:g current-data) (move-cost world neighbor))
+                                               neighbor-f (+ tentative-g (heuristic neighbor))]
                                           (if-let [existing (get os neighbor)]
                                             (if (< tentative-g (:g existing))
                                               (assoc os neighbor

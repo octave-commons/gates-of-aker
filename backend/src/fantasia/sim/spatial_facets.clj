@@ -160,6 +160,8 @@
     ["warehouse" "structure" "building" "storage" "safe" "protected" "resource" "organized"])
   (register-entity-facets! :wall
     ["wall" "barrier" "protection" "structure" "defense" "safe" "blockade" "solid"])
+  (register-entity-facets! :road
+    ["road" "path" "travel" "route" "stone" "speed" "passage"])
   (register-entity-facets! :statue/dog
     ["dog" "statue" "guardian" "worship" "protection" "memorial" "safe" "blessed"])
   (register-entity-facets! :agent/peasant
@@ -186,6 +188,7 @@
         structure
         (cond
           (= structure :wall) (get-entity-facets :wall)
+          (= structure :road) (get-entity-facets :road)
           (= structure :campfire) (get-entity-facets :campfire)
           (= structure :house) (get-entity-facets :house)
           (= structure :lumberyard) (get-entity-facets :lumberyard)

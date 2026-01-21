@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Agent, hasPos } from "../types";
+import { getMovementSteps } from "../utils";
 
 type AgentCardProps = {
   agent: Agent;
@@ -43,9 +44,11 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
   const lastSocialThought = (agent as any).lastSocialThought ?? (agent as any)["last-social-thought"] ?? null;
   const stats = (agent as any).stats ?? {};
   const statKeys = ["strength", "dexterity", "fortitude", "charisma"];
+  const speed = getMovementSteps(stats);
   const statLine = statKeys
     .filter((key) => typeof stats[key] === "number")
     .map((key) => `${key.slice(0, 3).toUpperCase()} ${Math.round(stats[key] * 100)}`)
+    .concat(`SPD ${speed.base}/${speed.road}`)
     .join(" · ");
 
   const jobTypeName = currentJob ? (jobTypeNames[currentJob.type] ?? String(currentJob.type).replace(":job/", "")) : null;

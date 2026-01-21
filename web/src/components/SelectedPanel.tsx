@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { Agent } from "../types";
+import { getMovementSteps } from "../utils";
 
  type SelectedPanelProps = {
    selectedCell: [number, number] | null;
@@ -140,13 +141,21 @@ export function SelectedPanel({
 
                 {(selectedAgent as any).stats && (
                   <div style={{ marginTop: 8 }}>
-                    <strong>Stats:</strong>
+                    <strong>Stat Sheet:</strong>
                     <div style={{ marginLeft: 12, marginTop: 4, fontSize: "0.9em" }}>
                       {Object.entries((selectedAgent as any).stats).map(([key, value]) => (
                         <div key={key}>
                           {key}: {typeof value === "number" ? value.toFixed(3) : String(value)}
                         </div>
                       ))}
+                      {(() => {
+                        const movement = getMovementSteps((selectedAgent as any).stats);
+                        return (
+                          <div>
+                            move steps: {movement.base} base / {movement.road} road
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
