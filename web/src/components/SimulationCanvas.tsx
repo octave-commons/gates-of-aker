@@ -506,6 +506,12 @@ export function SimulationCanvas({ snapshot, mapConfig, selectedCell, selectedAg
           return "#d7263d";
         case "knight":
           return "#3366ff";
+        case "wolf":
+          return "#795548";
+        case "bear":
+          return "#5d4037";
+        case "deer":
+          return "#8d6e63";
         default:
           return "#111";
       }

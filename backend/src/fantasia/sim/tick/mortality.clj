@@ -27,54 +27,58 @@
    - Agent entity type facets (e.g., strong, warrior, peasant)
    - Killer entity facets (e.g., wolf, bear)
    - Agent-specific attributes"
-  [world agent-id cause]
-  (let [agent (get-in world [:agents agent-id])
-        agent-pos (:pos agent)
-        agent-type (:role agent)
-        current-job-id (:current-job agent)
-        
-        ;; Build facet list for memory
-        base-facets ["death" "tragedy" "loss" "warning" "fear" "blood" "corpse"]
-        agent-facets (sf/get-entity-facets (keyword (str "agent/" (name agent-type))))
-        
-        ;; Killer facets based on cause
-        killer-facets (case cause
-                         :starvation (sf/get-entity-facets :wolf)
-                         :health-critical (sf/get-entity-facets :bear)
-                         nil)
-        
-        ;; Strength based on agent stats (stronger agents = stronger memories)
-        agent-strength (:strength (:stats agent) 0.4)
-        memory-strength (min 2.0 (+ 0.5 (* 0.01 agent-strength)))
-        
-        ;; Create memory
-        memory-facets (distinct (concat base-facets agent-facets killer-facets))]
-    
-    (log/log-info "[MORTALITY:DEATH]"
-                 {:agent-id agent-id
-                  :agent-type agent-type
-                  :pos agent-pos
-                  :cause cause
-                  :strength memory-strength})
-    
-    ;; Create memory and mark agent as dead
-    (-> (mem/create-memory! world
-                            :memory/danger
-                            agent-pos
-                            memory-strength
-                            agent-id
-                            memory-facets)
-        (cond-> current-job-id
-          (update :jobs (fn [jobs]
-                          (mapv (fn [job]
-                                  (if (= (:id job) current-job-id)
-                                    (assoc job :worker-id nil :state :pending)
-                                    job))
-                                jobs))))
-        (cond-> current-job-id
-          (update-in [:agents agent-id] dissoc :current-job))
-        (assoc-in [:agents agent-id :status :alive?] false)
-        (assoc-in [:agents agent-id :status :cause-of-death] cause))))
+  ([world agent-id cause]
+   (agent-died! world agent-id cause nil))
+  ([world agent-id cause killer-role]
+   (let [agent (get-in world [:agents agent-id])
+         agent-pos (:pos agent)
+         agent-type (:role agent)
+         current-job-id (:current-job agent)
+         
+         ;; Build facet list for memory
+         base-facets ["death" "tragedy" "loss" "warning" "fear" "blood" "corpse"]
+         agent-facets (sf/get-entity-facets (keyword (str "agent/" (name agent-type))))
+         
+         ;; Killer facets based on cause
+         killer-facets (cond
+                        killer-role (sf/get-entity-facets killer-role)
+                        (= cause :starvation) (sf/get-entity-facets :wolf)
+                        (= cause :health-critical) (sf/get-entity-facets :bear)
+                        :else nil)
+         
+         ;; Strength based on agent stats (stronger agents = stronger memories)
+         agent-strength (:strength (:stats agent) 0.4)
+         memory-strength (min 2.0 (+ 0.5 (* 0.01 agent-strength)))
+         
+         ;; Create memory
+         memory-facets (distinct (concat base-facets agent-facets killer-facets))]
+     
+     (log/log-info "[MORTALITY:DEATH]"
+                   {:agent-id agent-id
+                    :agent-type agent-type
+                    :pos agent-pos
+                    :cause cause
+                    :killer-role killer-role
+                    :strength memory-strength})
+     
+     ;; Create memory and mark agent as dead
+     (-> (mem/create-memory! world
+                             :memory/danger
+                             agent-pos
+                             memory-strength
+                             agent-id
+                             memory-facets)
+         (cond-> current-job-id
+           (update :jobs (fn [jobs]
+                           (mapv (fn [job]
+                                   (if (= (:id job) current-job-id)
+                                     (assoc job :worker-id nil :state :pending)
+                                     job))
+                                 jobs))))
+         (cond-> current-job-id
+           (update-in [:agents agent-id] dissoc :current-job))
+         (assoc-in [:agents agent-id :status :alive?] false)
+         (assoc-in [:agents agent-id :status :cause-of-death] cause)))))
 
 (defn process-mortality!
   "Process all agents and handle deaths by creating memories."

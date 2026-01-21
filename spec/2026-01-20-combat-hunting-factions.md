@@ -27,6 +27,13 @@
 - Ensure combat ties into existing health/needs/mortality systems.
 - Add documentation note in `docs/notes`.
 
+## Decisions
+- Combat model: simple health drain per hit using existing `:needs :health`.
+- Wolves prioritize deer; if none are nearby, they may target player agents.
+- Player agents hunt deer only.
+- Deer/wolf initial spawn uses biome density.
+- Player hunting is auto-triggered when hungry.
+
 ## Plan
 ### Phase 1 - Investigation
 - Review tick loop ordering to place combat and hunting updates.
@@ -42,9 +49,8 @@
 - Document combat/hunting/faction behavior changes in `docs/notes`.
 
 ## Open Questions
-- Combat model: flat damage per tick vs stat-based damage/accuracy?
-- Aggro rules: do wolves attack player agents or only deer?
-- Spawn counts/density for deer and wolves at world init?
+- Should deer drop more than 1 raw meat item per kill?
+- Should player agents retaliate vs wolves outside of hunt jobs?
 
 ## Definition of Done
 - Deer and wolves spawn as agents with factions.
@@ -55,3 +61,4 @@
 
 ## Change Log
 - 2026-01-20: Spec created.
+- 2026-01-20: Recorded combat/hunting/faction decisions from user feedback.

@@ -42,6 +42,7 @@
    {:id id
     :pos [q r]
     :role role
+    :faction :player
     :stats default-agent-stats
     :needs default-agent-needs
     :need-thresholds default-need-thresholds
@@ -53,6 +54,32 @@
     :frontier {}
     :recall {}
     :events []})
+
+(defn- next-agent-id [world]
+  (if-let [agents (:agents world)]
+    (if (empty? agents)
+      0
+      (inc (apply max (map :id agents))))
+    0))
+
+(defn- ->wildlife-agent [world pos role]
+  (let [[q r] pos
+        agent-id (next-agent-id world)]
+    {:id agent-id
+     :pos [q r]
+     :role role
+     :faction :wilderness
+     :stats default-agent-stats
+     :needs default-agent-needs
+     :need-thresholds default-need-thresholds
+     :inventories {:personal {:wood 0 :food 0}
+                   :hauling {}
+                   :equipment {}}
+     :status {:alive? true :asleep? false :idle? false}
+     :inventory {:wood 0 :food 0}
+     :frontier {}
+     :recall {}
+     :events []}))
 
 (defn- bounds-tile-count [hex-map]
   (let [{:keys [bounds]} hex-map
@@ -79,6 +106,30 @@
        (remove #(= % pos))
        (sort-by (fn [p] (hex/distance pos p)))))
 
+(defn- eligible-wildlife-positions
+  [world biome-types]
+  (let [agent-positions (set (map :pos (:agents world)))]
+    (->> (:tiles world)
+         (keep (fn [[k tile]]
+                 (when (and (contains? biome-types (:biome tile))
+                            (nil? (:structure tile))
+                            (not (contains? agent-positions k)))
+                   (parse-tile-key k)))))))
+
+(defn- shuffled-positions
+  [rng positions]
+  (sort-by (fn [_] (.nextDouble rng)) positions))
+
+(defn- spawn-wildlife
+  [world rng {:keys [role density biomes]}]
+  (let [positions (eligible-wildlife-positions world biomes)
+        desired (long (Math/ceil (* (count positions) density)))
+        picks (take desired (shuffled-positions rng positions))]
+    (reduce (fn [w pos]
+              (update w :agents (fnil conj []) (->wildlife-agent w pos role)))
+            world
+            picks)))
+
 (defn- quarry-position [world]
   (some (fn [[k tile]]
           (when (= (:structure tile) :quarry)
@@ -101,7 +152,7 @@
 (defn- scatter-fruit! [world rng]
   (let [hex-map (:map world)
         total-tiles (bounds-tile-count hex-map)
-        desired (max 12 (long (Math/ceil (* total-tiles 0.006))))
+        desired (max 6 (long (Math/ceil (* total-tiles 0.0005))))
         positions (loop [acc #{}
                          attempts 0]
                      (if (or (>= (count acc) desired)
@@ -204,12 +255,16 @@
        (println "Warehouse created:" (get-in world-with-food [:tiles (tile-key 0 0)]))
       (println "Stockpiles:" (:stockpiles world-with-food))
       (println "Items:" (:items world-with-food))
-      (let [world-with-agents
-            (assoc world-with-food
-                   :agents (vec (for [i (range agent-count)]
-                                  (let [[q r] (nth (concat [campfire-pos] nearby-tiles) (mod i (inc (count nearby-tiles))))]
-                                    (->agent i q r (cond
-                                                    (= i 0) :priest
-                                                    (= i 1) :knight
-                                                    :else :peasant))))))]
-        (job-providers/seed-initial-jobs world-with-agents agent-count))))
+       (let [world-with-agents
+             (assoc world-with-food
+                    :agents (vec (for [i (range agent-count)]
+                                   (let [[q r] (nth (concat [campfire-pos] nearby-tiles) (mod i (inc (count nearby-tiles))))]
+                                     (->agent i q r (cond
+                                                     (= i 0) :priest
+                                                     (= i 1) :knight
+                                                     :else :peasant))))))
+             world-with-wildlife
+             (-> world-with-agents
+                 (spawn-wildlife rand-gen {:role :deer :density 0.003 :biomes #{:forest :field}})
+                 (spawn-wildlife rand-gen {:role :wolf :density 0.0008 :biomes #{:forest}}))]
+         (job-providers/seed-initial-jobs world-with-wildlife agent-count))))

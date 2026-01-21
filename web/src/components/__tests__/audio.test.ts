@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { hexToFrequency, playTone, playDeathTone, setMute, isMuted, toggleMute } from "../../audio";
+import { hexToFrequency, playTone, playDeathTone, playToneSequence, getScaleFrequency, setMute, isMuted, toggleMute } from "../../audio";
 
 describe("audio", () => {
   beforeEach(() => {
@@ -69,6 +69,19 @@ describe("audio", () => {
   describe("playDeathTone", () => {
     it("does not throw when called", () => {
       expect(() => playDeathTone()).not.toThrow();
+    });
+  });
+
+  describe("getScaleFrequency", () => {
+    it("wraps scale indices", () => {
+      expect(getScaleFrequency(0)).toBe(261.63);
+      expect(getScaleFrequency(6)).toBe(261.63);
+    });
+  });
+
+  describe("playToneSequence", () => {
+    it("does not throw when called", () => {
+      expect(() => playToneSequence([261.63, 329.63, 392.0])).not.toThrow();
     });
   });
 

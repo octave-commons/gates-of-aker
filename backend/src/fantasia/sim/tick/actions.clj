@@ -85,6 +85,11 @@
     (when (hex/in-bounds? (:map world) pos)
       (swap! fantasia.sim.tick.core/*state core/spawn-wolf! pos))))
 
+(defn place-deer! [pos]
+  (let [world (core/get-state)]
+    (when (hex/in-bounds? (:map world) pos)
+      (swap! fantasia.sim.tick.core/*state core/spawn-deer! pos))))
+
 (defn place-bear! [pos]
   (let [world (core/get-state)]
     (when (hex/in-bounds? (:map world) pos)

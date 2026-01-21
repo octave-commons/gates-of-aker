@@ -6,6 +6,7 @@ export type Agent = {
   id: number;
   pos: [number, number] | null;
   role: string;
+  faction?: string;
   needs: Record<string, number>;
   recall: Record<string, number>;
   [key: string]: any;

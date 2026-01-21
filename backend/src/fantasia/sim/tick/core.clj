@@ -9,6 +9,7 @@
             [fantasia.sim.pathing]
             [fantasia.sim.time :as sim-time]
             [fantasia.sim.tick.initial :as initial]
+            [fantasia.sim.tick.combat :as combat]
             [fantasia.sim.tick.trees :as trees]
             [fantasia.sim.tick.movement :as movement]
             [fantasia.sim.tick.mortality :as mortality]
@@ -45,7 +46,6 @@
           w1 (assoc w1 :calendar (sim-time/calendar-info w1))
            w2 (-> w1
                     (trees/spread-trees!)
-                    (mortality/process-mortality!)
                     (job-providers/auto-generate-jobs!)
                     (jobs/auto-assign-jobs!)
                     (trees/drop-tree-fruits!))
@@ -58,62 +58,69 @@
                           (let [[w' a'] (movement/move-agent-with-job w (first agents))
                                 a'' (agents/update-needs w' a')]
                             (recur w' (rest agents) w' (conj acc-a a'')))))
-        ev (runtime/generate w3 agents1)
-       ev-step (if ev
-                 (reduce
-                   (fn [{:keys [agents mentions traces]} a]
-                     (if (contains? (set (:witnesses ev)) (:id a))
-                       (let [res (runtime/apply-to-witness w3 a ev)]
-                         {:agents (conj agents (:agent res))
-                          :mentions (into mentions (:mentions res))
-                          :traces (into traces (:traces res))})
-                       {:agents (conj agents a)
-                        :mentions mentions
-                        :traces traces}))
+        w3 (assoc w3 :agents agents1)
+        w4 (-> w3
+               (combat/process-combat!)
+               (jobs/cleanup-hunt-jobs!)
+               (mortality/process-mortality!))
+        agents2 (:agents w4)
+        ev (runtime/generate w4 agents2)
+        ev-step (if ev
+                  (reduce
+                    (fn [{:keys [agents mentions traces]} a]
+                      (if (contains? (set (:witnesses ev)) (:id a))
+                        (let [res (runtime/apply-to-witness w4 a ev)]
+                          {:agents (conj agents (:agent res))
+                           :mentions (into mentions (:mentions res))
+                           :traces (into traces (:traces res))})
+                        {:agents (conj agents a)
+                         :mentions mentions
+                         :traces traces}))
                    {:agents [] :mentions [] :traces []}
-                   agents1)
-                 {:agents agents1 :mentions [] :traces []})
-       agents2 (:agents ev-step)
-       pairs (agents/interactions agents2)
-       talk-step (reduce
-                  (fn [{:keys [agents mentions traces]} [speaker listener]]
-                    (let [packet (agents/choose-packet w3 speaker)
-                          res (agents/apply-packet-to-listener w3 listener speaker packet)
-                          agents' (assoc agents (:id listener) (:listener res))]
-                      {:agents agents'
-                       :mentions (into mentions (:mentions res))
-                       :traces (into traces (:traces res))}))
-                 {:agents (vec agents2)
+                   agents2)
+                 {:agents agents2 :mentions [] :traces []})
+        agents3 (:agents ev-step)
+        player-agents (filter #(= (:faction %) :player) agents3)
+        pairs (agents/interactions player-agents)
+        talk-step (reduce
+                   (fn [{:keys [agents mentions traces]} [speaker listener]]
+                     (let [packet (agents/choose-packet w4 speaker)
+                           res (agents/apply-packet-to-listener w4 listener speaker packet)
+                           agents' (assoc agents (:id listener) (:listener res))]
+                       {:agents agents'
+                        :mentions (into mentions (:mentions res))
+                        :traces (into traces (:traces res))}))
+                 {:agents (vec agents3)
                   :mentions (:mentions ev-step)
                   :traces (:traces ev-step)}
                  pairs)
-       agents3 (:agents talk-step)
-       bcasts (institutions/broadcasts w3)
-       inst-step (reduce
-                  (fn [{:keys [agents mentions traces]} b]
-                    (let [res (institutions/apply-broadcast w3 agents b)]
-                      {:agents (:agents res)
-                       :mentions (into mentions (:mentions res))
-                       :traces (into traces (:traces res))}))
-                 {:agents agents3
-                  :mentions (:mentions talk-step)
-                  :traces (:traces talk-step)}
+       agents4 (:agents talk-step)
+       bcasts (institutions/broadcasts w4)
+        inst-step (reduce
+                   (fn [{:keys [agents mentions traces]} b]
+                     (let [res (institutions/apply-broadcast w4 agents b)]
+                       {:agents (:agents res)
+                        :mentions (into mentions (:mentions res))
+                        :traces (into traces (:traces res))}))
+                 {:agents agents4
+                   :mentions (:mentions talk-step)
+                   :traces (:traces talk-step)}
                  bcasts)
-       agents4 (:agents inst-step)
-       ledger-info (world/update-ledger w3 (:mentions inst-step))
-       ledger2 (:ledger ledger-info)
-       attr (:attribution ledger-info)
+       agents5 (:agents inst-step)
+       ledger-info (world/update-ledger w4 (:mentions inst-step))
+        ledger2 (:ledger ledger-info)
+        attr (:attribution ledger-info)
        recent' (if ev
-                 (->> (concat (:recent-events w3)
+                 (->> (concat (:recent-events w4)
                               [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
-                      (take-last (:recent-max w3))
+                      (take-last (:recent-max w4))
                       vec)
-                 (:recent-events w3))
-       traces' (->> (concat (:traces w3) (:traces inst-step))
-                    (take-last (:trace-max w3))
+                 (:recent-events w4))
+       traces' (->> (concat (:traces w4) (:traces inst-step))
+                    (take-last (:trace-max w4))
                     vec)
-       world' (-> w3
-                  (assoc :agents agents4)
+       world' (-> w4
+                  (assoc :agents agents5)
                   (assoc :ledger ledger2)
                   (assoc :recent-events recent')
                   (assoc :traces traces'))]
@@ -148,6 +155,27 @@
             {:id agent-id
              :pos [q r]
              :role :wolf
+             :faction :wilderness
+             :stats initial/default-agent-stats
+             :needs initial/default-agent-needs
+             :need-thresholds initial/default-need-thresholds
+             :inventories {:personal {:wood 0 :food 0}
+                           :hauling {}
+                           :equipment {}}
+             :status {:alive? true :asleep? false :idle? false}
+             :inventory {:wood 0 :food 0}
+             :frontier {}
+             :recall {}
+             :events []})))
+
+(defn spawn-deer! [world pos]
+  (let [agent-id (next-agent-id)
+        [q r] pos]
+    (update world :agents conj
+            {:id agent-id
+             :pos [q r]
+             :role :deer
+             :faction :wilderness
              :stats initial/default-agent-stats
              :needs initial/default-agent-needs
              :need-thresholds initial/default-need-thresholds
@@ -167,6 +195,7 @@
             {:id agent-id
              :pos [q r]
              :role :bear
+             :faction :wilderness
              :stats initial/default-agent-stats
              :needs initial/default-agent-needs
              :need-thresholds initial/default-need-thresholds

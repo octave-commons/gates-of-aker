@@ -1,0 +1,4 @@
+- Added player vs wilderness factions for agents (wolves/deer in wilderness).
+- Added combat step with simple health drain; deer are prey, wolves prioritize deer but may attack players.
+- Added hungry-player hunt jobs targeting deer, plus deer/wolf biome density spawning.
+- Deer kills drop raw meat items; wolves replenish food on kill.

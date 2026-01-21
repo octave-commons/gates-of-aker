@@ -1,27 +1,25 @@
 import { useState, type CSSProperties } from "react";
 import { Agent } from "../types";
 
-type SelectedPanelProps = {
-  selectedCell: [number, number] | null;
-  selectedTile: Record<string, unknown> | null;
-  selectedTileItems: Record<string, number>;
-  selectedTileAgents: Agent[];
-  selectedAgentId: number | null;
-  selectedAgent: Agent | null;
-  mouthpieceId: number | null;
-  style?: CSSProperties;
-};
+ type SelectedPanelProps = {
+   selectedCell: [number, number] | null;
+   selectedTile: Record<string, unknown> | null;
+   selectedTileItems: Record<string, number>;
+   selectedTileAgents: Agent[];
+   selectedAgentId: number | null;
+   selectedAgent: Agent | null;
+   style?: CSSProperties;
+ };
 
 export function SelectedPanel({
-  selectedCell,
-  selectedTile,
-  selectedTileItems,
-  selectedTileAgents,
-  selectedAgentId,
-  selectedAgent,
-  mouthpieceId,
-  style = {},
-}: SelectedPanelProps) {
+   selectedCell,
+   selectedTile,
+   selectedTileItems,
+   selectedTileAgents,
+   selectedAgentId,
+   selectedAgent,
+   style = {},
+ }: SelectedPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const normalizeValue = (value: unknown, fallback = "None") => {
@@ -118,15 +116,14 @@ export function SelectedPanel({
             <div style={{ display: "grid", gap: 4 }}>{agentRows}</div>
           </div>
 
-          <div style={{ border: "1px solid #ddd", borderRadius: 6, padding: 8, backgroundColor: "#f9f9f9" }}>
-            <div style={{ fontWeight: "bold", fontSize: "0.9em", color: "#666", marginBottom: 6 }}>
-              Focus
-            </div>
-            <div style={{ display: "grid", gap: 4 }}>
-              {renderRow("Selected Agent", normalizeValue(selectedAgentId))}
-              {renderRow("Mouthpiece", normalizeValue(mouthpieceId))}
-            </div>
-          </div>
+           <div style={{ border: "1px solid #ddd", borderRadius: 6, padding: 8, backgroundColor: "#f9f9f9" }}>
+             <div style={{ fontWeight: "bold", fontSize: "0.9em", color: "#666", marginBottom: 6 }}>
+               Focus
+             </div>
+             <div style={{ display: "grid", gap: 4 }}>
+               {renderRow("Selected Agent", normalizeValue(selectedAgentId))}
+             </div>
+           </div>
 
           {selectedAgent && (
             <div style={{ border: "2px solid #4a90e2", borderRadius: 6, padding: 12, backgroundColor: "#f0f7ff" }}>

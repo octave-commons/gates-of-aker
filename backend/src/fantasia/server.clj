@@ -186,6 +186,10 @@
             (do (sim/place-tree! (:pos msg))
                 (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
 
+            "place_deer"
+            (do (sim/place-deer! (:pos msg))
+                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
+
             "place_wolf"
             (do (sim/place-wolf! (:pos msg))
                 (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))

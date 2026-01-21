@@ -1,6 +1,8 @@
 import { CONFIG } from "./config/constants";
 
 const PENTATONIC_SCALE = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25] as const;
+const DEFAULT_NOTE_DURATION = 0.12;
+const DEFAULT_NOTE_GAP = 0.04;
 
 type AudioState = {
   context: AudioContext | null;
@@ -85,6 +87,12 @@ export function hexToFrequency(hex: string): number {
   return PENTATONIC_SCALE[Math.min(index, PENTATONIC_SCALE.length - 1)];
 }
 
+export function getScaleFrequency(index: number, octaveShift: number = 0): number {
+  const safeIndex = ((index % PENTATONIC_SCALE.length) + PENTATONIC_SCALE.length) % PENTATONIC_SCALE.length;
+  const base = PENTATONIC_SCALE[safeIndex];
+  return base * Math.pow(2, octaveShift);
+}
+
 export function markUserInteraction(): void {
   state.hasUserInteracted = true;
 }
@@ -127,6 +135,68 @@ export function playTone(frequency: number, duration: number = 0.1): void {
     };
   } catch (e) {
     console.error("[AUDIO] Failed to play tone:", e);
+  }
+}
+
+type ToneSequenceOptions = {
+  noteDuration?: number;
+  gap?: number;
+  startDelay?: number;
+  type?: OscillatorType;
+  gain?: number;
+};
+
+export function playToneSequence(
+  frequencies: number[],
+  options: ToneSequenceOptions = {}
+): void {
+  if (!state.hasUserInteracted) {
+    return;
+  }
+
+  if (!ensureInitialized()) {
+    return;
+  }
+
+  resumeContext();
+
+  if (state.isMuted || !state.context || !state.masterGain) {
+    return;
+  }
+
+  const noteDuration = options.noteDuration ?? DEFAULT_NOTE_DURATION;
+  const gap = options.gap ?? DEFAULT_NOTE_GAP;
+  const startDelay = options.startDelay ?? 0;
+  const oscillatorType = options.type ?? "sine";
+  const gainMultiplier = options.gain ?? 1.0;
+
+  try {
+    const baseTime = state.context.currentTime + startDelay;
+    frequencies.forEach((frequency, idx) => {
+      const startTime = baseTime + idx * (noteDuration + gap);
+      const oscillator = state.context!.createOscillator();
+      const gainNode = state.context!.createGain();
+
+      oscillator.type = oscillatorType;
+      oscillator.frequency.value = Math.max(CONFIG.audio.MIN_FREQUENCY, Math.min(CONFIG.audio.MAX_FREQUENCY, frequency));
+
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(CONFIG.audio.MASTER_GAIN * gainMultiplier, startTime + CONFIG.audio.GAIN_RAMP_TIME);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + noteDuration);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(state.masterGain!);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + noteDuration);
+
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      };
+    });
+  } catch (e) {
+    console.error("[AUDIO] Failed to play tone sequence:", e);
   }
 }
 

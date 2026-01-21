@@ -23,6 +23,7 @@
                     {:id (:id a)
                      :pos (:pos a)
                      :role (:role a)
+                     :faction (:faction a)
                      :stats (:stats a)
                      :needs (:needs a)
                      :need-thresholds (:need-thresholds a)

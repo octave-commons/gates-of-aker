@@ -14,6 +14,8 @@ const colorForRole = (role?: string): string => {
       return "#795548";
     case "bear":
       return "#5d4037";
+    case "deer":
+      return "#8d6e63";
     default:
       return CONFIG.colors.ROLE.default;
   }
@@ -29,6 +31,8 @@ const getAgentIcon = (role?: string): string => {
       return "🐺";
     case "bear":
       return "🐻";
+    case "deer":
+      return "🦌";
     default:
       return "👤";
   }

@@ -27,6 +27,7 @@
 (def place-statue-dog! actions/place-statue-dog!)
 (def place-tree! actions/place-tree!)
 (def place-wolf! actions/place-wolf!)
+(def place-deer! actions/place-deer!)
 (def place-bear! actions/place-bear!)
 (def queue-build-job! actions/queue-build-job!)
 (def spawn-initial-trees! trees/spawn-initial-trees!)
@@ -42,7 +43,8 @@
     (when agent
       (if-let [job (fantasia.sim.jobs/get-agent-job world agent-id)]
         (let [current-pos (:pos agent)
-              job-target (:target job)]
-          (if (not= current-pos job-target)
-            (fantasia.sim.pathing/a-star-path world current-pos job-target)
-            []))))))
+              job-target (fantasia.sim.jobs/job-target-pos world job)]
+          (when job-target
+            (if (not= current-pos job-target)
+              (fantasia.sim.pathing/a-star-path world current-pos job-target)
+              [])))))))

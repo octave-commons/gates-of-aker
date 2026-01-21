@@ -10,10 +10,11 @@
 
 (def job-priorities
   {:job/eat 100
-   :job/warm-up 95
-   :job/sleep 90
-   :job/chop-tree 60
-   :job/mine 60
+    :job/warm-up 95
+    :job/sleep 90
+    :job/hunt 75
+    :job/chop-tree 60
+    :job/mine 60
    :job/harvest-wood 58
    :job/harvest-fruit 58
    :job/harvest-grain 58
@@ -24,9 +25,23 @@
    :job/improve 52
    :job/haul 50
    :job/deliver-food 45
-   :job/build-wall 40
-   :job/builder 38
-   :job/build-structure 35})
+    :job/build-wall 40
+    :job/builder 38
+    :job/build-structure 35})
+
+(def ^:private food-resources
+  #{:fruit :berry :raw-meat :cooked-meat :stew :food})
+
+(def ^:private food-item-order
+  [:cooked-meat :stew :raw-meat :fruit :berry :food])
+
+(defn- player-agent?
+  [agent]
+  (= (:faction agent) :player))
+
+(defn- alive-agent?
+  [agent]
+  (get-in agent [:status :alive?] true))
 
 (def ore-types
   [:ore-iron :ore-copper :ore-tin :ore-gold :ore-silver :ore-aluminum :ore-lead])
@@ -78,6 +93,12 @@
                   :state :pending
                   :priority (get job-priorities job-type 50)}]
          job))))
+
+(defn create-hunt-job
+  [target-agent-id target-pos]
+  (when (and target-agent-id target-pos)
+    (assoc (create-job :job/hunt target-pos)
+           :target-agent-id target-agent-id)))
 
 
 (defn- add-job-to-world! [world job]
@@ -139,17 +160,16 @@
       world)))
 
 (defn auto-assign-jobs! [world]
-  (let [result (reduce (fn [w agent]
-                        (let [alive? (get-in agent [:status :alive?] true)]
-                          (if (and alive? (nil? (:current-job agent)))
-                           (let [w' (claim-next-job! w (:id agent))]
-                             (if (= w w')
-                               (mark-agent-idle w (:id agent))
-                               w'))
-                          w)))
-                      world
-                      (:agents world))]
-    result))
+  (reduce (fn [w agent]
+            (let [alive? (get-in agent [:status :alive?] true)]
+              (if (and (player-agent? agent) alive? (nil? (:current-job agent)))
+                (let [w' (claim-next-job! w (:id agent))]
+                  (if (= w w')
+                    (mark-agent-idle w (:id agent))
+                    w'))
+                w)))
+          world
+          (:agents world)))
 
 (defn add-item! [world pos resource qty]
    (let [[q r] pos
@@ -161,7 +181,7 @@
 (defn- stockpile-accepts? [sp resource]
   (let [sp-resource (:resource sp)
         wood? #(contains? #{:wood :log} %)
-        food? #(contains? #{:fruit :berry :raw-meat :cooked-meat :stew} %)]
+        food? #(contains? food-resources %)]
     (or (= sp-resource resource)
         (and (wood? sp-resource) (wood? resource))
         (and (food? sp-resource) (food? resource)))))
@@ -326,6 +346,34 @@
        (sort-by (fn [p] (hex/distance pos p)))
        first))
 
+(defn- find-nearest-food-item [world pos]
+  (->> food-item-order
+       (keep (fn [resource] (find-nearest-item world pos resource)))
+       (sort-by (fn [p] (hex/distance pos p)))
+       first))
+
+(defn- find-nearest-food-stockpile [world pos]
+  (->> food-item-order
+       (keep (fn [resource]
+               (find-nearest-stockpile-with-qty world pos resource)))
+       (sort-by (fn [p] (hex/distance pos p)))
+       first))
+
+(defn- find-nearest-food-target [world pos]
+  (let [item-pos (find-nearest-food-item world pos)
+        stockpile-pos (find-nearest-food-stockpile world pos)]
+    (->> [item-pos stockpile-pos]
+         (remove nil?)
+         (sort-by (fn [p] (hex/distance pos p)))
+         first)))
+
+(defn- find-nearest-agent-with-role [world pos role]
+  (->> (:agents world)
+       (filter alive-agent?)
+       (filter #(= (:role %) role))
+       (sort-by (fn [agent] (hex/distance pos (:pos agent))))
+       first))
+
 
 (defn- stockpiles-with-space-for [world resource]
   (->> (:stockpiles world)
@@ -483,10 +531,10 @@
 (defn complete-harvest-job! [world job agent-id]
    (let [resource (:resource job)
          target (:target job)
-         yield (case resource
-                 :fruit 2
-                 :grain 2
-                 1)
+          yield (case resource
+                  :fruit 1
+                  :grain 2
+                  1)
          target-resource (case resource
                            :log :tree
                            :fruit :tree
@@ -639,25 +687,31 @@
 
 
 (defn complete-eat! [world job agent-id]
-   (let [target (:target job)
-         [w' consumed-fruit] (consume-items! world target :fruit 1)
-         [w'' consumed-berry] (if (pos? consumed-fruit)
-                                  [w' 0]
-                                  (consume-items! w' target :berry 1))
-         [w''' stocked] (if (pos? (+ consumed-fruit consumed-berry))
-                           [w'' 0]
-                           (if (pos? consumed-fruit)
-                             (take-from-stockpile! w'' target :fruit 1)
-                             (take-from-stockpile! w'' target :berry 1)))
-         total (max consumed-fruit consumed-berry stocked)
-         food-type (cond
-                    (pos? consumed-fruit) "fruit"
-                    (pos? consumed-berry) "berry"
-                    :else "food")]
-     (if (pos? total)
-       (let [world' (assoc-in w''' [:agents agent-id :needs :food] 1.0)]
-         world')
-       w''')))
+  (let [target (:target job)
+        [w' resource consumed]
+        (loop [w1 world
+               resources food-item-order]
+          (if-let [resource (first resources)]
+            (let [[w2 taken] (consume-items! w1 target resource 1)]
+              (if (pos? taken)
+                [w2 resource taken]
+                (recur w2 (rest resources))))
+            [w1 nil 0]))
+        [w'' stocked-resource stocked]
+        (if (pos? consumed)
+          [w' nil 0]
+          (loop [w1 w'
+                 resources food-item-order]
+            (if-let [resource (first resources)]
+              (let [[w2 taken] (take-from-stockpile! w1 target resource 1)]
+                (if (pos? taken)
+                  [w2 resource taken]
+                  (recur w2 (rest resources))))
+              [w1 nil 0])))
+        total (max consumed stocked)]
+    (if (pos? total)
+      (assoc-in w'' [:agents agent-id :needs :food] 1.0)
+      w'')))
 
 (defn complete-warm-up! [world job agent-id]
   (let [target (:target job)
@@ -743,9 +797,35 @@
          world))
     world))
 
+(defn job-target-pos
+  [world job]
+  (if (= (:type job) :job/hunt)
+    (when-let [target-id (:target-agent-id job)]
+      (:pos (get-in world [:agents target-id])))
+    (:target job)))
+
 (defn get-agent-job [world agent-id]
    (when-let [job-id (get-in world [:agents agent-id :current-job])]
      (get-job-by-id world job-id)))
+
+(defn cleanup-hunt-jobs!
+  [world]
+  (reduce
+   (fn [w job]
+     (if (= (:type job) :job/hunt)
+       (let [target-id (:target-agent-id job)
+             target (when target-id (get-in w [:agents target-id]))
+             alive? (alive-agent? target)]
+         (if alive?
+           w
+           (let [w' (remove-job-from-world! w (:id job))
+                 worker-id (:worker-id job)]
+             (if (and worker-id (= (get-in w' [:agents worker-id :current-job]) (:id job)))
+               (mark-agent-idle w' worker-id)
+               w'))))
+       w))
+   world
+   (:jobs world)))
 
 (defn job-complete? [job]
   (>= (:progress job 0.0) (:required job 1.0)))
@@ -811,40 +891,49 @@
 
 (defn generate-need-jobs! [world]
   (reduce (fn [w agent]
-            (let [needs (:needs agent)
-                  thresholds (or (:need-thresholds agent) {})
-                  daylight (double (or (:daylight w) 0.7))
-                  night? (< daylight 0.35)
-                  food (get needs :food 1.0)
-                  warmth (get needs :warmth 1.0)
-                  sleep (get needs :sleep 1.0)
-                  food-hungry (get thresholds :food-hungry 0.3)
-                  warmth-cold (get thresholds :warmth-cold 0.3)
-                  sleep-tired (get thresholds :sleep-tired 0.3)
-                  sleep-threshold (if night? (max sleep-tired 0.6) sleep-tired)
-                   pos (:pos agent)
-                   agent-id (:id agent)
-                   campfire-pos (find-campfire-pos w)
-                   fruit-pos (->> (:items w)
-                                  (keep (fn [[k items]]
-                                          (when (or (pos? (get items :fruit 0))
-                                                    (pos? (get items :berry 0)))
-                                            (parse-key-pos k))))
-                                  (sort-by (fn [p] (hex/distance pos p)))
-                                  first)
-                   stockpile-pos (or (find-nearest-stockpile-with-qty w pos :fruit)
-                                    (find-nearest-stockpile-with-qty w pos :berry))
-                   food-pos (or fruit-pos stockpile-pos pos)
-                   has-eat-job? (some #(and (= (:type %) :job/eat) (= (:target %) food-pos)) (:jobs w))
-                  has-warm-job? (some #(and (= (:type %) :job/warm-up) (= (:target %) campfire-pos)) (:jobs w))
-                  has-sleep-job? (some #(and (= (:type %) :job/sleep) (= (:target %) pos)) (:jobs w))
-                  already-has-job? (some #(= (:worker-id %) agent-id) (:jobs w))]
-              (cond-> w
-                (and (< food food-hungry) (not has-eat-job?) (not already-has-job?)) (add-job-to-world! (create-job :job/eat food-pos))
-                (and campfire-pos (< warmth warmth-cold) (not has-warm-job?) (not already-has-job?)) (add-job-to-world! (create-job :job/warm-up campfire-pos))
-                (and (< sleep sleep-threshold) (not has-sleep-job?) (not already-has-job?)) (add-job-to-world! (create-job :job/sleep pos)))))
-        world
-        (:agents world)))
+            (if (player-agent? agent)
+              (let [needs (:needs agent)
+                    thresholds (or (:need-thresholds agent) {})
+                    daylight (double (or (:daylight w) 0.7))
+                    night? (< daylight 0.35)
+                    food (get needs :food 1.0)
+                    warmth (get needs :warmth 1.0)
+                    sleep (get needs :sleep 1.0)
+                    food-hungry (get thresholds :food-hungry 0.3)
+                    warmth-cold (get thresholds :warmth-cold 0.3)
+                    sleep-tired (get thresholds :sleep-tired 0.3)
+                    sleep-threshold (if night? (max sleep-tired 0.6) sleep-tired)
+                    pos (:pos agent)
+                    agent-id (:id agent)
+                    campfire-pos (find-campfire-pos w)
+                    food-target (find-nearest-food-target w pos)
+                    deer-target (find-nearest-agent-with-role w pos :deer)
+                    has-eat-job? (and food-target
+                                      (some #(and (= (:type %) :job/eat)
+                                                 (= (:target %) food-target))
+                                            (:jobs w)))
+                    has-hunt-job? (some #(and (= (:type %) :job/hunt)
+                                              (= (:target-agent-id %) (:id deer-target)))
+                                        (:jobs w))
+                    has-warm-job? (some #(and (= (:type %) :job/warm-up)
+                                              (= (:target %) campfire-pos))
+                                        (:jobs w))
+                    has-sleep-job? (some #(and (= (:type %) :job/sleep)
+                                               (= (:target %) pos))
+                                         (:jobs w))
+                    already-has-job? (some #(= (:worker-id %) agent-id) (:jobs w))]
+                (cond-> w
+                  (and (< food food-hungry) food-target (not has-eat-job?) (not already-has-job?))
+                  (add-job-to-world! (create-job :job/eat food-target))
+                  (and (< food food-hungry) (nil? food-target) deer-target (not has-hunt-job?) (not already-has-job?))
+                  (add-job-to-world! (create-hunt-job (:id deer-target) (:pos deer-target)))
+                  (and campfire-pos (< warmth warmth-cold) (not has-warm-job?) (not already-has-job?))
+                  (add-job-to-world! (create-job :job/warm-up campfire-pos))
+                  (and (< sleep sleep-threshold) (not has-sleep-job?) (not already-has-job?))
+                  (add-job-to-world! (create-job :job/sleep pos))))
+              w))
+          world
+          (:agents world)))
 
 (defn generate-house-jobs! [world]
   (let [campfire-pos (find-campfire-pos world)

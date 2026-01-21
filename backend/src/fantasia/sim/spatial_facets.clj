@@ -132,6 +132,8 @@
     ["wolf" "predator" "hunting" "pack" "teeth" "wild" "danger" "animal" "hostile" "fear"])
   (register-entity-facets! :bear
     ["bear" "predator" "ferocious" "strong" "wild" "danger" "animal" "hostile" "aggressive"])
+  (register-entity-facets! :deer
+    ["deer" "prey" "herd" "wild" "animal" "gentle" "forest" "meat" "skittish"])
   (register-entity-facets! :tree
     ["tree" "wood" "forest" "resource" "nature" "standing" "plant" "material"])
    (register-entity-facets! :fruit

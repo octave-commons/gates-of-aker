@@ -12,8 +12,10 @@ const jobTypeNames: Record<string, string> = {
   ":job/eat": "Eating",
   ":job/warm-up": "Warming up",
   ":job/sleep": "Sleeping",
+  ":job/hunt": "Hunting",
   ":job/chop-tree": "Chopping",
   ":job/haul": "Hauling",
+  ":job/deliver-food": "Delivering food",
   ":job/build-wall": "Building",
   ":job/build-house": "Building house",
   ":job/build-structure": "Building",
@@ -121,11 +123,12 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
 
       {Object.keys(needs).length > 0 && (
         <div style={{ marginBottom: 4 }}>
-          {["food", "sleep", "warmth"].map((needKey) => {
+          {["mood", "food", "sleep", "warmth"].map((needKey) => {
             const value = needs[needKey];
             if (value === undefined) return null;
             
             const colors: Record<string, { high: string; mid: string; low: string }> = {
+              mood: { high: "#9C27B0", mid: "#7B1FA2", low: "#4A148C" },
               food: { high: "#4CAF50", mid: "#FFC107", low: "#f44336" },
               sleep: { high: "#2196F3", mid: "#FF9800", low: "#9C27B0" },
               warmth: { high: "#FF5722", mid: "#607D8B", low: "#E91E63" }

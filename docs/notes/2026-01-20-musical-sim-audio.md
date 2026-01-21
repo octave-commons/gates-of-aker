@@ -1,0 +1,3 @@
+- Added tone sequence helper to play multi-note motifs for simulation events.
+- Job completions now trigger distinct tone sequences per job type, including hunting.
+- Need threshold crossings (food, water, rest, sleep, warmth, health, security, mood) now emit distinct motifs.

@@ -24,7 +24,7 @@
 
 (defn- make-tree-tile
   "Construct a fresh tree tile map for the given tick and rng.
-  `tick` is used to seed scheduled values so they are deterministic per world tick." 
+  `tick` is used to seed scheduled values so they are deterministic per world tick."
   [tick rng]
   {:terrain :ground
    :resource :tree
@@ -34,7 +34,7 @@
 ;; --- Spawn initial trees -----------------------------------------------------
 (defn- try-place-tree
    "Place a tree at pos in world when a randomized roll succeeds.
-   Returns updated world." 
+   Returns updated world."
    [world pos rng spawn-chance]
     (let [tile-key (tile-key-for pos)
           existing-tile (get-in world [:tiles tile-key])]
@@ -45,7 +45,7 @@
         world)))
 
 (defn- seed-initial-trees!
-  "Seed trees randomly throughout the map using a fixed spawn chance." 
+  "Seed trees randomly throughout the map using a fixed spawn chance."
   [world rng spawn-chance]
   (let [hex-map (:map world)
         bounds (:bounds hex-map)]
@@ -65,7 +65,7 @@
       world)))
 
 (defn- grow-initial-trees!
-  "Run short growth passes to create clustered, organic tree placement." 
+  "Run short growth passes to create clustered, organic tree placement."
   [world rng passes spread-probability]
   (loop [idx 0
          w world]
@@ -119,7 +119,7 @@
 
 (defn- spread-from-tile
   "Attempt to spread a tree from tile-key in world. Returns updated world.
-  Uses rng and probability to decide whether to spawn a neighboring tree." 
+  Uses rng and probability to decide whether to spawn a neighboring tree."
   [world tile-key r current-tick min-interval max-interval spread-probability]
   (let [tile (get-in world [:tiles tile-key])
         next-spread (or (:next-spread-tick tile) (next-spread-tick current-tick min-interval max-interval r))
@@ -145,7 +145,7 @@
 
 (defn spread-trees!
   "Spread trees to adjacent empty tiles. Each tree has a chance to spawn a new tree
-  in an adjacent empty tile when its spread timer elapses." 
+  in an adjacent empty tile when its spread timer elapses."
   [world]
   (let [current-tick (:tick world)
         r (rng (:seed world))
@@ -162,28 +162,28 @@
 
 ;; --- Drop fruit -------------------------------------------------------------
 (defn- next-fruit-drop
-  "Schedule a next fruit drop between min and max intervals." 
+  "Schedule a next fruit drop between min and max intervals."
   [base-tick rng min-interval max-interval]
   (+ base-tick min-interval (rand-int* rng (inc (- max-interval min-interval)))))
 
 (defn- should-drop-fruit?
-  "Return true when the tree should drop fruit on this tick." 
+  "Return true when the tree should drop fruit on this tick."
   [tile current-tick rng]
   (let [last-drop (or (:last-fruit-drop tile) 0)
         turns-since (- current-tick last-drop)
-        min-interval 18
-        max-interval 45
+        min-interval 600
+        max-interval 1200
         scheduled (or (:next-fruit-drop tile)
                       (next-fruit-drop last-drop rng min-interval max-interval))]
     (and (>= turns-since min-interval)
          (>= current-tick scheduled))))
 
 (defn- perform-drop
-  "Add one fruit at a nearby tile and update tile timings." 
+  "Add one fruit at a nearby tile and update tile timings."
   [w tile-key tile current-tick rng]
   (let [pos (parse-tile-key tile-key)
-        min-interval 18
-        max-interval 45
+        min-interval 600
+        max-interval 1200
         neighbors (->> (hex/neighbors pos)
                        (filter #(hex/in-bounds? (:map w) %))
                        vec)
@@ -197,7 +197,7 @@
                   (next-fruit-drop current-tick rng min-interval max-interval)))))
 
 (defn drop-tree-fruits!
-  "Process fruit dropping for all trees. Fruits accumulate at tree positions in :items." 
+  "Process fruit dropping for all trees. Fruits accumulate at tree positions in :items."
   [world]
   (let [current-tick (:tick world)
         r (rng (:seed world))]

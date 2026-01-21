@@ -41,16 +41,39 @@
   (when-let [s (:shrine world)]
     (<= (hex/distance pos s) 3)))
 
-(defn move-agent
-  "Deterministically move an agent one step among in-bounds, passable hex neighbors."
-  [world agent]
-  (let [options (->> (hex/neighbors (:pos agent))
-                     (filter #(in-bounds? world %))
-                     (filter #(passable? world %))
-                     vec)]
-    (if (seq options)
-      (assoc agent :pos (nth options (mod (+ (:tick world)
-                                             (:id agent)
-                                             (:seed world))
-                                          (count options))))
-      agent)))
+(defn agents-at-position
+   "Return all agents at a specific position."
+   [world pos]
+   (let [pos-key (vector (first pos) (second pos))]
+     (filter #(= pos-key (vector (first (:pos %)) (second (:pos %))))
+             (:agents world))))
+
+(defn occupied-by-same-faction?
+   "Check if position is occupied by another agent of the same faction."
+   [world pos faction]
+   (let [others (agents-at-position world pos)]
+     (some #(and (not= (:id %) (:id world)) ;; Exclude self check if needed
+                     (= (:faction %) faction))
+           others)))
+
+(defn move-agent-with-collision-check
+   "Move an agent one step, avoiding collisions with same-faction agents.
+    If all neighbors are occupied by same-faction, agent stays in place."
+   [world agent]
+   (let [options (->> (hex/neighbors (:pos agent))
+                      (filter #(in-bounds? world %))
+                      (filter #(passable? world %))
+                      vec)
+         available-options (filter #(not (occupied-by-same-faction? world % (:faction agent)))
+                           options)]
+     (if (seq available-options)
+       (assoc agent :pos (nth available-options (mod (+ (:tick world)
+                                                           (:id agent)
+                                                           (:seed world))
+                                                        (count available-options))))
+       (if (seq options)
+         (assoc agent :pos (nth options (mod (+ (:tick world)
+                                                (:id agent)
+                                                (:seed world))
+                                             (count options))))
+         agent))))

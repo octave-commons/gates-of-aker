@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
-import { playDeathTone, playTone, markUserInteraction } from "./audio";
+import { playDeathTone, playTone, playToneSequence, getScaleFrequency, markUserInteraction } from "./audio";
 import {
   AgentList,
+  FactionsPanel,
   RawJSONFeedPanel,
   SelectedPanel,
   SimulationCanvas,
@@ -22,6 +23,57 @@ import { clamp01, fmt, colorForRole } from "./utils";
 import { CONFIG } from "./config/constants";
 
 const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
+
+const MAX_TONE_SEQUENCES_PER_TICK = 8;
+const NOTE_DURATION = 0.11;
+const NOTE_GAP = 0.05;
+
+const NEED_THRESHOLD_KEYS: Record<string, string> = {
+  food: "food-hungry",
+  water: "water-thirsty",
+  rest: "rest-tired",
+  sleep: "sleep-tired",
+  warmth: "warmth-cold",
+  health: "health-low",
+  security: "security-unsettled",
+  mood: "mood-low",
+};
+
+const NEED_TONE_SEQUENCES: Record<string, number[]> = {
+  food: [0, 2, 4],
+  water: [1, 3, 5],
+  rest: [2, 1, 0],
+  sleep: [3, 1, 3],
+  warmth: [4, 2, 0],
+  health: [5, 3, 1],
+  security: [2, 4, 5],
+  mood: [1, 4, 2],
+};
+
+const JOB_TONE_SEQUENCES: Record<string, number[]> = {
+  ":job/eat": [0, 3, 5],
+  ":job/warm-up": [4, 2, 4],
+  ":job/sleep": [5, 2, 0],
+  ":job/hunt": [3, 1, 4],
+  ":job/chop-tree": [2, 0, 2],
+  ":job/mine": [1, 3, 1],
+  ":job/harvest-wood": [2, 4, 2],
+  ":job/harvest-fruit": [0, 4, 1],
+  ":job/harvest-grain": [1, 5, 2],
+  ":job/harvest-stone": [3, 5, 3],
+  ":job/farm": [0, 2, 0],
+  ":job/smelt": [5, 4, 2],
+  ":job/build-house": [1, 2, 3],
+  ":job/improve": [4, 5, 4],
+  ":job/haul": [2, 5, 2],
+  ":job/deliver-food": [0, 1, 2],
+  ":job/build-wall": [3, 2, 1],
+  ":job/builder": [4, 3, 2],
+  ":job/build-structure": [2, 3, 4],
+};
+
+const toSequence = (notes: number[], octaveShift: number = 0) =>
+  notes.map((note) => getScaleFrequency(note, octaveShift));
 
 const normalizeTileKey = (rawKey: string) => {
   const trimmed = rawKey.trim();
@@ -59,9 +111,10 @@ export function App() {
   const [tick, setTick] = useState(0);
    const [snapshot, setSnapshot] = useState<any>(null);
      const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
-     const [traces, setTraces] = useState<Trace[]>([]);
-    const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
+  const [traces, setTraces] = useState<Trace[]>([]);
+  const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
   const aliveAgentsRef = useRef<Set<number>>(new Set());
+  const prevSnapshotRef = useRef<any>(null);
   const initialFocusRef = useRef(false);
   const [focusPos, setFocusPos] = useState<[number, number] | null>(null);
   const [focusTrigger, setFocusTrigger] = useState(0);
@@ -104,6 +157,79 @@ export function App() {
     }
     aliveAgentsRef.current = currentAlive;
   }, [getAliveAgents]);
+
+  const handleTickAudio = useCallback((nextSnapshot: any) => {
+    if (!nextSnapshot) return;
+    const prevSnapshot = prevSnapshotRef.current;
+    prevSnapshotRef.current = nextSnapshot;
+    if (!prevSnapshot) return;
+
+    const getField = (obj: any, key: string) =>
+      obj?.[key] ?? obj?.[key.replace(/-/g, "_")] ?? obj?.[key.replace(/-(\w)/g, (_: string, c: string) => c.toUpperCase())];
+
+    const sequences: number[][] = [];
+
+    const prevJobs = new Map<string, any>();
+    (prevSnapshot.jobs ?? []).forEach((job: any) => {
+      if (job?.id) {
+        prevJobs.set(String(job.id), job);
+      }
+    });
+    const nextJobIds = new Set<string>();
+    (nextSnapshot.jobs ?? []).forEach((job: any) => {
+      if (job?.id) {
+        nextJobIds.add(String(job.id));
+      }
+    });
+    prevJobs.forEach((job, jobId) => {
+      if (!nextJobIds.has(jobId)) {
+        const jobType = String(job?.type ?? ":job/unknown");
+        const notes = JOB_TONE_SEQUENCES[jobType] ?? [0, 1, 0];
+        sequences.push(toSequence(notes));
+      }
+    });
+
+    const prevAgents = new Map<number, any>();
+    (prevSnapshot.agents ?? []).forEach((agent: any) => {
+      if (typeof agent?.id === "number") {
+        prevAgents.set(agent.id, agent);
+      }
+    });
+
+    (nextSnapshot.agents ?? []).forEach((agent: any) => {
+      if (typeof agent?.id !== "number") return;
+      const prevAgent = prevAgents.get(agent.id);
+      if (!prevAgent) return;
+      const status = agent.status ?? {};
+      const alive = status["alive?"] ?? status.alive ?? true;
+      if (!alive) return;
+      const prevNeeds = prevAgent.needs ?? {};
+      const nextNeeds = agent.needs ?? {};
+      const thresholds =
+        getField(agent, "need-thresholds") ?? getField(agent, "needThresholds") ?? getField(agent, "need_thresholds") ?? {};
+      Object.entries(NEED_THRESHOLD_KEYS).forEach(([needKey, thresholdKey]) => {
+        const threshold = getField(thresholds, thresholdKey);
+        const prevValue = getField(prevNeeds, needKey);
+        const nextValue = getField(nextNeeds, needKey);
+        if (typeof threshold !== "number" || typeof prevValue !== "number" || typeof nextValue !== "number") {
+          return;
+        }
+        if (prevValue >= threshold && nextValue < threshold) {
+          const notes = NEED_TONE_SEQUENCES[needKey] ?? [1, 0, 1];
+          sequences.push(toSequence(notes, 0));
+        }
+      });
+    });
+
+    sequences.slice(0, MAX_TONE_SEQUENCES_PER_TICK).forEach((sequence, index) => {
+      playToneSequence(sequence, {
+        noteDuration: NOTE_DURATION,
+        gap: NOTE_GAP,
+        startDelay: index * 0.08,
+        gain: 0.9,
+      });
+    });
+  }, []);
 
   const focusOnAgent = useCallback((agent: Agent) => {
     if (!hasPos(agent)) return;
@@ -178,6 +304,7 @@ export function App() {
           const state = normalizeSnapshot(m.state ?? {});
           setTick(state.tick ?? 0);
           setSnapshot(state);
+          prevSnapshotRef.current = state;
           if (state.map) {
             setMapConfig(state.map as HexConfig);
           }
@@ -189,9 +316,11 @@ export function App() {
         }
         if (m.op === "tick") {
           setTick(m.data?.tick ?? 0);
-          setSnapshot(normalizeSnapshot(m.data?.snapshot ?? null));
+          const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
+          setSnapshot(nextSnapshot);
           playTone(440, 0.08);
-          handleDeathTone(m.data?.snapshot ?? null);
+          handleDeathTone(nextSnapshot);
+          handleTickAudio(nextSnapshot);
         }
         if (m.op === "trace") {
           const incoming = m.data as Trace;
@@ -206,6 +335,7 @@ export function App() {
              setSelectedAgentId(null);
             const state = normalizeSnapshot(m.state ?? {});
             setSnapshot(state);
+            prevSnapshotRef.current = state;
             if (state.map) {
               setMapConfig(state.map as HexConfig);
             }
@@ -290,12 +420,13 @@ export function App() {
             (state.ledger && Object.keys(state.ledger).length > 0)
           );
 
-          if (hasData) {
-              setTick(state.tick ?? 0);
-              setSnapshot(state);
-             if (state.map) {
-               setMapConfig(state.map as HexConfig);
-             }
+            if (hasData) {
+                setTick(state.tick ?? 0);
+                setSnapshot(state);
+                prevSnapshotRef.current = state;
+               if (state.map) {
+                 setMapConfig(state.map as HexConfig);
+               }
              if (!initialFocusRef.current) {
                focusOnTownCenter(state);
                initialFocusRef.current = true;
@@ -369,7 +500,7 @@ export function App() {
     client.send(payload);
   };
 
-   const handleCellSelect = (cell: [number, number], agentId: number | null) => {
+    const handleCellSelect = (cell: [number, number], agentId: number | null) => {
       if (buildMode) {
         client.sendPlaceWallGhost(cell);
       }
@@ -377,19 +508,9 @@ export function App() {
       setSelectedAgentId(agentId);
     };
 
-   const placeShrineAtSelected = () => {
-     if (!selectedCell) return;
-     client.send({ op: "place_shrine", pos: selectedCell });
-   };
-
    const handleQueueBuild = (type: string, pos: [number, number], config?: { stockpile?: { resource?: string; max_qty?: number } }) => {
-     client.sendQueueBuild(type, pos, config?.stockpile);
-   };
-
-   const mouthpieceId = useMemo(() => {
-    if (!snapshot?.levers) return null;
-    return snapshot.levers?.["mouthpiece-agent-id"] ?? snapshot.levers?.mouthpiece_agent_id ?? null;
-  }, [snapshot?.levers]);
+      client.sendQueueBuild(type, pos, config?.stockpile);
+    };
   const agents = useMemo(() => {
     if (!snapshot?.agents) return [];
     return snapshot.agents as Agent[];
@@ -473,15 +594,10 @@ export function App() {
     }
   }, [agents, jobs, selectedAgent]);
 
-  const setMouthpieceToSelected = () => {
-    if (selectedAgentId == null) return;
-    client.send({ op: "appoint_mouthpiece", agent_id: selectedAgentId });
-  };
-
-  const applyWorldSize = () => {
-    if (worldWidth == null || worldHeight == null) return;
-    reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
-  };
+   const applyWorldSize = () => {
+     if (worldWidth == null || worldHeight == null) return;
+     reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
+   };
 
   return (
     <div
@@ -533,63 +649,34 @@ export function App() {
 
         <ResourceTotalsPanel totals={stockpileTotals} />
 
-        {/* Time controls */}
-        <TickControls
-           onTick={sendTick}
-           onReset={() => reset(1, undefined, treeDensity)}
-           onPlaceShrine={placeShrineAtSelected}
-           onSetMouthpiece={setMouthpieceToSelected}
-           canPlaceShrine={!!selectedCell}
-           canSetMouthpiece={selectedAgentId != null}
-           isRunning={isRunning}
-           onToggleRun={toggleRun}
-         />
-
-        {/* FPS controls */}
-        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-           <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>FPS Control</h3>
-           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-             <label style={{ fontSize: 12 }}>
-               {fps} FPS:
-             </label>
-             <input
-               type="range"
-               min={1}
-               max={120}
-               value={fps}
-               onChange={(e) => {
-                 const val = parseInt(e.target.value, 10);
-                 if (!isNaN(val)) setFpsValue(val);
-               }}
-               style={{ flex: 1 }}
-             />
-           </div>
-         </div>
-
-        {/* Third view: Selected + Agents under the tile view */}
-        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, maxHeight: 320, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)" }}>
-          <SelectedPanel
-            selectedCell={selectedCell}
-            selectedTile={selectedTile}
-            selectedTileItems={selectedTileItems}
-            selectedTileAgents={selectedTileAgents}
-            selectedAgentId={selectedAgentId}
-            selectedAgent={selectedAgent}
-            mouthpieceId={mouthpieceId}
+         {/* Time controls */}
+         <TickControls
+            onTick={sendTick}
+            onReset={() => reset(1, undefined, treeDensity)}
+            isRunning={isRunning}
+            onToggleRun={toggleRun}
+            tick={tick}
+            fps={fps}
+            onSetFps={setFpsValue}
           />
-          <div style={{ marginTop: 12 }}>
-            <AgentList agents={agents} jobs={jobs} collapsible onFocusAgent={focusOnAgent} />
-          </div>
-        </div>
-        <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />
 
-        {/* Tick counter display */}
-        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-          <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Tick Counter</h3>
-          <div style={{ fontSize: 16, fontWeight: "bold", textAlign: "center" }}>
-            {tick}
-          </div>
+          {/* Selected Panel */}
+          <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)", minHeight: 200 }}>
+            <SelectedPanel
+              selectedCell={selectedCell}
+              selectedTile={selectedTile}
+              selectedTileItems={selectedTileItems}
+              selectedTileAgents={selectedTileAgents}
+              selectedAgentId={selectedAgentId}
+              selectedAgent={selectedAgent}
+            />
          </div>
+
+        {/* Factions Panel */}
+        <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)", minHeight: 200 }}>
+          <FactionsPanel agents={agents} jobs={jobs} collapsible onFocusAgent={focusOnAgent} />
+        </div>
+         <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />
        </div>
 
        <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
