@@ -1,0 +1,15 @@
+## Build / Run / Watch Commands
+- Backend deps: `clojure -P` inside `/backend` to download dependencies.
+- Backend dev server: `clojure -M:server` from `/backend` (prints http://localhost:3000).
+- Backend hot reload loop: `clojure -X:watch-server` for filesystem watch + restart.
+- Backend REPL: `clojure -M:server -r` to expose the same ns plus an interactive prompt.
+- Backend packaging: no uberjar task yet; if needed, add `io.github.clojure/tools.build` scripts under `/backend/build.clj`.
+- Frontend install: `npm install --prefix web` to pull dependencies (locks via package-lock.json).
+- Frontend dev server: `npm run dev --prefix web` (Vite default port 5173, proxies manually via browser dev tools to backend).
+- Frontend production build: `npm run build --prefix web` (runs `tsc -b` then `vite build`).
+- Frontend preview: `npm run preview --prefix web` serves the dist bundle locally.
+- Type-check only: `npm exec --prefix web tsc --noEmit` for quick verification without bundling.
+- Clean artifacts: remove `web/node_modules` or `web/dist`; backend currently generates no build artifacts.
+ - Watch canvas assets: use browser dev tools + React strict mode double invocations to catch side effects early.
+- PM2 orchestration: Servers are managed by PM2 and automatically restart/recompile on code changes. Wait for `/healthz` to be available before testing changes.
+- Backend and frontend are always running with hot reload - backend uses file watchers, frontend uses Vite HMR.

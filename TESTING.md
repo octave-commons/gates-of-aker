@@ -1,0 +1,12 @@
+## Testing & Single-Test Guidance
+- Backend test harness: `clojure -X:test` for full suite or use test runner patterns.
+- Backend full run example: `clojure -X:test :patterns '[:all]'`.
+- Backend single test example: `clojure -X:test :only 'fantasia.sim.core-test/tick-advances-world'`.
+- Backend coverage report: `clojure -X:coverage` generates LCOV report in `backend/target/coverage/lcov.info`.
+- Frontend test scripts: `npm test`, `npm run test:watch`, `npm run test:coverage`.
+- Frontend single test example: `npm test -- App.test.tsx`.
+- Use deterministic seeds where possible (`sim/reset` accepts `:seed`) to make manual repro scripts reliable.
+- Record reproduction steps in `/docs/notes` when bugs require multi-stage setups.
+- Do not skip adding tests once the harness exists; include at least one targeted test for every defect fix.
+- For temporary manual verification, capture expected WS payloads via browser network tab and link them in PR notes.
+- Keep CI scripts (once created) in `.github/workflows`; mirror commands listed here exactly.

@@ -13,6 +13,13 @@ type CameraState = {
   zoom: number;
 };
 
+type SpeechBubble = {
+  agentId: number;
+  text: string;
+  interactionType: string;
+  timestamp: number;
+};
+
 type SimulationCanvasProps = {
   snapshot: any;
   mapConfig: HexConfig | null;
@@ -25,6 +32,7 @@ type SimulationCanvasProps = {
   showRelationships?: boolean;
   showNames?: boolean;
   showStats?: boolean;
+  speechBubbles?: SpeechBubble[];
 };
 
 export function SimulationCanvas({
@@ -39,6 +47,7 @@ export function SimulationCanvas({
   showRelationships = true,
   showNames = true,
   showStats = true,
+  speechBubbles = [],
 }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -393,13 +402,13 @@ export function SimulationCanvas({
            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.6);
          }
 
-         if (tile?.structure === "warehouse") {
-           ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
-           ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
-           ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
-           ctx.lineWidth = 2;
-           ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
-           
+          if (tile?.structure === "warehouse") {
+            ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
+            ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
+            
            // Add roof detail
            ctx.fillStyle = "#757575";
            ctx.beginPath();
@@ -408,7 +417,62 @@ export function SimulationCanvas({
            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.5, py - CONFIG.canvas.HEX_SIZE * 0.3);
            ctx.closePath();
            ctx.fill();
-         }
+          }
+
+          if (tile?.structure === "temple") {
+            ctx.fillStyle = "#1a237e";
+            ctx.beginPath();
+            ctx.moveTo(px, py - CONFIG.canvas.HEX_SIZE * 0.4);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.1);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.25);
+            ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.25);
+            ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add pillars
+            ctx.fillStyle = "#3949ab";
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.25, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.1, CONFIG.canvas.HEX_SIZE * 0.3);
+            ctx.fillRect(px + CONFIG.canvas.HEX_SIZE * 0.15, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.1, CONFIG.canvas.HEX_SIZE * 0.3);
+          }
+
+          if (tile?.structure === "school") {
+            ctx.fillStyle = "#795548";
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.4);
+            ctx.strokeStyle = "#4e342e";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.4);
+            
+            // Add roof
+            ctx.fillStyle = "#5d4037";
+            ctx.beginPath();
+            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.2);
+            ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.45);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.2);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          if (tile?.structure === "library") {
+            ctx.fillStyle = "#4e342e";
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.25, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.5);
+            ctx.strokeStyle = "#3e2723";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.25, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.5);
+            
+            // Add roof
+            ctx.fillStyle = "#6d4c41";
+            ctx.beginPath();
+            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.25);
+            ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.5);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.25);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add book symbol
+            ctx.fillStyle = "#8d6e63";
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.1, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.15);
+          }
      }
      ctx.globalAlpha = 1;
      ctx.strokeStyle = "#111";
@@ -619,6 +683,54 @@ export function SimulationCanvas({
       drawStatPips(x, y, stats, baseSize);
     };
 
+    const drawSpeechBubble = (x: number, y: number, text: string, bubbleAge: number) => {
+      const fontSize = Math.max(8, Math.min(12, CONFIG.canvas.HEX_SIZE * 0.25));
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+
+      const paddingX = 6;
+      const paddingY = 4;
+      const textMetrics = ctx.measureText(text);
+      const textWidth = textMetrics.width;
+      const textHeight = fontSize;
+
+      const bubbleWidth = textWidth + paddingX * 2;
+      const bubbleHeight = textHeight + paddingY * 2;
+      const bubbleX = x - bubbleWidth / 2;
+      const bubbleY = y - CONFIG.canvas.HEX_SIZE * 0.6 - bubbleHeight;
+
+      const maxAge = 3000;
+      const fadeAlpha = Math.max(0, 1 - bubbleAge / maxAge);
+
+      ctx.save();
+      ctx.globalAlpha = fadeAlpha;
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.beginPath();
+      ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 4);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const tailSize = 6;
+      ctx.beginPath();
+      ctx.moveTo(x, bubbleY + bubbleHeight);
+      ctx.lineTo(x - tailSize, bubbleY + bubbleHeight);
+      ctx.lineTo(x, bubbleY + bubbleHeight + tailSize);
+      ctx.lineTo(x + tailSize, bubbleY + bubbleHeight);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#333";
+      ctx.fillText(text, x, bubbleY + bubbleHeight - paddingY);
+
+      ctx.restore();
+    };
+
     const drawRelationshipLinks = () => {
       if (!showRelationships) return;
       const agents = snapshot.agents ?? [];
@@ -719,13 +831,21 @@ export function SimulationCanvas({
       }
 
       if (showNames && camera.zoom > 1.1 && agent.name) {
-        ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
-        ctx.font = `${CONFIG.canvas.HEX_SIZE * 0.22}px serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        ctx.fillText(String(agent.name), ax, ay - CONFIG.canvas.HEX_SIZE * 0.45);
-      }
-    }
+         ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
+         ctx.font = `${CONFIG.canvas.HEX_SIZE * 0.22}px serif`;
+         ctx.textAlign = "center";
+         ctx.textBaseline = "bottom";
+         ctx.fillText(String(agent.name), ax, ay - CONFIG.canvas.HEX_SIZE * 0.45);
+       }
+
+       const bubble = speechBubbles.find((b) => b.agentId === agentId);
+       if (bubble) {
+         const bubbleAge = Date.now() - bubble.timestamp;
+         if (bubbleAge < 3000) {
+           drawSpeechBubble(ax, ay, bubble.text, bubbleAge);
+         }
+       }
+     }
 
     ctx.restore();
 

@@ -22,7 +22,8 @@ const jobTypeColors: Record<string, string> = {
   ":job/builder": "#5c6bc0",
   ":job/improve": "#26a69a",
   ":job/mine": "#546e7a",
-  ":job/smelt": "#ef6c00"
+  ":job/smelt": "#ef6c00",
+  ":job/scribe": "#9c27b0"
 };
 
 const jobTypeNames: Record<string, string> = {
@@ -43,7 +44,8 @@ const jobTypeNames: Record<string, string> = {
   ":job/builder": "Builder",
   ":job/improve": "Improve",
   ":job/mine": "Mine",
-  ":job/smelt": "Smelt"
+  ":job/smelt": "Smelt",
+  ":job/scribe": "Scribe"
 };
 
 export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: JobQueuePanelProps) {

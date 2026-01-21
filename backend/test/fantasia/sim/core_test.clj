@@ -44,15 +44,19 @@
 
 (deftest initial-world-structure
   (let [world (core/initial-world {:seed 99})
-        ids (map :id (:agents world))]
+        agents (:agents world)
+        ids (map :id agents)
+        player-agents (filter #(= (:faction %) :player) agents)
+        player-ids (map :id player-agents)]
     (is (= 99 (:seed world)))
     (is (= :hex (get-in world [:map :kind])))
     (is (= :pointy (get-in world [:map :layout])))
     (is (map? (:map world)))
     (is (map? (:tiles world)))
-    (is (= 16 (count ids)))
-    (is (= (set (range 16)) (set ids)))
-    (is (every? #(spatial/in-bounds? world (:pos %)) (:agents world)))))
+    (is (<= 16 (count ids)))
+    (is (= 16 (count player-ids)))
+    (is (= (set (range 16)) (set player-ids)))
+    (is (every? #(spatial/in-bounds? world (:pos %)) agents))))
 
 
 

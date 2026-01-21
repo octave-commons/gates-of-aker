@@ -50,27 +50,48 @@
             warmth' (f/clamp01 (+ (- warmth warmth-decay) warmth-bonus))
             food' (f/clamp01 (- (get current-needs :food 0.7) food-decay))
             sleep' (f/clamp01 (- (get current-needs :sleep 0.7) sleep-decay))
-            rest' (f/clamp01 (+ (get current-needs :rest 0.7) rest-change))
+             rest' (f/clamp01 (+ (get current-needs :rest 0.7) rest-change))
             social' (f/clamp01 (- (get current-needs :social 0.55) social-decay))
             health (get current-needs :health 1.0)
             heat-damage (if (> warmth' const/heat-damage-threshold) const/heat-damage-per-tick 0.0)
             health' (f/clamp01 (- health starvation-health-decay heat-damage))
+            nearby-tiles (when pos
+                           (concat [pos] (hex/neighbors pos)
+                                   (take 6 (mapcat hex/neighbors (hex/neighbors pos)))))
+            nearby-structures (set (keep (fn [p]
+                                       (get-in world [:tiles (vector (first p) (second p)) :structure]))
+                                     nearby-tiles))
+            has-house? (contains? nearby-structures :house)
+            has-temple? (contains? nearby-structures :temple)
+            has-school? (contains? nearby-structures :school)
+            has-library? (contains? nearby-structures :library)
+            nearby-tree? (some (fn [p]
+                               (= :tree (get-in world [:tiles (vector (first p) (second p)) :resource])))
+                             nearby-tiles)
+            env-mood-bonus (reduce + 0.0
+                                   (keep identity
+                                         [(when has-house? const/mood-bonus-house)
+                                          (when has-temple? const/mood-bonus-temple)
+                                          (when has-school? const/mood-bonus-school)
+                                          (when has-library? const/mood-bonus-library)
+                                          (when nearby-tree? const/mood-bonus-trees)]))
             current-mood (get current-needs :mood 0.5)
-            mood-change (+ (cond
-                            (< warmth' 0.25) -0.015
-                            (< warmth' 0.4) -0.008
-                            (> warmth' const/heat-damage-threshold) -0.02
-                            (> warmth' 0.75) 0.008
-                            (> warmth' 0.65) 0.004
-                            :else 0.0)
+             mood-change (+ env-mood-bonus
                           (cond
-                            (< social' 0.3) -0.01
-                            (> social' 0.7) 0.005
-                            :else 0.0)
-                          (cond
-                            (< rest' 0.3) -0.012
-                            (> rest' 0.75) 0.006
-                            :else 0.0))
+                             (< warmth' 0.25) -0.015
+                             (< warmth' 0.4) -0.008
+                             (> warmth' const/heat-damage-threshold) -0.02
+                             (> warmth' 0.75) 0.008
+                             (> warmth' 0.65) 0.004
+                             :else 0.0)
+                           (cond
+                             (< social' 0.3) -0.01
+                             (> social' 0.7) 0.005
+                             :else 0.0)
+                           (cond
+                             (< rest' 0.3) -0.012
+                             (> rest' 0.75) 0.006
+                             :else 0.0))
             mood' (f/clamp01 (+ current-mood mood-change))
             warmth-thoughts (cond
                               (< warmth' 0.15) ["I can't feel my toes" "It's unbearable cold"]
@@ -81,12 +102,18 @@
                               (> warmth' 0.75) ["Nice and toasty" "This fire feels good"]
                               (> warmth' 0.6) ["Finally comfortable" "Just right"]
                               :else [])
-            mood-thoughts (cond
-                            (> mood' 0.85) ["Feeling bright" "Life feels good" "So happy today"]
-                            (> mood' 0.7) ["Spirits are lifted" "A good moment"]
-                            (< mood' 0.25) ["Everything feels heavy" "Hard to smile"]
-                            (< mood' 0.4) ["A bit down" "Need a little joy"]
-                            :else [])
+             mood-thoughts (vec (concat
+                               (cond
+                                 (> mood' 0.85) ["Feeling bright" "Life feels good" "So happy today"]
+                                 (> mood' 0.7) ["Spirits are lifted" "A good moment"]
+                                 (< mood' 0.25) ["Everything feels heavy" "Hard to smile"]
+                                 (< mood' 0.4) ["A bit down" "Need a little joy"]
+                                 :else [])
+                               (when has-temple? ["A sense of peace here" "Sacred ground feels good"])
+                               (when has-library? ["Wisdom surrounds this place" "Knowledge brings comfort"])
+                               (when has-school? ["The future feels bright" "Learning fills the air"])
+                               (when (and has-house? (not has-library?)) ["Home is near" "Safe and warm"])
+                               (when nearby-tree? ["Nature's beauty" "Trees are calming"])))
             rest-thoughts (cond
                             (> rest' 0.8) ["Rested and ready" "Fully recharged"]
                             (< rest' 0.3) ["So tired" "Need proper rest"]

@@ -1,9 +1,15 @@
 (ns fantasia.sim.constants)
 
  ;; Agent needs constants
-(def ^:const campfire-radius 2)
-(def ^:const warmth-bonus-campfire 0.04)
-(def ^:const warmth-bonus-house 0.02)
+ (def ^:const campfire-radius 2)
+ (def ^:const warmth-bonus-campfire 0.04)
+ (def ^:const warmth-bonus-house 0.02)
+ (def ^:const mood-env-radius 2)
+ (def ^:const mood-bonus-house 0.003)
+ (def ^:const mood-bonus-temple 0.006)
+ (def ^:const mood-bonus-school 0.004)
+ (def ^:const mood-bonus-library 0.005)
+ (def ^:const mood-bonus-trees 0.002)
 (def ^:const base-warmth-decay 0.004)
 (def ^:const cold-warmth-decay-factor 0.012)
 (def ^:const heat-damage-threshold 0.85)

@@ -15,10 +15,18 @@ import {
   ResourceTotalsPanel,
   WorldInfoPanel,
   ThoughtsPanel,
+  LibraryPanel,
 } from "./components";
 import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
+
+type SpeechBubble = {
+  agentId: number;
+  text: string;
+  interactionType: string;
+  timestamp: number;
+};
 import { clamp01, fmt, colorForRole } from "./utils";
 import { CONFIG } from "./config/constants";
 
@@ -53,26 +61,34 @@ const NEED_TONE_SEQUENCES: Record<string, number[]> = {
 };
 
 const JOB_TONE_SEQUENCES: Record<string, number[]> = {
-  ":job/eat": [0, 3, 5],
-  ":job/warm-up": [4, 2, 4],
-  ":job/sleep": [5, 2, 0],
-  ":job/hunt": [3, 1, 4],
-  ":job/chop-tree": [2, 0, 2],
-  ":job/mine": [1, 3, 1],
-  ":job/harvest-wood": [2, 4, 2],
-  ":job/harvest-fruit": [0, 4, 1],
-  ":job/harvest-grain": [1, 5, 2],
-  ":job/harvest-stone": [3, 5, 3],
-  ":job/farm": [0, 2, 0],
-  ":job/smelt": [5, 4, 2],
-  ":job/build-house": [1, 2, 3],
-  ":job/improve": [4, 5, 4],
-  ":job/haul": [2, 5, 2],
-  ":job/deliver-food": [0, 1, 2],
-  ":job/build-wall": [3, 2, 1],
-  ":job/builder": [4, 3, 2],
-  ":job/build-structure": [2, 3, 4],
-};
+   ":job/eat": [0, 3, 5],
+   ":job/warm-up": [4, 2, 4],
+   ":job/sleep": [5, 2, 0],
+   ":job/hunt": [3, 1, 4],
+   ":job/chop-tree": [2, 0, 2],
+   ":job/mine": [1, 3, 1],
+   ":job/harvest-wood": [2, 4, 2],
+   ":job/harvest-fruit": [0, 4, 1],
+   ":job/harvest-grain": [1, 5, 2],
+   ":job/harvest-stone": [3, 5, 3],
+   ":job/farm": [0, 2, 0],
+   ":job/smelt": [5, 4, 2],
+   ":job/build-house": [1, 2, 3],
+   ":job/improve": [4, 5, 4],
+   ":job/haul": [2, 5, 2],
+   ":job/deliver-food": [0, 1, 2],
+   ":job/build-wall": [3, 2, 1],
+   ":job/builder": [4, 3, 2],
+   ":job/build-structure": [2, 3, 4],
+ };
+
+const SOCIAL_TONE_SEQUENCES: Record<string, number[]> = {
+   "Small talk": [0, 2, 4],
+   "Gossip": [1, 3, 5],
+   "Debate": [4, 2, 0, 2, 4],
+   "Ritual": [0, 2, 4, 2, 0],
+   "Teaching": [2, 4, 2],
+ };
 
 const toSequence = (notes: number[], octaveShift: number = 0) =>
   notes.map((note) => getScaleFrequency(note, octaveShift));
@@ -109,12 +125,14 @@ const normalizeSnapshot = (state: any) => {
 };
 
 export function App() {
-  const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
-  const [tick, setTick] = useState(0);
-   const [snapshot, setSnapshot] = useState<any>(null);
-     const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
-  const [traces, setTraces] = useState<Trace[]>([]);
-  const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
+   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
+   const [tick, setTick] = useState(0);
+    const [snapshot, setSnapshot] = useState<any>(null);
+      const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
+   const [traces, setTraces] = useState<Trace[]>([]);
+   const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
+   const [books, setBooks] = useState<Record<string, any>>({});
+   const [selectedBookId, setSelectedBookId] = useState<string | undefined>(undefined);
   const aliveAgentsRef = useRef<Set<number>>(new Set());
   const prevSnapshotRef = useRef<any>(null);
   const initialFocusRef = useRef(false);
@@ -127,6 +145,7 @@ export function App() {
 
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+  const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
 
   const getAgentPath = (agentId: number): PathPoint[] => {
     return agentPaths[agentId] ?? [];
@@ -237,6 +256,16 @@ export function App() {
     });
   }, []);
 
+  const handleSocialSound = useCallback((interactionType: string) => {
+    const notes = SOCIAL_TONE_SEQUENCES[interactionType] ?? [0, 2, 0];
+    const sequence = toSequence(notes);
+    playToneSequence(sequence, {
+      noteDuration: NOTE_DURATION,
+      gap: NOTE_GAP,
+      gain: 0.6,
+    });
+  }, []);
+
   const focusOnAgent = useCallback((agent: Agent) => {
     if (!hasPos(agent)) return;
     const [q, r] = agent.pos as AxialCoords;
@@ -284,20 +313,28 @@ export function App() {
    } | null>(null);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !e.repeat) {
-        e.preventDefault();
-        toggleRun();
-      }
-    };
+     const handleKeyDown = (e: KeyboardEvent) => {
+       if (e.code === "Space" && !e.repeat) {
+         e.preventDefault();
+         toggleRun();
+       }
+     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("click", markUserInteraction);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("click", markUserInteraction);
-    };
-  }, [isRunning]);
+     window.addEventListener("keydown", handleKeyDown);
+     window.addEventListener("click", markUserInteraction);
+     return () => {
+       window.removeEventListener("keydown", handleKeyDown);
+       window.removeEventListener("click", markUserInteraction);
+     };
+   }, [isRunning]);
+
+   useEffect(() => {
+     const interval = setInterval(() => {
+       const now = Date.now();
+       setSpeechBubbles((prev) => prev.filter((bubble) => now - bubble.timestamp < 3000));
+     }, 500);
+     return () => clearInterval(interval);
+   }, []);
 
 
   const client = useMemo(() => {
@@ -329,27 +366,53 @@ export function App() {
           handleTickAudio(nextSnapshot);
         }
         if (m.op === "trace") {
-          const incoming = m.data as Trace;
-          setTraces((prev) => {
-            const next = [...prev, incoming];
-            return next.slice(Math.max(0, next.length - CONFIG.data.MAX_TRACES));
-           });
+            const incoming = m.data as Trace;
+            setTraces((prev) => {
+              const next = [...prev, incoming];
+              return next.slice(Math.max(0, next.length - CONFIG.data.MAX_TRACES));
+            });
          }
-          if (m.op === "reset") {
-             setTraces([]);
-             setSelectedCell(null);
-             setSelectedAgentId(null);
-            const state = normalizeSnapshot(m.state ?? {});
-            setSnapshot(state);
-            prevSnapshotRef.current = state;
-            if (state.map) {
-              setMapConfig(state.map as HexConfig);
-            }
-            aliveAgentsRef.current = getAliveAgents(state);
-           initialFocusRef.current = false;
-           focusOnTownCenter(state);
-           initialFocusRef.current = true;
-          }
+         if (m.op === "books") {
+           setBooks(m.data?.books ?? {});
+         }
+         if (m.op === "reset") {
+              setTraces([]);
+              setSelectedCell(null);
+              setSelectedAgentId(null);
+              setSpeechBubbles([]);
+             const state = normalizeSnapshot(m.state ?? {});
+             setSnapshot(state);
+             prevSnapshotRef.current = state;
+             if (state.map) {
+               setMapConfig(state.map as HexConfig);
+             }
+             aliveAgentsRef.current = getAliveAgents(state);
+            initialFocusRef.current = false;
+            focusOnTownCenter(state);
+            initialFocusRef.current = true;
+           }
+        if (m.op === "social_interaction") {
+           const si = m.data as any;
+           if (si && typeof si.agent_1_id === "number" && typeof si.agent_2_id === "number") {
+             const interactionName = (si.interaction_type || "social") as string;
+             handleSocialSound(interactionName);
+             setSpeechBubbles((prev) => [
+               ...prev,
+               {
+                 agentId: si.agent_1_id,
+                 text: interactionName,
+                 interactionType: interactionName,
+                 timestamp: Date.now()
+               },
+               {
+                 agentId: si.agent_2_id,
+                 text: interactionName,
+                 interactionType: interactionName,
+                 timestamp: Date.now()
+               }
+             ]);
+           }
+         }
         if (m.op === "tiles") {
            setSnapshot((prev: any) => {
              if (!prev) return prev;
@@ -648,6 +711,7 @@ export function App() {
           showRelationships={showRelationships}
           showNames={showNames}
           showStats={showStats}
+          speechBubbles={speechBubbles}
         />
       </div>
 
@@ -810,14 +874,20 @@ export function App() {
              </span>
              </div>
 
-           {!tracesCollapsed && (
-             <div style={{ marginTop: 8 }}>
-               <TraceFeed traces={traces} />
-             </div>
-           )}
-          </div>
+            {!tracesCollapsed && (
+              <div style={{ marginTop: 8 }}>
+                <TraceFeed traces={traces} />
+              </div>
+            )}
 
-         <ThoughtsPanel
+            <LibraryPanel
+              books={books}
+              selectedBookId={selectedBookId}
+              onSelectBook={setSelectedBookId}
+            />
+           </div> 
+
+          <ThoughtsPanel
            agents={agents}
            selectedAgent={selectedAgent}
            collapsible

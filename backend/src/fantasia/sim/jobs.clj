@@ -1,35 +1,38 @@
 (ns fantasia.sim.jobs
    (:require [clojure.set :as set]
-             [clojure.string :as str]
-             [fantasia.sim.biomes :as biomes]
-             [fantasia.sim.hex :as hex]
-             [fantasia.sim.constants :as const]))
+              [clojure.string :as str]
+              [fantasia.dev.logging :as log]
+              [fantasia.sim.biomes :as biomes]
+              [fantasia.sim.constants :as const]
+              [fantasia.sim.hex :as hex]
+              [fantasia.sim.scribes :as scribes]))
 
 (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
 (defn parse-key-pos [[q r]] [q r])
 
 (def job-priorities
-  {:job/eat 100
-    :job/warm-up 95
-    :job/build-fire 70
-    :job/sleep 90
-    :job/hunt 75
-    :job/chop-tree 60
-    :job/mine 60
-   :job/harvest-wood 58
-   :job/harvest-fruit 58
-   :job/harvest-grain 58
-   :job/harvest-stone 58
-   :job/farm 58
-   :job/smelt 57
-   :job/build-house 55
-    :job/improve 52
-    :job/haul 50
+   {:job/eat 100
+     :job/warm-up 95
+     :job/build-fire 70
+     :job/sleep 90
+     :job/hunt 75
+     :job/chop-tree 60
+     :job/mine 60
+    :job/harvest-wood 58
+    :job/harvest-fruit 58
+    :job/harvest-grain 58
+    :job/harvest-stone 58
+    :job/farm 58
+    :job/smelt 57
+    :job/build-house 55
+     :job/improve 52
+     :job/haul 50
     :job/deliver-food 45
-     :job/build-wall 40
-     :job/builder 38
-     :job/build-structure 35})
+      :job/build-wall 40
+      :job/builder 38
+      :job/build-structure 35
+      :job/scribe 40})
 
 (def ^:private food-resources
   #{:fruit :berry :raw-meat :cooked-meat :stew :food})
@@ -70,30 +73,36 @@
     :quarry {:job-type :job/mine :max-jobs 3}
     :workshop {:job-type :job/builder :max-jobs 2}
     :improvement-hall {:job-type :job/improve :max-jobs 1}
-    :smelter {:job-type :job/smelt :max-jobs 1}})
+    :smelter {:job-type :job/smelt :max-jobs 1}
+    :library {:job-type :job/scribe :max-jobs 1}})
 
 (def improvable-structures
-  #{:lumberyard :orchard :granary :farm :quarry :workshop :smelter :warehouse})
+  #{:lumberyard :orchard :granary :farm :quarry :workshop :smelter :warehouse :library})
 
 (def build-structure-options
-  [:stockpile :lumberyard :orchard :granary :farm :quarry :warehouse :smelter :improvement-hall :workshop :road])
+  [:stockpile :house :lumberyard :orchard :granary :farm :quarry :warehouse :smelter :improvement-hall :workshop :library :temple :school :road])
 
 (def unique-structures
-  #{:workshop :smelter :improvement-hall})
+  #{:workshop :smelter :improvement-hall :temple :school :library})
 
 (defn create-job [job-type target]
    (let [target-pos (cond
                      (sequential? target) target
                      :else [0 0])]
      (when target-pos
-       (let [job {:id (random-uuid)
+        (let [job {:id (random-uuid)
                   :type job-type
                   :target target-pos
                   :worker-id nil
-                  :progress 0.0
-                  :required 1.0
-                  :state :pending
-                  :priority (get job-priorities job-type 50)}]
+                   :progress 0.0
+                   :required 1.0
+                   :state :pending
+                   :priority (get job-priorities job-type 50)}]
+         (log/log-info "[JOB:CREATE]"
+                       {:type (:type job)
+                        :id (:id job)
+                        :target (:target job)
+                        :priority (:priority job)})
          job))))
 
 (defn create-hunt-job
@@ -131,6 +140,11 @@
 (defn assign-job! [world job agent-id]
   (let [job' (assoc job :worker-id agent-id :state :claimed)
         job-id (:id job)]
+    (log/log-info "[JOB:ASSIGN]"
+                  {:agent-id agent-id
+                   :job-id job-id
+                   :type (:type job')
+                   :priority (:priority job')})
     (-> world
         (update-in [:agents agent-id]
                    (fn [agent]
@@ -162,16 +176,25 @@
       world)))
 
 (defn auto-assign-jobs! [world]
-  (reduce (fn [w agent]
-            (let [alive? (get-in agent [:status :alive?] true)]
-              (if (and (player-agent? agent) alive? (nil? (:current-job agent)))
-                (let [w' (claim-next-job! w (:id agent))]
-                  (if (= w w')
-                    (mark-agent-idle w (:id agent))
-                    w'))
-                w)))
-          world
-          (:agents world)))
+  (loop [w world
+         agents (:agents world)
+         assigned 0]
+    (if (empty? agents)
+      (do
+        (if (pos? assigned)
+          (log/log-info "[JOB:AUTO-ASSIGN]" {:assigned assigned})
+          (log/log-debug "[JOB:AUTO-ASSIGN]" {:assigned assigned}))
+        w)
+      (let [agent (first agents)
+            alive? (get-in agent [:status :alive?] true)]
+        (if (and (player-agent? agent) alive? (nil? (:current-job agent)))
+          (let [w' (claim-next-job! w (:id agent))
+                assigned' (if (= w w') assigned (inc assigned))
+                w'' (if (= w w')
+                     (mark-agent-idle w (:id agent))
+                     w')]
+            (recur w'' (rest agents) assigned'))
+          (recur w (rest agents) assigned))))))
 
 (defn add-item! [world pos resource qty]
    (let [[q r] pos
@@ -651,9 +674,27 @@
 
        :road
        (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :road :resource nil :level 1})]
+          world')
+
+       :house
+       (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :house :resource nil :bed-capacity 2 :occupied-beds 0 :residents [] :level 1})]
          world')
 
-      world)))
+       :temple
+       (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :temple :resource nil :level 1})]
+         world')
+
+       :school
+       (let [world' (assoc-in world [:tiles k] {:terrain :ground :structure :school :resource nil :level 1})]
+         world')
+
+       :library
+       (let [world' (-> world
+                          (assoc-in [:tiles k] {:terrain :ground :structure :library :resource nil :level 1})
+                          (assoc-in [:books] []))]
+         world')
+
+       world)))
 
 (defn complete-chop-tree! [world job]
    (let [[q r] (:target job)
@@ -781,7 +822,30 @@
                   (update-in [:agents agent-id :inventory] dissoc :food))
               w-final)))
 
-       world)))
+        world)))
+
+(defn- job-outcome [job]
+  (case (:type job)
+    :job/build-wall "Built wall"
+    :job/build-house "Built house"
+    :job/build-fire "Built campfire"
+    :job/build-structure "Built structure"
+    :job/builder "Built structure"
+    :job/improve "Improved structure"
+    :job/mine "Mined resource"
+    :job/smelt "Smelted ore"
+    :job/chop-tree "Chopped tree"
+    :job/farm "Harvested farm"
+    :job/harvest-wood "Harvested wood"
+    :job/harvest-fruit "Harvested fruit"
+    :job/harvest-grain "Harvested grain"
+    :job/harvest-stone "Harvested stone"
+    :job/haul "Hauled items"
+    :job/eat "Consumed food"
+    :job/warm-up "Warmed up"
+    :job/sleep "Slept"
+    :job/deliver-food "Delivered food"
+    "Completed job"))
 
 (defn complete-job! [world agent-id]
    (if-let [job-id (get-in world [:agents agent-id :current-job])]
@@ -803,12 +867,20 @@
                      :job/harvest-fruit (complete-harvest-job! world job agent-id)
                      :job/harvest-grain (complete-harvest-job! world job agent-id)
                      :job/harvest-stone (complete-harvest-job! world job agent-id)
-                     :job/haul (complete-haul! world job agent-id)
-                     :job/eat (complete-eat! world job agent-id)
-                     :job/warm-up (complete-warm-up! world job agent-id)
-                     :job/sleep (complete-sleep! world job agent-id)
-                     :job/deliver-food (complete-deliver-food! world job agent-id)
-                     world)
+                      :job/haul (complete-haul! world job agent-id)
+                      :job/eat (complete-eat! world job agent-id)
+                      :job/warm-up (complete-warm-up! world job agent-id)
+                      :job/sleep (complete-sleep! world job agent-id)
+                      :job/deliver-food (complete-deliver-food! world job agent-id)
+                      :job/scribe (scribes/complete-scribe-job! world agent-id)
+                      world)
+            _ (when job
+                (log/log-info "[JOB:COMPLETE]"
+                              {:agent-id agent-id
+                               :job-id job-id
+                               :type (:type job)
+                               :target (:target job)
+                               :outcome (job-outcome job)}))
             reassigned (claim-next-job! world agent-id)]
         (if (= reassigned world)
           (mark-agent-idle world agent-id)
@@ -826,6 +898,14 @@
                world' (if (= (:type job) :job/sleep)
                         (assoc-in world' [:agents agent-id :status :asleep?] true)
                         world')]
+           (log/log-debug "[JOB:PROGRESS]"
+                          {:agent-id agent-id
+                           :job-id job-id
+                           :type (:type job)
+                           :delta delta
+                           :new-progress new-progress
+                           :required (:required job)
+                           :state new-state})
 
            (if (>= new-progress (:required job))
              (complete-job! world' agent-id)
@@ -920,7 +1000,9 @@
                                   :from-pos pos :to-pos sp-pos :resource res :qty min-qty
                                   :state :pickup :stage :pickup))))))]
     (when (seq jobs-to-add)
-      )
+      (log/log-info "[JOB:AUTO-GEN]"
+                    {:source :haul
+                     :count (count jobs-to-add)}))
     (reduce (fn [w job] (update w :jobs conj job))
             world
             jobs-to-add)))
@@ -971,19 +1053,59 @@
                       fire-site (when should-build-fire
                                        (when (< 0.2 (rand))
                                          (find-build-fire-site w pos)))]
-                (cond-> w
-                  (and (< food food-hungry) food-target (not has-eat-job?) (not already-has-job?))
-                  (add-job-to-world! (create-job :job/eat food-target))
-                  (and (< food food-hungry) (nil? food-target) deer-target (not has-hunt-job?) (not already-has-job?))
-                  (add-job-to-world! (create-hunt-job (:id deer-target) (:pos deer-target)))
-                  (and campfire-pos (< warmth warmth-cold) (not has-warm-job?) (not already-has-job?))
-                  (add-job-to-world! (create-job :job/warm-up campfire-pos))
-                  fire-site
-                  (add-job-to-world! (create-job :job/build-fire fire-site))
-                  (and (or (< sleep sleep-threshold) (< rest rest-threshold))
-                       (not has-sleep-job?)
-                       (not already-has-job?))
-                  (add-job-to-world! (create-job :job/sleep pos))))
+                (let [w1 (if (and (< food food-hungry) food-target (not has-eat-job?) (not already-has-job?))
+                           (do
+                             (log/log-info "[JOB:NEED-TRIGGER]"
+                                           {:agent-id agent-id
+                                            :need :food
+                                            :value food
+                                            :threshold food-hungry
+                                            :job :job/eat})
+                             (add-job-to-world! w (create-job :job/eat food-target)))
+                           w)
+                      w2 (if (and (< food food-hungry) (nil? food-target) deer-target (not has-hunt-job?) (not already-has-job?))
+                           (do
+                             (log/log-info "[JOB:NEED-TRIGGER]"
+                                           {:agent-id agent-id
+                                            :need :food
+                                            :value food
+                                            :threshold food-hungry
+                                            :job :job/hunt})
+                             (add-job-to-world! w1 (create-hunt-job (:id deer-target) (:pos deer-target))))
+                           w1)
+                      w3 (if (and campfire-pos (< warmth warmth-cold) (not has-warm-job?) (not already-has-job?))
+                           (do
+                             (log/log-info "[JOB:NEED-TRIGGER]"
+                                           {:agent-id agent-id
+                                            :need :warmth
+                                            :value warmth
+                                            :threshold warmth-cold
+                                            :job :job/warm-up})
+                             (add-job-to-world! w2 (create-job :job/warm-up campfire-pos)))
+                           w2)
+                      w4 (if fire-site
+                           (do
+                             (log/log-info "[JOB:NEED-TRIGGER]"
+                                           {:agent-id agent-id
+                                            :need :warmth
+                                            :value warmth
+                                            :threshold warmth-cold
+                                            :job :job/build-fire})
+                             (add-job-to-world! w3 (create-job :job/build-fire fire-site)))
+                           w3)
+                      w5 (if (and (or (< sleep sleep-threshold) (< rest rest-threshold))
+                                  (not has-sleep-job?)
+                                  (not already-has-job?))
+                           (do
+                             (log/log-info "[JOB:NEED-TRIGGER]"
+                                           {:agent-id agent-id
+                                            :need :sleep
+                                            :value (min sleep rest)
+                                            :threshold (min sleep-threshold rest-threshold)
+                                            :job :job/sleep})
+                             (add-job-to-world! w4 (create-job :job/sleep pos)))
+                           w4)]
+                  w5))
               w))
           world
           (:agents world)))
@@ -1106,6 +1228,10 @@
                           :when nearest]
                       (assoc (create-job :job/deliver-food sp-pos)
                              :from-pos nearest :to-pos sp-pos :resource :fruit :qty 1))]
+    (when (seq jobs-to-add)
+      (log/log-info "[JOB:AUTO-GEN]"
+                    {:source :deliver-food
+                     :count (count jobs-to-add)}))
     (reduce (fn [w job] (update w :jobs conj job))
             world
             jobs-to-add)))

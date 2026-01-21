@@ -1,92 +1,22 @@
 
-- [[OBSIDIAN]] - Obsidian Specific Instructions for knowledge graphing and plugins
-- [[2026-01-15-roadmap]] - Most current roadmap
-- [[README.md]] - Project overview, basic setup and testing commands, explains how to use it and what it is for.
+- [[OBSIDIAN]]  -> `OBSIDIAN.md` - Obsidian Specific Instructions for knowledge graphing and plugins
+- [[README]] -> `README.md`- Project overview, basic setup and testing commands, explains how to use it and what it is for.
 - [[HACK.md]] - High-level vision and inspirations
 - [[HOME]] - Obsidian home page, day to day thinking and note taking. Obsidian data views welcome.
+- [[2026-01-15-roadmap]] - Most current roadmap
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
 - [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
 - [[spec/2026-01-15-myth-engine.md]] - Myth engine
-
-## Mission & Scope
-- Maintain parity between backend simulation services, the React/Vite client, and supporting docs.
-- This document governs every directory in the repo; add nested AGENTS.md files for narrower overrides.
-- Favor incremental, reviewable changes; avoid sweeping refactors without prior discussion.
-- Default to reproducibility: include exact commands, seeds, and script names in PR descriptions.
-
+- [[MISSION]]
 - [[ESTIMATION]]
-## Directory Map
-- `/backend`: Clojure server exposing HTTP/WebSocket endpoints plus simulation logic in `fantasia.sim.*`.
-  - `/backend/src`: Source code organized by namespace (no test files here).
-  - `/backend/test`: All test files, matching namespace structure of `src`.
-- `/web`: React 19 + Vite + TypeScript UI for viewing and steering the myth debugger.
-- `/docs`: Notes, inbox thoughts, and long-form design commentary (`HACK.md`).
-- `/docs/notes`: Evergreen facts; prefer appending instead of in-place rewrites.
-## Toolchains & Dependencies
-- Backend: `clojure` CLI (deps.edn) with http-kit, reitit, cheshire, and project-local namespaces.
-- Backend Java requirement: JDK 17+ recommended to match deps.edn features; set `JAVA_HOME` explicitly when using SDKMAN.
-- Frontend: Node 20 LTS + npm; Vite handles dev/build, TypeScript is `strict` per tsconfig.
-- UI dependencies kept minimal (React, ReactDOM); add new libs only when debug UI truly needs them.
-- Package installs happen per-project (`npm install` inside `web`); avoid hoisting to repo root.
-- No Cursor (.cursor/rules) or GitHub Copilot instruction files presently exist; encode all rules here.
-- Preferred editors: IntelliJ + Cursive for Clojure, VS Code / WebStorm for TS; configure formatting to match sections below.
-- Containerized workflows should mount repo root and forward ports 3000 (backend) and 5173 (web dev).
-
-## Build / Run / Watch Commands
-- Backend deps: `clojure -P` inside `/backend` to download dependencies.
-- Backend dev server: `clojure -M:server` from `/backend` (prints http://localhost:3000).
-- Backend hot reload loop: `clojure -X:watch-server` for filesystem watch + restart.
-- Backend REPL: `clojure -M:server -r` to expose the same ns plus an interactive prompt.
-- Backend packaging: no uberjar task yet; if needed, add `io.github.clojure/tools.build` scripts under `/backend/build.clj`.
-- Frontend install: `npm install --prefix web` to pull dependencies (locks via package-lock.json).
-- Frontend dev server: `npm run dev --prefix web` (Vite default port 5173, proxies manually via browser dev tools to backend).
-- Frontend production build: `npm run build --prefix web` (runs `tsc -b` then `vite build`).
-- Frontend preview: `npm run preview --prefix web` serves the dist bundle locally.
-- Type-check only: `npm exec --prefix web tsc --noEmit` for quick verification without bundling.
-- Clean artifacts: remove `web/node_modules` or `web/dist`; backend currently generates no build artifacts.
- - Watch canvas assets: use browser dev tools + React strict mode double invocations to catch side effects early.
-- PM2 orchestration: Servers are managed by PM2 and automatically restart/recompile on code changes. Wait for `/healthz` to be available before testing changes.
-- Backend and frontend are always running with hot reload - backend uses file watchers, frontend uses Vite HMR.
-
-## Linting & Static Analysis
-- Backend linting: use `clj-kondo --lint src` (install globally or via npx-like `clojure -M:clj-kondo` once alias is added).
-- Static type checks rely on runtime invariants; prefer `clojure.spec`, `malli`, or custom predicate helpers in new code.
-- Frontend linting currently manual; align with ESLint defaults if introduced later.
-- For now, rely on TypeScript strict mode plus Vite build errors; fix `tsc` issues before committing.
-- Keep imports ordered: built-ins (React, std libs) -> internal modules -> relative files.
-- Enforce prettier-like style manually: two-space indentation, double quotes, trailing semicolons, single blank line between blocks.
-- Add `.editorconfig` if formatting drift becomes a problem; otherwise cite this section in reviews.
-- Document any temporary style deviations inline so future automation can encode them.
-
-## Logging Control
-- Backend uses `fantasia.dev.logging` with environment-based log levels via `LOG_LEVEL` env var.
-- Frontend uses controlled console logging via `VITE_LOG_LEVEL` env var, automatically applied during tests.
-- Available log levels (both stacks): `error`, `warn`, `info`, `debug` (default: `warn`).
-- Setting log level:
-  - Backend: `LOG_LEVEL=debug clojure -X:test` or export before running
-  - Frontend: `VITE_LOG_LEVEL=debug npm test` or set in `.env` file
-- Coverage reporting is configured to show summaries by default, not verbose file-by-file output.
-- Frontend test scripts:
-  - `npm test` - run tests with default logging (warn+)
-  - `npm run test:quiet` - run tests with minimal output
-  - `npm run test:debug` - run tests with full debug logging
-  - `npm run test:coverage` - run tests with summary coverage report
-  - `npm run test:coverage:verbose` - run tests with detailed coverage output
-
-## Testing & Single-Test Guidance
-- Backend test harness: `clojure -X:test` for full suite or use test runner patterns.
-- Backend full run example: `clojure -X:test :patterns '[:all]'`.
-- Backend single test example: `clojure -X:test :only 'fantasia.sim.core-test/tick-advances-world'`.
-- Backend coverage report: `clojure -X:coverage` generates LCOV report in `backend/target/coverage/lcov.info`.
-- Frontend test scripts: `npm test`, `npm run test:watch`, `npm run test:coverage`.
-- Frontend single test example: `npm test -- App.test.tsx`.
-- Use deterministic seeds where possible (`sim/reset` accepts `:seed`) to make manual repro scripts reliable.
-- Record reproduction steps in `/docs/notes` when bugs require multi-stage setups.
-- Do not skip adding tests once the harness exists; include at least one targeted test for every defect fix.
-- For temporary manual verification, capture expected WS payloads via browser network tab and link them in PR notes.
-- Keep CI scripts (once created) in `.github/workflows`; mirror commands listed here exactly.
-
+- [[DIRECTORIES]]
+- [[TOOLCHAINS]]
+- [[BUILD]]
+- [[LINTING]]
+- [[LOGGING]]
+- [[TESTING]]
+- [[orphaned files output]]
 ### Backend Test Directory Structure
 - All test files live in `/backend/test/` and mirror the namespace structure of `/backend/src/`.
 - Test namespace naming: `fantasia.some-ns-test` corresponds to `fantasia/some_ns.clj`.

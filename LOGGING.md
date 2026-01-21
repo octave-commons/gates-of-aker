@@ -1,0 +1,14 @@
+## Logging Control
+- Backend uses `fantasia.dev.logging` with environment-based log levels via `LOG_LEVEL` env var.
+- Frontend uses controlled console logging via `VITE_LOG_LEVEL` env var, automatically applied during tests.
+- Available log levels (both stacks): `error`, `warn`, `info`, `debug` (default: `warn`).
+- Setting log level:
+  - Backend: `LOG_LEVEL=debug clojure -X:test` or export before running
+  - Frontend: `VITE_LOG_LEVEL=debug npm test` or set in `.env` file
+- Coverage reporting is configured to show summaries by default, not verbose file-by-file output.
+- Frontend test scripts:
+  - `npm test` - run tests with default logging (warn+)
+  - `npm run test:quiet` - run tests with minimal output
+  - `npm run test:debug` - run tests with full debug logging
+  - `npm run test:coverage` - run tests with summary coverage report
+  - `npm run test:coverage:verbose` - run tests with detailed coverage output

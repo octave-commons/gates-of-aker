@@ -25,6 +25,6 @@
   (let [world {:map {:kind :hex :layout :pointy :bounds {:shape :rect :w 3 :h 3 :origin [0 0]}}
                 :tick 5 :seed 42}
         agent {:id 2 :pos [1 1]}
-        moved (spatial/move-agent world agent)]
+        moved (spatial/move-agent-with-collision-check world agent)]
     (is (spatial/in-bounds? world (:pos moved)))
     (is (not= (:pos agent) (:pos moved)))))

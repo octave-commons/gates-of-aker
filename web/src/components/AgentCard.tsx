@@ -27,7 +27,8 @@ const jobTypeNames: Record<string, string> = {
   ":job/builder": "Building",
   ":job/improve": "Improving",
   ":job/mine": "Mining",
-  ":job/smelt": "Smelting"
+  ":job/smelt": "Smelting",
+  ":job/scribe": "Writing"
 };
 
 export const AgentCard = memo(function AgentCard({ agent, compact = false, currentJob, onSelect }: AgentCardProps) {

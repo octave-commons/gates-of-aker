@@ -1,9 +1,10 @@
 (ns fantasia.sim.jobs.providers
    (:require [clojure.set :as set]
              [clojure.string :as str]
+             [fantasia.dev.logging :as log]
+             [fantasia.sim.constants :as const]
              [fantasia.sim.hex :as hex]
-             [fantasia.sim.jobs :as jobs]
-             [fantasia.sim.constants :as const]))
+             [fantasia.sim.jobs :as jobs]))
 
 (defn- parse-key-pos [k]
   (if (sequential? k)
@@ -296,6 +297,20 @@
    world
    (structure-providers world)))
 
+(defn generate-provider-scribe-jobs! [world]
+  (reduce
+   (fn [w provider]
+     (if (= (:job-type provider) :job/scribe)
+       (let [open (provider-open-slots w provider)
+              jobs (for [_ (range open)]
+                      (assoc (jobs/create-job :job/scribe (:pos provider))
+                             :provider-pos (:pos provider)))
+              w' (reduce (fn [acc job] (update acc :jobs conj job)) w jobs)]
+          w')
+        w))
+    world
+    (structure-providers world)))
+
 (defn generate-stockpile-haul-jobs! [world]
   (let [existing-keys (->> (:jobs world)
                            (filter #(= (:type %) :job/haul))
@@ -335,6 +350,7 @@
       (generate-provider-builder-jobs!)
       (generate-provider-improve-jobs!)
       (generate-provider-smelt-jobs!)
+      (generate-provider-scribe-jobs!)
       (generate-stockpile-haul-jobs!)))
 
 (defn seed-initial-jobs [world desired-count]
@@ -379,6 +395,12 @@
             (recur w remaining (inc idx) (inc attempts))))))))
 
 (defn auto-generate-jobs! [world]
-  (-> world
-      (jobs/generate-need-jobs!)
-      (generate-provider-jobs!)))
+  (let [before (count (:jobs world))
+        world' (-> world
+                   (jobs/generate-need-jobs!)
+                   (generate-provider-jobs!))
+        after (count (:jobs world'))
+        added (max 0 (- after before))]
+    (when (pos? added)
+      (log/log-info "[JOB:AUTO-GEN]" {:source :providers :count added :total after}))
+    world'))

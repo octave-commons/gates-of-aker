@@ -102,8 +102,12 @@
                       (broadcast! {:op "tick_health" :data {:target-ms target-ms :tick-ms tick-ms :health health}})
                       (when-let [ev (:event o)]
                         (broadcast! {:op "event" :data ev}))
-                      (doseq [tr (:traces o)]
-                        (broadcast! {:op "trace" :data tr}))
+                       (doseq [tr (:traces o)]
+                          (broadcast! {:op "trace" :data tr}))
+                       (when-let [bs (:books o)]
+                          (broadcast! {:op "books" :data {:books bs}}))
+                      (doseq [si (:social-interactions o)]
+                         (broadcast! {:op "social_interaction" :data si}))
                       (Thread/sleep (long (:ms @*runner)))))
                   (finally
                     (swap! *runner assoc :running? false :future nil))))]
@@ -129,11 +133,13 @@
             (let [n (int (or (:n msg) 1))
                   outs (sim/tick! n)]
               (doseq [o outs]
-                (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                (when-let [ev (:event o)]
-                  (broadcast! {:op "event" :data ev}))
-                (doseq [tr (:traces o)]
-                  (broadcast! {:op "trace" :data tr}))))
+                 (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                 (when-let [ev (:event o)]
+                   (broadcast! {:op "event" :data ev}))
+                 (doseq [tr (:traces o)]
+                   (broadcast! {:op "trace" :data tr}))
+                 (doseq [si (:social-interactions o)]
+                   (broadcast! {:op "social_interaction" :data si}))))
 
             "reset"
             (let [opts {:seed (long (or (:seed msg) 1))

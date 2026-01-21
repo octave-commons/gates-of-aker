@@ -1,8 +1,10 @@
 (ns fantasia.sim.tick.movement
-  (:require [fantasia.sim.spatial :as spatial]
-            [fantasia.sim.jobs :as jobs]
-            [fantasia.sim.pathing :as pathing]
-            [fantasia.sim.constants :as const]))
+   (:require [fantasia.dev.logging :as log]
+             [fantasia.sim.constants :as const]
+             [fantasia.sim.hex :as hex]
+             [fantasia.sim.jobs :as jobs]
+             [fantasia.sim.pathing :as pathing]
+             [fantasia.sim.spatial :as spatial]))
 
 (defn- agent-dexterity
   [agent]
@@ -76,23 +78,53 @@
            (if is-infant?
              [world agent]
              (if-let [job (jobs/get-agent-job world (:id agent))]
-                (let [current-pos (:pos agent)
-                      job-target (jobs/job-target-pos world job)]
-                  (cond
-                    (= (:type job) :job/haul)
-                    [world (handle-haul-job world agent job)]
+                 (let [current-pos (:pos agent)
+                       job-target (jobs/job-target-pos world job)]
+                   (cond
+                     (= (:type job) :job/haul)
+                     (let [agent' (handle-haul-job world agent job)]
+                       (log/log-debug "[MOVE:AGENT]"
+                                      {:agent-id (:id agent)
+                                       :from current-pos
+                                       :to (:pos agent')
+                                       :method :haul})
+                       [world agent'])
 
-                   (nil? job-target)
-                   [world agent]
+                    (nil? job-target)
+                    [world agent]
 
-                   (= current-pos job-target)
-                   (if (= (:type job) :job/hunt)
-                     [world agent]
-                     (let [world' (jobs/advance-job! world (:id agent) 0.2)]
-                       [world' (get-in world' [:agents (:id agent)])]))
+                    (= current-pos job-target)
+                    (do
+                      (log/log-debug "[JOB:ADJACENT]"
+                                     {:agent-id (:id agent)
+                                      :job-id (:id job)
+                                      :pos current-pos
+                                      :target job-target
+                                      :distance 0})
+                      (if (= (:type job) :job/hunt)
+                        [world agent]
+                        (let [world' (jobs/advance-job! world (:id agent) 0.2)]
+                          [world' (get-in world' [:agents (:id agent)])])))
 
-                    :else
-                    (let [agent' (move-toward-steps world agent job-target)]
-                      [world agent'])))
+                     :else
+                     (do
+                       (log/log-debug "[JOB:NOT-ADJACENT]"
+                                      {:agent-id (:id agent)
+                                       :job-id (:id job)
+                                       :pos current-pos
+                                       :target job-target
+                                       :distance (hex/distance current-pos job-target)})
+                       (let [agent' (move-toward-steps world agent job-target)]
+                         (log/log-debug "[MOVE:AGENT]"
+                                        {:agent-id (:id agent)
+                                         :from current-pos
+                                         :to (:pos agent')
+                                         :method :job-path})
+                         [world agent']))))
                 (let [agent' (move-random-steps world agent)]
+                  (log/log-debug "[MOVE:AGENT]"
+                                 {:agent-id (:id agent)
+                                  :from (:pos agent)
+                                  :to (:pos agent')
+                                  :method :random})
                   [world agent'])))))))

@@ -24,10 +24,16 @@
   (testing "Build-fire job generated for cold agent with wood"
     (let [world (initial/initial-world {})
           agent-id (-> world :agents first :id)
+          campfire-pos (:campfire world)
           world' (-> world
+                     (assoc :campfire nil :shrine nil)
+                     (cond-> campfire-pos
+                       (update-in [:tiles (vec campfire-pos)] dissoc :structure))
                      (assoc-in [:agents agent-id :needs :warmth] 0.2)
                      (assoc-in [:agents agent-id :inventory :wood] 1))]
-      (let [world'' (jobs/generate-need-jobs! world')]
+      (let [world'' (with-redefs [rand (fn [] 0.0)
+                                  jobs/find-build-fire-site (fn [_ _] [5 5])]
+                      (jobs/generate-need-jobs! world'))]
         (is (some #(= (:type %) :job/build-fire) (:jobs world'')))))))
 
 (deftest fire-job-not-generated-when-campfire-nearby
@@ -40,5 +46,4 @@
                      (assoc-in [:agents agent-id :needs :warmth] 0.2)
                      (assoc-in [:agents agent-id :inventory :wood] 1))]
       (let [world'' (jobs/generate-need-jobs! world')]
-        (is (not (some #(= (:type %) :job/build-fire) (:jobs world'')))))))
-
+        (is (not (some #(= (:type %) :job/build-fire) (:jobs world''))))))))

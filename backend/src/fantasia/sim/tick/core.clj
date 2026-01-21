@@ -88,28 +88,31 @@
         player-agents (filter #(= (:faction %) :player) agents3)
         pairs (agents/interactions player-agents)
         talk-step (reduce
-                   (fn [{:keys [world agents mentions traces]} [speaker listener]]
-                     (let [speaker' (get agents (:id speaker) speaker)
-                           listener' (get agents (:id listener) listener)
-                           social-step (social/trigger-social-interaction! world speaker' listener')
-                           world' (:world social-step)
-                           agent-1 (:agent-1 social-step)
-                           agent-2 (:agent-2 social-step)
-                           agents' (-> agents
-                                       (assoc (:id agent-1) agent-1)
-                                       (assoc (:id agent-2) agent-2))
-                           packet (agents/choose-packet world' agent-1)
-                           res (agents/apply-packet-to-listener world' agent-2 agent-1 packet)
-                           agents'' (assoc agents' (:id agent-2) (:listener res))]
-                       {:world world'
-                        :agents agents''
-                        :mentions (into mentions (:mentions res))
-                        :traces (into traces (:traces res))}))
-                 {:world w4
-                  :agents (vec agents3)
-                  :mentions (:mentions ev-step)
-                  :traces (:traces ev-step)}
-                 pairs)
+                   (fn [{:keys [world agents mentions traces social-interactions]} [speaker listener]]
+                      (let [speaker' (get agents (:id speaker) speaker)
+                            listener' (get agents (:id listener) listener)
+                            social-step (social/trigger-social-interaction! world speaker' listener')
+                            world' (:world social-step)
+                            agent-1 (:agent-1 social-step)
+                            agent-2 (:agent-2 social-step)
+                            interaction (:interaction social-step)
+                            agents' (-> agents
+                                        (assoc (:id agent-1) agent-1)
+                                        (assoc (:id agent-2) agent-2))
+                            packet (agents/choose-packet world' agent-1)
+                            res (agents/apply-packet-to-listener world' agent-2 agent-1 packet)
+                            agents'' (assoc agents' (:id agent-2) (:listener res))]
+                        {:world world'
+                         :agents agents''
+                         :mentions (into mentions (:mentions res))
+                         :traces (into traces (:traces res))
+                         :social-interactions (into social-interactions [interaction])}))
+                  {:world w4
+                   :agents (vec agents3)
+                   :mentions (:mentions ev-step)
+                   :traces (:traces ev-step)
+                   :social-interactions []}
+                  pairs)
         agents4 (:agents talk-step)
         w5 (:world talk-step)
         reproduction-step (reduce
@@ -189,12 +192,14 @@
                   (assoc :ledger ledger2)
                   (assoc :recent-events recent')
                   (assoc :traces traces'))]
-    {:world world'
+     {:world world'
      :out {:tick t
            :event ev
            :mentions (:mentions inst-step)
            :traces (:traces inst-step)
            :attribution attr
+           :social-interactions (:social-interactions talk-step)
+           :books (:books w5)
            :snapshot (world/snapshot world' attr)}}))
 
 (defn tick! [n]

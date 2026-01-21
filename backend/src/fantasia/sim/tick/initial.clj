@@ -226,12 +226,14 @@
                    [:patron/fire :judgment] 0.35
                    [:deity/storm :awe] 0.25
                    [:judgment :awe] 0.25}
-              :ledger {}
-              :memories {}
-               :recent-events []
-              :recent-max const/default-recent-max
-              :traces []
-              :trace-max const/default-trace-max
+               :ledger {}
+               :memories {}
+                :recent-events []
+               :recent-max const/default-recent-max
+               :traces []
+               :trace-max const/default-trace-max
+               :books {}
+               :books-list []
               :cultures {"culture-1" (traces/create-culture "culture-1"
                                                          "The Northern Covenant"
                                                          [:fire :winter :judgment :community :sacrifice]
