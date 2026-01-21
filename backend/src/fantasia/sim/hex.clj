@@ -147,8 +147,29 @@
       (long (:w bounds)))))
 
 (defn rect-height
-  "Return the height of the bounds if :rect, otherwise nil."
+  "Return height of bounds if :rect, otherwise nil."
   [hex-map]
   (let [{:keys [bounds]} hex-map]
     (when (= :rect (:shape bounds))
       (long (:h bounds)))))
+
+(defn ring
+  "Return all hex positions at distance `r` from `center` (axial coordinates)."
+  [center r]
+  (if (= r 0)
+    [center]
+    (let [start (add center (nth pointy-dirs 4))
+          dirs pointy-dirs]
+      (loop [results []
+             current start
+             d-idx 0
+             steps 0]
+        (if (>= steps (* 6 r))
+          results
+          (let [next-pos (add current (nth dirs (mod (inc d-idx) 6)))]
+            (recur (conj results current)
+                   next-pos
+                   (if (and (> steps 0) (zero? (mod steps r)))
+                     (inc d-idx)
+                     d-idx)
+                   (inc steps))))))))

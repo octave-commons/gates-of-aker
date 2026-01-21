@@ -152,7 +152,7 @@
 (defn- scatter-fruit! [world rng]
   (let [hex-map (:map world)
         total-tiles (bounds-tile-count hex-map)
-        desired (max 6 (long (Math/ceil (* total-tiles 0.0005))))
+        desired (max 20 (long (Math/ceil (* total-tiles 0.002))))
         positions (loop [acc #{}
                          attempts 0]
                      (if (or (>= (count acc) desired)
@@ -250,8 +250,8 @@
              world-with-quarry-resource (ensure-quarry-resource world-with-buildings rand-gen)
              world-with-warehouse (update-in world-with-quarry-resource
                                             [:tiles (tile-key 0 0)] merge {:structure :warehouse})
-             world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
-             world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 40)]
+              world-with-stockpile (jobs/create-stockpile! world-with-warehouse [0 0] :fruit 200)
+              world-with-food (jobs/add-to-stockpile! world-with-stockpile [0 0] :fruit 200)]
        (println "Warehouse created:" (get-in world-with-food [:tiles (tile-key 0 0)]))
       (println "Stockpiles:" (:stockpiles world-with-food))
       (println "Items:" (:items world-with-food))

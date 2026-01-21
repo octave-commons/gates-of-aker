@@ -1,19 +1,22 @@
 (ns fantasia.sim.tick.core
-  (:require [fantasia.sim.agents :as agents]
-            [fantasia.sim.events.runtime :as runtime]
-            [fantasia.sim.institutions :as institutions]
-            [fantasia.sim.world :as world]
-            [fantasia.sim.jobs :as jobs]
-            [fantasia.sim.jobs.providers :as job-providers]
-            [fantasia.sim.hex :as hex]
-            [fantasia.sim.pathing]
-            [fantasia.sim.time :as sim-time]
-            [fantasia.sim.tick.initial :as initial]
-            [fantasia.sim.tick.combat :as combat]
-            [fantasia.sim.tick.trees :as trees]
-            [fantasia.sim.tick.movement :as movement]
-            [fantasia.sim.tick.mortality :as mortality]
-            [fantasia.sim.constants :as const]))
+   (:require [fantasia.sim.agents :as agents]
+             [fantasia.sim.events.runtime :as runtime]
+             [fantasia.sim.institutions :as institutions]
+             [fantasia.sim.world :as world]
+             [fantasia.sim.jobs :as jobs]
+             [fantasia.sim.jobs.providers :as job-providers]
+             [fantasia.sim.hex :as hex]
+             [fantasia.sim.pathing]
+             [fantasia.sim.time :as sim-time]
+             [fantasia.sim.tick.initial :as initial]
+             [fantasia.sim.tick.combat :as combat]
+             [fantasia.sim.tick.trees :as trees]
+             [fantasia.sim.tick.movement :as movement]
+             [fantasia.sim.tick.mortality :as mortality]
+             [fantasia.sim.tick.food-decay :as food-decay]
+             [fantasia.sim.reproduction :as reproduction]
+             [fantasia.sim.houses :as houses]
+             [fantasia.sim.constants :as const]))
 
 (def ^:dynamic *state (atom (initial/initial-world 1)))
 
@@ -43,12 +46,13 @@
                  (assoc :temperature temperature)
                  (assoc :daylight daylight)
                  (assoc :cold-snap cold-snap))
-          w1 (assoc w1 :calendar (sim-time/calendar-info w1))
-           w2 (-> w1
-                    (trees/spread-trees!)
-                    (job-providers/auto-generate-jobs!)
-                    (jobs/auto-assign-jobs!)
-                    (trees/drop-tree-fruits!))
+           w1 (assoc w1 :calendar (sim-time/calendar-info w1))
+            w2 (-> w1
+                     (trees/spread-trees!)
+                     (job-providers/auto-generate-jobs!)
+                     (jobs/auto-assign-jobs!)
+                     (trees/drop-tree-fruits!)
+                     (food-decay/decay-food!))
          [w3 agents1] (loop [w w2
                              agents (:agents w2)
                              acc-w w2
@@ -95,32 +99,80 @@
                   :traces (:traces ev-step)}
                  pairs)
        agents4 (:agents talk-step)
+       reproduction-step (reduce
+                          (fn [{:keys [agents next-agent-id] :as acc} [parent1 parent2]]
+                            (let [world-with-next-id (assoc w4 :next-agent-id next-agent-id)
+                                  can-reproduce? (reproduction/can-reproduce? world-with-next-id parent1 parent2)]
+                              (if can-reproduce?
+                                (let [{:keys [child-agent next-agent-id]} (reproduction/create-child-agent world-with-next-id parent1 parent2 t)
+                                      agents' (conj agents child-agent)
+                                      parents (vec agents')
+                                      parent1-updated (assoc parents (:id parent1) (assoc parent1 :carrying-child (:id child-agent)))]
+                                  {:agents parent1-updated :next-agent-id next-agent-id})
+                                acc)))
+                          {:agents agents4 :next-agent-id (or (:next-agent-id w4) 0)}
+                          pairs)
+       agents5 (:agents reproduction-step)
+       growth-step (reduce
+                    (fn [agents agent]
+                      (if (:child-stage agent)
+                        (let [[updated-agent new-stage released?] (reproduction/advance-child-growth agent t)
+                              id (:id agent)
+                              agents' (assoc agents id updated-agent)]
+                          (if (and released? (not= :infant new-stage))
+                            (let [parent-id (get-in agent [:parent-ids 0])]
+                              (if parent-id
+                                (update-in agents' [parent-id :carrying-child] (fn [x] (when (= x id) nil)))
+                                agents'))
+                            agents'))
+                        agents))
+                    agents5
+                    (:agents reproduction-step))
+       agents6 growth-step
+       housing-step (reduce
+                       (fn [{:keys [agents world] :as acc} agent]
+                         (let [rest-need (get-in agent [:needs :rest] 0.5)
+                               is-tired? (< rest-need 0.3)
+                               has-house? (get agent :house-id nil)]
+                           (if (and is-tired? (not has-house?))
+                             (let [nearby-house (houses/find-nearby-house-with-empty-bed world (:pos agent) 10)]
+                               (if nearby-house
+                                 (let [world' (houses/assign-agent-to-house world (:id agent) nearby-house)
+                                       agent' (assoc agent :house-id nearby-house)]
+                                   {:agents (assoc agents (:id agent) agent')
+                                    :world world'})
+                                 acc))
+                             acc)))
+                       {:agents agents6 :world w4}
+                       agents6)
+       agents7 (:agents housing-step)
        bcasts (institutions/broadcasts w4)
-        inst-step (reduce
-                   (fn [{:keys [agents mentions traces]} b]
-                     (let [res (institutions/apply-broadcast w4 agents b)]
-                       {:agents (:agents res)
-                        :mentions (into mentions (:mentions res))
-                        :traces (into traces (:traces res))}))
-                 {:agents agents4
-                   :mentions (:mentions talk-step)
-                   :traces (:traces talk-step)}
-                 bcasts)
-       agents5 (:agents inst-step)
+         inst-step (reduce
+                    (fn [{:keys [agents mentions traces]} b]
+                      (let [res (institutions/apply-broadcast w4 agents b)]
+                        {:agents (:agents res)
+                         :mentions (into mentions (:mentions res))
+                         :traces (into traces (:traces res))}))
+                  {:agents agents7
+                    :mentions (:mentions talk-step)
+                    :traces (:traces talk-step)}
+                  bcasts)
+       agents8 (:agents inst-step)
        ledger-info (world/update-ledger w4 (:mentions inst-step))
-        ledger2 (:ledger ledger-info)
-        attr (:attribution ledger-info)
+         ledger2 (:ledger ledger-info)
+         attr (:attribution ledger-info)
        recent' (if ev
-                 (->> (concat (:recent-events w4)
-                              [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
-                      (take-last (:recent-max w4))
-                      vec)
-                 (:recent-events w4))
+                  (->> (concat (:recent-events w4)
+                               [(select-keys ev [:id :type :tick :pos :impact :witness-score :witnesses])])
+                       (take-last (:recent-max w4))
+                       vec)
+                  (:recent-events w4))
        traces' (->> (concat (:traces w4) (:traces inst-step))
-                    (take-last (:trace-max w4))
-                    vec)
+                     (take-last (:trace-max w4))
+                     vec)
        world' (-> w4
-                  (assoc :agents agents5)
+                  (assoc :agents agents8)
+                  (assoc :next-agent-id (:next-agent-id reproduction-step))
                   (assoc :ledger ledger2)
                   (assoc :recent-events recent')
                   (assoc :traces traces'))]

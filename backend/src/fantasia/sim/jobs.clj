@@ -61,14 +61,14 @@
 (def max-structure-level 3)
 
 (def job-provider-config
-  {:lumberyard {:job-type :job/harvest-wood :max-jobs 3}
-   :orchard {:job-type :job/harvest-fruit :max-jobs 2}
-   :granary {:job-type :job/harvest-grain :max-jobs 2}
-   :farm {:job-type :job/farm :max-jobs 2}
-   :quarry {:job-type :job/mine :max-jobs 3}
-   :workshop {:job-type :job/builder :max-jobs 2}
-   :improvement-hall {:job-type :job/improve :max-jobs 1}
-   :smelter {:job-type :job/smelt :max-jobs 1}})
+   {:lumberyard {:job-type :job/harvest-wood :max-jobs 3}
+    :orchard {:job-type :job/harvest-fruit :max-jobs 1}
+    :granary {:job-type :job/harvest-grain :max-jobs 2}
+    :farm {:job-type :job/farm :max-jobs 2}
+    :quarry {:job-type :job/mine :max-jobs 3}
+    :workshop {:job-type :job/builder :max-jobs 2}
+    :improvement-hall {:job-type :job/improve :max-jobs 1}
+    :smelter {:job-type :job/smelt :max-jobs 1}})
 
 (def improvable-structures
   #{:lumberyard :orchard :granary :farm :quarry :workshop :smelter :warehouse})
@@ -107,10 +107,10 @@
         (update :jobs conj job)
         (assoc-in [:jobs-by-id job-id] job))))
 
-(defn- remove-job-from-world! [world job-id]
-  (-> world
-      (update :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))
-      (update :jobs-by-id dissoc job-id)))
+(defn remove-job-from-world! [world job-id]
+   (-> world
+       (update :jobs (fn [js] (vec (remove #(= (:id %) job-id) js))))
+       (update :jobs-by-id dissoc job-id)))
 
 (defn- update-job-in-world! [world job]
   (let [job-id (:id job)]
@@ -496,11 +496,14 @@
             wood-use (- required log-use)
             [w1 _] (consume-resource-global! world :log log-use)
             [w2 _] (consume-resource-global! w1 :wood wood-use)
-             world' (-> w2
-                        (assoc-in [:tiles k :terrain] :ground)
-                        (assoc-in [:tiles k :structure] :house)
-                        (assoc-in [:tiles k :resource] nil)
-                        (assoc-in [:tiles k :level] 1))]
+              world' (-> w2
+                         (assoc-in [:tiles k :terrain] :ground)
+                         (assoc-in [:tiles k :structure] :house)
+                         (assoc-in [:tiles k :bed-capacity] 2)
+                         (assoc-in [:tiles k :occupied-beds] 0)
+                         (assoc-in [:tiles k :residents] [])
+                         (assoc-in [:tiles k :resource] nil)
+                         (assoc-in [:tiles k :level] 1))]
         world')
       world)))
 

@@ -41,6 +41,17 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
 
   const jobTypeName = currentJob ? (jobTypeNames[currentJob.type] ?? String(currentJob.type).replace(":job/", "")) : null;
 
+  const mood = needs.mood ?? 0.5;
+  const moodLabel = mood < 0.3 ? "DEPRESSED" : mood > 0.8 ? "HAPPY" : "OK";
+  const moodColor = mood < 0.3 ? "#4A148C" : mood > 0.8 ? "#9C27B0" : "#7B1FA2";
+
+  const parentIds = (agent as any).parentIds ?? (agent as any)["parent-ids"] ?? [];
+  const childrenIds = (agent as any).childrenIds ?? (agent as any)["children-ids"] ?? [];
+  const childStage = (agent as any).childStage ?? (agent as any)["child-stage"] ?? null;
+  const carryingChild = (agent as any).carryingChild ?? (agent as any)["carrying-child"] ?? null;
+  const childStageLabel = childStage ? (String(childStage).toUpperCase()) : null;
+  const childStageIcon = childStage === "infant" ? "👶" : childStage === "child" ? "👦" : "";
+
   const clickable = typeof onSelect === "function";
 
   return (
@@ -58,10 +69,36 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
     }}
     >
        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontWeight: "bold", color: "#333" }}>
-            {(agent as any).name || <span>#{agent.id} <span style={{ fontWeight: "normal", color: "#666" }}>{agent.role ?? "unknown"}</span></span>}
-            {isAsleep && <span> 💤</span>}
-          </div>
+           <div style={{ fontWeight: "bold", color: "#333" }}>
+             {(agent as any).name || <span>#{agent.id} <span style={{ fontWeight: "normal", color: "#666" }}>{agent.role ?? "unknown"}</span></span>}
+             {isAsleep && <span> 💤</span>}
+           </div>
+           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+             <div style={{
+               backgroundColor: moodColor,
+               color: "#fff",
+               padding: "2px 6px",
+               borderRadius: 4,
+               fontSize: 11,
+               fontWeight: 600,
+               display: "inline-block"
+             }}>
+               {moodLabel}
+             </div>
+             {jobTypeName && (
+               <div style={{
+                 backgroundColor: "#f5f5f5",
+                 color: "#666",
+                 padding: "2px 6px",
+                 borderRadius: 4,
+                 fontSize: 11,
+                 display: "inline-block"
+               }}>
+                 {jobTypeName}
+               </div>
+             )}
+           </div>
+         </div>
           <div style={{
             backgroundColor: alive ? "#e8f5e9" : "#ffebee",
             color: alive ? "#2e7d32" : "#c62828",
@@ -83,45 +120,89 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
           }}>
             {String(causeOfDeath).replace(":", "").replace(/_/g, " ")}
           </div>
-        )}
-        {hasPos(agent) ? (
-          <div style={{
-            backgroundColor: "#e8e8e8",
-            padding: "2px 6px",
-            borderRadius: 4,
-            fontSize: 11,
-            fontFamily: "monospace"
-          }}>
-            ({agent.pos[0]}, {agent.pos[1]})
-          </div>
-        ) : (
-          <div style={{
-            backgroundColor: "#e8e8e8",
-            padding: "2px 6px",
-            borderRadius: 4,
-            fontSize: 11,
-            fontFamily: "monospace"
-          }}>
-            pos:n/a
-          </div>
-        )}
-      </div>
+         )}
+         {hasPos(agent) ? (
+           <div style={{
+             backgroundColor: "#e8e8e8",
+             padding: "2px 6px",
+             borderRadius: 4,
+             fontSize: 11,
+             fontFamily: "monospace"
+           }}>
+               ({agent.pos[0]}, {agent.pos[1]})
+             </div>
+           ) : (
+           <div style={{
+             backgroundColor: "#e8e8e8",
+             padding: "2px 6px",
+             borderRadius: 4,
+             fontSize: 11,
+             fontFamily: "monospace"
+           }}>
+              pos:n/a
+           </div>
+           )}
 
-      {jobTypeName && (
-        <div style={{ 
-          fontSize: 12, 
-          color: "#555", 
-          marginBottom: 4,
-          backgroundColor: "#f0f0f0",
-          padding: "2px 6px",
-          borderRadius: 3,
-          display: "inline-block"
-        }}>
-          {jobTypeName}
-        </div>
-      )}
+       {childStageLabel && (
+         <div style={{
+           backgroundColor: childStage === "infant" ? "#FFECB3" : "#C8E6C9",
+           color: childStage === "infant" ? "#FF6F00" : "#2E7D32",
+           padding: "2px 6px",
+           borderRadius: 4,
+           fontSize: 11,
+           fontWeight: 600,
+           display: "inline-block",
+           marginRight: 4
+         }}>
+           {childStageIcon} {childStageLabel}
+         </div>
+       )}
 
-      {Object.keys(needs).length > 0 && (
+       {carryingChild && (
+         <div style={{
+           backgroundColor: "#E1BEE7",
+           color: "#4A148C",
+           padding: "2px 6px",
+           borderRadius: 4,
+           fontSize: 11,
+           fontWeight: 600,
+           display: "inline-block",
+           marginRight: 4
+         }}>
+           🤱 CARRYING #{carryingChild}
+         </div>
+       )}
+
+       {parentIds.length > 0 && (
+         <div style={{
+           backgroundColor: "#F3E5F5",
+           color: "#4A148C",
+           padding: "2px 6px",
+           borderRadius: 4,
+           fontSize: 10,
+           fontWeight: 500,
+           display: "inline-block",
+           marginRight: 4
+         }}>
+           Parents: #{parentIds.join(", #")}
+         </div>
+       )}
+
+       {childrenIds.length > 0 && (
+         <div style={{
+           backgroundColor: "#FFF3E0",
+           color: "#E65100",
+           padding: "2px 6px",
+           borderRadius: 4,
+           fontSize: 10,
+           fontWeight: 500,
+           display: "inline-block"
+         }}>
+           Children: #{childrenIds.join(", #")}
+         </div>
+       )}
+
+       {Object.keys(needs).length > 0 && (
         <div style={{ marginBottom: 4 }}>
           {["mood", "food", "sleep", "warmth"].map((needKey) => {
             const value = needs[needKey];

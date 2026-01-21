@@ -167,23 +167,25 @@
   (+ base-tick min-interval (rand-int* rng (inc (- max-interval min-interval)))))
 
 (defn- should-drop-fruit?
-  "Return true when the tree should drop fruit on this tick."
+   "Return true when the tree should drop fruit on this tick."
   [tile current-tick rng]
   (let [last-drop (or (:last-fruit-drop tile) 0)
         turns-since (- current-tick last-drop)
-        min-interval 600
-        max-interval 1200
+        min-interval 300
+        max-interval 600
+        drop-chance 0.3
         scheduled (or (:next-fruit-drop tile)
                       (next-fruit-drop last-drop rng min-interval max-interval))]
     (and (>= turns-since min-interval)
-         (>= current-tick scheduled))))
+         (>= current-tick scheduled)
+         (< (.nextFloat rng) drop-chance))))
 
 (defn- perform-drop
-  "Add one fruit at a nearby tile and update tile timings."
+   "Add one fruit at a nearby tile and update tile timings."
   [w tile-key tile current-tick rng]
   (let [pos (parse-tile-key tile-key)
-        min-interval 600
-        max-interval 1200
+        min-interval 1200
+        max-interval 2400
         neighbors (->> (hex/neighbors pos)
                        (filter #(hex/in-bounds? (:map w) %))
                        vec)
