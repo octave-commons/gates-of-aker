@@ -10,6 +10,8 @@
 (def get-state tick/get-state)
 (def reset-world! tick/reset-world!)
 (def set-levers! tick/set-levers!)
+(def set-facet-limit! tick/set-facet-limit!)
+(def set-vision-radius! tick/set-vision-radius!)
 (def place-shrine! tick/place-shrine!)
 (def appoint-mouthpiece! tick/appoint-mouthpiece!)
 (def tick! tick/tick!)

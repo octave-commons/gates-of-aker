@@ -14,6 +14,8 @@
 (def get-state core/get-state)
 (def reset-world! core/reset-world!)
 (def set-levers! core/set-levers!)
+(def set-facet-limit! core/set-facet-limit!)
+(def set-vision-radius! core/set-vision-radius!)
 (def place-shrine! core/place-shrine!)
 (def appoint-mouthpiece! core/appoint-mouthpiece!)
 (def tick! core/tick!)

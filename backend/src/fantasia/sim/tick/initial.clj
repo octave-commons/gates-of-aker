@@ -231,12 +231,14 @@
                :jobs []
                :items {}
                :stockpiles {}
-               :levers {:iconography {:fire->patron 0.80
-                                      :lightning->storm 0.75
-                                      :storm->deity 0.85
-                                      :fire->patron/fire 0.80
-                                      :patron/fire->judgment 0.35}
-                          :mouthpiece-agent-id nil}
+                :levers {:iconography {:fire->patron 0.80
+                                       :lightning->storm 0.75
+                                       :storm->deity 0.85
+                                       :fire->patron/fire 0.80
+                                       :patron/fire->judgment 0.35}
+                           :mouthpiece-agent-id nil
+                           :facet-limit 16
+                           :vision-radius 10}
                :institutions
                {:temple {:id :temple
                         :name "Temple of Embers"

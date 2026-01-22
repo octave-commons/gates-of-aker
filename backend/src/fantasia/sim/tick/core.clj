@@ -39,6 +39,12 @@
 (defn set-levers! [levers]
   (swap! *state update :levers merge levers))
 
+(defn set-facet-limit! [limit]
+  (swap! *state assoc-in [:levers :facet-limit] limit))
+
+(defn set-vision-radius! [radius]
+  (swap! *state assoc-in [:levers :vision-radius] radius))
+
 (defn place-shrine! [pos]
   (swap! *state assoc :shrine pos))
 

@@ -426,16 +426,17 @@ export function App() {
              initialFocusRef.current = true;
            }
          }
-         if (m.op === "tick") {
-            console.log("[tick] Received tick:", m.data?.tick);
-            setTick(m.data?.tick ?? 0);
-            const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
-            console.log("[tick] Setting snapshot with", nextSnapshot?.agents?.length, "agents");
-            setSnapshot(nextSnapshot);
-            playTone(440, 0.08);
-            handleDeathTone(nextSnapshot);
-            handleTickAudio(nextSnapshot);
-          }
+          if (m.op === "tick") {
+             console.log("[tick] Received tick:", m.data?.tick);
+             setTick(m.data?.tick ?? 0);
+             const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
+             console.log("[tick] Setting snapshot with", nextSnapshot?.agents?.length, "agents");
+             setSnapshot(nextSnapshot);
+             setMemories(nextSnapshot?.memories ?? []);
+             playTone(440, 0.08);
+             handleDeathTone(nextSnapshot);
+             handleTickAudio(nextSnapshot);
+           }
               if (m.op === "tick_delta") {
                 const delta = m.data as any;
                 const tv = delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {};
@@ -701,8 +702,18 @@ export function App() {
       setSelectedAgentId(agentId);
     };
 
-   const handleQueueBuild = (type: string, pos: [number, number], config?: { stockpile?: { resource?: string; max_qty?: number } }) => {
+    const handleQueueBuild = (type: string, pos: [number, number], config?: { stockpile?: { resource?: string; max_qty?: number } }) => {
       client.sendQueueBuild(type, pos, config?.stockpile);
+     };
+
+    const handleFacetLimitChange = (limit: number) => {
+      setFacetLimit(limit);
+      client.send({ op: "set_facet_limit", limit });
+    };
+
+    const handleVisionRadiusChange = (radius: number) => {
+      setVisionRadius(radius);
+      client.send({ op: "set_vision_radius", radius });
     };
   const agents = useMemo(() => {
     if (!snapshot?.agents) return [];
@@ -953,6 +964,14 @@ export function App() {
                   onChange={(e) => setShowStats(e.target.checked)}
                 />
                 Stat pips
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={showMemories}
+                  onChange={(e) => setShowMemories(e.target.checked)}
+                />
+                Memory overlay
               </label>
             </div>
           </div>

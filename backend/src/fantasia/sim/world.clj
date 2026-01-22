@@ -78,7 +78,17 @@
                            (:ledger world)))
         :favor (:favor world)
         :faith (:faith world)
-        :deities (:deities world)}))
+        :deities (:deities world)
+        :memories (mapv (fn [m]
+                          {:id (:id m)
+                           :type (:type m)
+                           :location (:location m)
+                           :created-at (:created-at m)
+                           :strength (:strength m)
+                           :decay-rate (:decay-rate m)
+                           :entity-id (:entity-id m)
+                           :facets (:facets m)})
+                        (vals (:memories world)))}))
 
 (defn update-ledger
    "Apply decay + mentions to ledger and return {:ledger ledger2 :attr {...}}"

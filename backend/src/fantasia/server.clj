@@ -270,6 +270,14 @@
               (swap! *runner assoc :ms ms)
               (broadcast! {:op "runner_state" :running (:running? @*runner) :fps fps}))
 
+            "set_facet_limit"
+            (do (sim/set-facet-limit! (:limit msg))
+                (broadcast! {:op "facet_limit" :limit (:limit msg)}))
+
+            "set_vision_radius"
+            (do (sim/set-vision-radius! (:radius msg))
+                (broadcast! {:op "vision_radius" :radius (:radius msg)}))
+
              (ws-send! ch {:op "error" :message "unknown op"})))))))
 
 (def app
