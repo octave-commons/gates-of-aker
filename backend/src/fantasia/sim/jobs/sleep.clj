@@ -1,4 +1,5 @@
-(ns fantasia.sim.jobs.sleep)
+(ns fantasia.sim.jobs.sleep
+  (:require [fantasia.dev.logging :as log]))
 
 (defn create-sleep-job [pos]
   {:id (random-uuid)
@@ -10,8 +11,8 @@
    :state :pending})
 
 (defn complete-sleep! [world agent-id]
-  (println "[JOB:COMPLETE]" {:type :job/sleep :agent-id agent-id})
-  (assoc-in world [:agents agent-id :needs :sleep] 1.0))
+   (log/log-info "[JOB:COMPLETE]" {:type :job/sleep :agent-id agent-id})
+   (assoc-in world [:agents agent-id :needs :sleep] 1.0))
 
 (defn progress-sleep! [job delta]
   (let [new-progress (min (+ (:progress job) delta) (:required job))]

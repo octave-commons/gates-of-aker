@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WSClient, WSMessage } from "./ws";
 import { playDeathTone, playTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction, playBookCreatedTone, playHuntStartTone, playHuntAttackTone, playHuntKillTone } from "./audio";
+import { applyDelta } from "./utils";
 import {
   AgentList,
   FactionsPanel,
@@ -20,6 +21,7 @@ import {
   SplashScreen,
   MainMenu,
   OllamaTestPage,
+  VisibilityControlPanel,
 } from "./components";
 import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
@@ -151,9 +153,16 @@ export function App() {
   const [showNames, setShowNames] = useState(true);
   const [showStats, setShowStats] = useState(true);
 
-  const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
-  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
-  const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
+    const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
+    const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+    const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
+     const [selectedVisibilityAgentId, setSelectedVisibilityAgentId] = useState<number | null>(null);
+      const [visibilityData, setVisibilityData] = useState<Record<string, any> | null>(null);
+   const [tileVisibility, setTileVisibility] = useState<Record<string, "hidden" | "revealed" | "visible">>({});
+   const [revealedTilesSnapshot, setRevealedTilesSnapshot] = useState<Record<string, any>>({});
+
+     useEffect(() => {
+     }, [snapshot]);
 
   const getAgentPath = (agentId: number): PathPoint[] => {
     return agentPaths[agentId] ?? [];
@@ -191,77 +200,94 @@ export function App() {
     aliveAgentsRef.current = currentAlive;
   }, [getAliveAgents]);
 
-  const handleTickAudio = useCallback((nextSnapshot: any) => {
-    if (!nextSnapshot) return;
-    const prevSnapshot = prevSnapshotRef.current;
-    prevSnapshotRef.current = nextSnapshot;
-    if (!prevSnapshot) return;
+   const handleTickAudio = useCallback((nextSnapshot: any) => {
+     if (!nextSnapshot) return;
+     const prevSnapshot = prevSnapshotRef.current;
+     prevSnapshotRef.current = nextSnapshot;
+     if (!prevSnapshot) return;
 
-    const getField = (obj: any, key: string) =>
-      obj?.[key] ?? obj?.[key.replace(/-/g, "_")] ?? obj?.[key.replace(/-(\w)/g, (_: string, c: string) => c.toUpperCase())];
+     const getField = (obj: any, key: string) =>
+       obj?.[key] ?? obj?.[key.replace(/-/g, "_")] ?? obj?.[key.replace(/-(\w)/g, (_: string, c: string) => c.toUpperCase())];
 
-    const sequences: number[][] = [];
+     const sequences: number[][] = [];
 
-    const prevJobs = new Map<string, any>();
-    (prevSnapshot.jobs ?? []).forEach((job: any) => {
-      if (job?.id) {
-        prevJobs.set(String(job.id), job);
-      }
-    });
-    const nextJobIds = new Set<string>();
-    (nextSnapshot.jobs ?? []).forEach((job: any) => {
-      if (job?.id) {
-        nextJobIds.add(String(job.id));
-      }
-    });
-    prevJobs.forEach((job, jobId) => {
-      if (!nextJobIds.has(jobId)) {
-        const jobType = String(job?.type ?? ":job/unknown");
-        const notes = JOB_TONE_SEQUENCES[jobType] ?? [0, 1, 0];
-        sequences.push(toSequence(notes));
-      }
-    });
-
-    const prevAgents = new Map<number, any>();
-    (prevSnapshot.agents ?? []).forEach((agent: any) => {
-      if (typeof agent?.id === "number") {
-        prevAgents.set(agent.id, agent);
-      }
-    });
-
-    (nextSnapshot.agents ?? []).forEach((agent: any) => {
-      if (typeof agent?.id !== "number") return;
-      const prevAgent = prevAgents.get(agent.id);
-      if (!prevAgent) return;
-      const status = agent.status ?? {};
-      const alive = status["alive?"] ?? status.alive ?? true;
-      if (!alive) return;
-      const prevNeeds = prevAgent.needs ?? {};
-      const nextNeeds = agent.needs ?? {};
-      const thresholds =
-        getField(agent, "need-thresholds") ?? getField(agent, "needThresholds") ?? getField(agent, "need_thresholds") ?? {};
-      Object.entries(NEED_THRESHOLD_KEYS).forEach(([needKey, thresholdKey]) => {
-        const threshold = getField(thresholds, thresholdKey);
-        const prevValue = getField(prevNeeds, needKey);
-        const nextValue = getField(nextNeeds, needKey);
-        if (typeof threshold !== "number" || typeof prevValue !== "number" || typeof nextValue !== "number") {
-          return;
-        }
-        if (prevValue >= threshold && nextValue < threshold) {
-          const notes = NEED_TONE_SEQUENCES[needKey] ?? [1, 0, 1];
+     const prevJobs = new Map<string, any>();
+     (prevSnapshot.jobs ?? []).forEach((job: any) => {
+       if (job?.id) {
+         prevJobs.set(String(job.id), job);
+       }
+     });
+     const nextJobIds = new Set<string>();
+     (nextSnapshot.jobs ?? []).forEach((job: any) => {
+       if (job?.id) {
+         nextJobIds.add(String(job.id));
+       }
+     });
+      prevJobs.forEach((job, jobId) => {
+        if (!nextJobIds.has(jobId)) {
+          const jobType = String(job?.type ?? ":job/unknown");
+          const notes = JOB_TONE_SEQUENCES[jobType] ?? [1, 0, 1];
           sequences.push(toSequence(notes, 0));
         }
       });
-    });
 
-    sequences.slice(0, MAX_TONE_SEQUENCES_PER_TICK).forEach((sequence, index) => {
-      playToneSequence(sequence, {
-        noteDuration: NOTE_DURATION,
-        gap: NOTE_GAP,
-        startDelay: index * 0.08,
-        gain: 0.9,
+      const prevAgents = new Map<number, any>();
+      (prevSnapshot.agents ?? []).forEach((agent: any) => {
+        if (typeof agent?.id === "number") {
+          prevAgents.set(agent.id, agent);
+        }
       });
-    });
+
+      (nextSnapshot.agents ?? []).forEach((agent: any) => {
+        if (typeof agent?.id !== "number") return;
+        const prevAgent = prevAgents.get(agent.id);
+        if (!prevAgent) return;
+        const status = agent.status ?? {};
+        const alive = status["alive?"] ?? status.alive ?? true;
+        if (!alive) return;
+        const prevNeeds = prevAgent.needs ?? {};
+        const nextNeeds = agent.needs ?? {};
+        const thresholds =
+          getField(agent, "need-thresholds") ?? getField(agent, "needThresholds") ?? getField(agent, "need_thresholds") ?? {};
+        Object.entries(NEED_THRESHOLD_KEYS).forEach(([needKey, thresholdKey]) => {
+          const threshold = getField(thresholds, thresholdKey);
+          const prevValue = getField(prevNeeds, needKey);
+          const nextValue = getField(nextNeeds, needKey);
+          if (typeof threshold !== "number" || typeof prevValue !== "number" || typeof nextValue !== "number") {
+            return;
+          }
+          if (prevValue >= threshold && nextValue < threshold) {
+            const notes = NEED_TONE_SEQUENCES[needKey] ?? [1, 0, 1];
+            sequences.push(toSequence(notes, 0));
+          }
+        });
+      });
+
+      sequences.slice(0, MAX_TONE_SEQUENCES_PER_TICK).forEach((sequence, index) => {
+       playToneSequence(sequence, {
+         noteDuration: NOTE_DURATION,
+         gap: NOTE_GAP,
+         startDelay: index * 0.08,
+         gain: 0.9,
+       });
+     });
+   }, []);
+
+  const handleDeltaAudio = useCallback((delta: any) => {
+    if (!delta) return;
+
+    if (delta.combat_events) {
+      delta.combat_events.forEach((ce: any) => {
+        const eventType = ce.type as string;
+        if (eventType === "hunt-start") {
+          playHuntStartTone();
+        } else if (eventType === "hunt-attack") {
+          playHuntAttackTone();
+        } else if (eventType === "hunt-kill") {
+          playHuntKillTone();
+        }
+      });
+    }
   }, []);
 
   const handleSocialSound = useCallback((interactionType: string, agent: any) => {
@@ -376,28 +402,45 @@ export function App() {
     return new WSClient(
       wsUrl,
       (m: WSMessage) => {
-        if (m.op === "hello") {
-          const state = normalizeSnapshot(m.state ?? {});
-          setTick(state.tick ?? 0);
-          setSnapshot(state);
-          prevSnapshotRef.current = state;
-          if (state.map) {
-            setMapConfig(state.map as HexConfig);
+         if (m.op === "hello") {
+           const state = normalizeSnapshot(m.state ?? {});
+           const tv = state?.tile_visibility ?? state?.["tile-visibility"] ?? {};
+           const rts = state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {};
+           setTick(state.tick ?? 0);
+           setSnapshot(state);
+           setTileVisibility(tv);
+           setRevealedTilesSnapshot(rts);
+           prevSnapshotRef.current = state;
+           if (state.map) {
+             setMapConfig(state.map as HexConfig);
+           }
+           handleDeathTone(state);
+           if (!initialFocusRef.current) {
+             focusOnTownCenter(state);
+             initialFocusRef.current = true;
+           }
+         }
+         if (m.op === "tick") {
+            console.log("[tick] Received tick:", m.data?.tick);
+            setTick(m.data?.tick ?? 0);
+            const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
+            console.log("[tick] Setting snapshot with", nextSnapshot?.agents?.length, "agents");
+            setSnapshot(nextSnapshot);
+            playTone(440, 0.08);
+            handleDeathTone(nextSnapshot);
+            handleTickAudio(nextSnapshot);
           }
-          handleDeathTone(state);
-          if (!initialFocusRef.current) {
-            focusOnTownCenter(state);
-            initialFocusRef.current = true;
-          }
-        }
-        if (m.op === "tick") {
-          setTick(m.data?.tick ?? 0);
-          const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
-          setSnapshot(nextSnapshot);
-          playTone(440, 0.08);
-          handleDeathTone(nextSnapshot);
-          handleTickAudio(nextSnapshot);
-        }
+              if (m.op === "tick_delta") {
+                const delta = m.data as any;
+                const tv = delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {};
+                const rts = delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {};
+                setTick(delta?.tick ?? 0);
+                setSnapshot((prev: any) => applyDelta(prev, delta));
+                setVisibilityData(delta?.visibility ?? null);
+                setTileVisibility(tv);
+                setRevealedTilesSnapshot(rts);
+                handleDeltaAudio(delta);
+              }
         if (m.op === "trace") {
             const incoming = m.data as Trace;
             setTraces((prev) => {
@@ -414,22 +457,28 @@ export function App() {
            prevBookCountRef.current = newBookCount;
            setBooks(newBooks);
          }
-         if (m.op === "reset") {
-              setTraces([]);
-              setSelectedCell(null);
-              setSelectedAgentId(null);
-              setSpeechBubbles([]);
-             const state = normalizeSnapshot(m.state ?? {});
-             setSnapshot(state);
-             prevSnapshotRef.current = state;
-             if (state.map) {
-               setMapConfig(state.map as HexConfig);
-             }
-             aliveAgentsRef.current = getAliveAgents(state);
-            initialFocusRef.current = false;
-            focusOnTownCenter(state);
-            initialFocusRef.current = true;
-           }
+           if (m.op === "reset") {
+                setTraces([]);
+                setSelectedCell(null);
+                setSelectedAgentId(null);
+                setSpeechBubbles([]);
+                setTileVisibility({});
+                setRevealedTilesSnapshot({});
+               const state = normalizeSnapshot(m.state ?? {});
+               const tv = state?.tile_visibility ?? state?.["tile-visibility"] ?? {};
+               const rts = state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {};
+               setSnapshot(state);
+               setTileVisibility(tv);
+               setRevealedTilesSnapshot(rts);
+               prevSnapshotRef.current = state;
+              if (state.map) {
+                setMapConfig(state.map as HexConfig);
+              }
+              aliveAgentsRef.current = getAliveAgents(state);
+             initialFocusRef.current = false;
+             focusOnTownCenter(state);
+             initialFocusRef.current = true;
+            }
         if (m.op === "social_interaction") {
            const si = m.data as any;
            if (si && typeof si.agent_1_id === "number" && typeof si.agent_2_id === "number") {
@@ -596,32 +645,47 @@ export function App() {
     }
   }, [mapConfig]);
 
-  const toggleRun = () => {
-    if (isRunning) {
-      client.send({ op: "stop_run" });
-      setIsRunning(false);
-    } else {
-      client.send({ op: "start_run" });
-      setIsRunning(true);
-    }
-  };
+   const toggleRun = () => {
+     markUserInteraction();
+     if (isRunning) {
+       client.send({ op: "stop_run" });
+       setIsRunning(false);
+     } else {
+       client.send({ op: "start_run" });
+     }
+   };
 
   const setFpsValue = (value: number) => {
     client.sendSetFps(value);
     setFps(value);
   };
 
-  const sendTick = (n: number) => client.send({ op: "tick", n });
-  const reset = (seed: number, bounds?: { w: number; h: number }, treeDensity?: number) => {
-    const payload: { op: string; seed: number; bounds?: { w: number; h: number }; tree_density?: number } = { op: "reset", seed };
-    if (bounds) {
-      payload.bounds = bounds;
-    }
-    if (treeDensity !== undefined) {
-      payload.tree_density = treeDensity;
-    }
-    client.send(payload);
-  };
+   const sendTick = (n: number) => {
+     if (isRunning) {
+       console.log("[sendTick] Simulation is running, ignoring tick request");
+       return;
+     }
+     client.send({ op: "tick", n });
+   };
+   const reset = (seed: number, bounds?: { w: number; h: number }, treeDensity?: number) => {
+     console.log("[App] Resetting world with seed:", seed);
+     markUserInteraction();
+     const payload: { op: string; seed: number; bounds?: { w: number; h: number }; tree_density?: number } = { op: "reset", seed };
+     if (bounds) {
+       payload.bounds = bounds;
+     }
+     if (treeDensity !== undefined) {
+       payload.tree_density = treeDensity;
+     }
+     setIsRunning(false);
+     setTraces([]);
+     setSelectedCell(null);
+     setSelectedAgentId(null);
+     setSpeechBubbles([]);
+     setTileVisibility({});
+     setRevealedTilesSnapshot({});
+     client.send(payload);
+   };
 
     const handleCellSelect = (cell: [number, number], agentId: number | null) => {
       if (buildMode) {
@@ -785,6 +849,10 @@ export function App() {
           showNames={showNames}
           showStats={showStats}
           speechBubbles={speechBubbles}
+          visibilityData={visibilityData}
+          selectedVisibilityAgentId={selectedVisibilityAgentId}
+          tileVisibility={tileVisibility}
+          revealedTilesSnapshot={revealedTilesSnapshot}
         />
       </div>
 
@@ -868,7 +936,13 @@ export function App() {
             </div>
           </div>
 
-         <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
+          <VisibilityControlPanel
+            agents={agents}
+            selectedVisibilityAgentId={selectedVisibilityAgentId}
+            onSelectVisibilityAgent={setSelectedVisibilityAgentId}
+          />
+
+          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
              <label style={{ fontSize: 12 }}>Width:</label>

@@ -63,3 +63,37 @@
       (is (approx= 0.5 (:buzz new)))
       (is (= 1 (:mentions new))))
     (is (contains? attribution :winter-pyre))))
+
+(deftest snapshot-filters-hidden-tiles
+  (testing "when tile-visibility is empty, all tiles are included"
+    (let [world {:tick 1
+                  :shrine [0 0]
+                  :levers {}
+                  :recent-events []
+                  :agents []
+                  :tiles {"0,0" {:terrain :ground}
+                          "1,0" {:terrain :ground}
+                          "2,0" {:terrain :ground}}
+                  :tile-visibility {}}
+          snap (world/snapshot world {})]
+      (is (= 3 (count (:tiles snap))))))
+  (testing "hidden tiles are excluded from snapshot"
+    (let [world {:tick 1
+                  :shrine [0 0]
+                  :levers {}
+                  :recent-events []
+                  :agents []
+                  :tiles {"0,0" {:terrain :ground}
+                          "1,0" {:terrain :ground}
+                          "2,0" {:terrain :ground}
+                          "3,0" {:terrain :ground}}
+                  :tile-visibility {"0,0" :visible
+                                    "1,0" :revealed
+                                    "2,0" :hidden
+                                    "3,0" :hidden}}
+          snap (world/snapshot world {})]
+      (is (= 2 (count (:tiles snap))))
+      (is (contains? (:tiles snap) "0,0"))
+      (is (contains? (:tiles snap) "1,0"))
+      (is (not (contains? (:tiles snap) "2,0")))
+      (is (not (contains? (:tiles snap) "3,0"))))))

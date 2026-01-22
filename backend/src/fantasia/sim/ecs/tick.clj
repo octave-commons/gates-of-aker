@@ -159,23 +159,24 @@
     ecs-world'''))
 
 (defn create-ecs-initial-world [opts]
-  "Create initial ECS world from scratch.
-   Returns global-state with ECS data."
-  (reset-ecs-world!)
-  (let [seed (or (:seed opts) 1)
-         global-state {:seed seed
-                       :tick 0
-                       :map {:kind :hex :layout :pointy :bounds {:shape :rect :w 128 :h 128}}
-                       :shrine nil
-                       :levers {:cold-snap 0.4 :iconography {:fire->patron 0.80}}
-                      :jobs {}
-                      :items {}
-                      :stockpiles {}
-                      :ledger {}
-                      :recent-events []
-                      :recent-max 30
-                      :traces []
-                      :trace-max 250}]
-    (clojure.core/reset! *global-state global-state)
-    (println "[ECS] Created initial world")
-    global-state))
+   "Create initial ECS world from scratch.
+    Returns global-state with ECS data."
+   (reset-ecs-world!)
+   (let [seed (or (:seed opts) 1)
+          global-state {:seed seed
+                        :tick 0
+                        :map {:kind :hex :layout :pointy :bounds {:shape :rect :w 128 :h 128}}
+                        :shrine nil
+                        :levers {:cold-snap 0.4 :iconography {:fire->patron 0.80}}
+                       :jobs {}
+                       :items {}
+                       :stockpiles {}
+                       :ledger {}
+                       :recent-events []
+                       :recent-max 30
+                       :traces []
+                       :trace-max 250
+                       :tile-visibility {}}]
+     (clojure.core/reset! *global-state global-state)
+     (println "[ECS] Created initial world")
+     global-state))

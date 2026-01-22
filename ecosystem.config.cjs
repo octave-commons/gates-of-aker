@@ -21,18 +21,19 @@ module.exports = {
               NODE_ENV: "development"
           }
       },
-      // {
-      //     name:"gates-web",
-      //     interpreter: "bash",
-      //     "script":"vite",
-      //       cwd: "./web",
-      //       instances: 1,
-      //       autorestart: false,
-      //       // No need to watch frontend files; Vite handles HMR internally
-      //       watch: false,
-      //       env: {
-      //           PORT: 5173,
-      //       }
-      // }
+      {
+          name:"gates-web",
+          interpreter: "bash",
+          script:"bin/backend-dev",
+          args:["dev"],
+          cwd: "./web",
+          instances: 1,
+          autorestart: false,
+          // No need to watch frontend files; Vite handles HMR internally
+          env: {
+              PORT: 5173,
+              NODE_ENV: "development"
+          }
+      }
   ]
 };

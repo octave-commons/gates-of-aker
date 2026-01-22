@@ -1,18 +1,19 @@
-export type WSMessage =
-    | { op: "hello"; state: any }
-    | { op: "tick"; data: any }
-    | { op: "trace"; data: any }
-    | { op: "reset"; state: any }
-    | { op: "levers"; levers: any }
-    | { op: "shrine"; shrine: any }
-    | { op: "mouthpiece"; mouthpiece: any }
-    | { op: "tiles"; tiles: any }
-    | { op: "stockpiles"; stockpiles: any }
-    | { op: "jobs"; jobs: any }
-    | { op: "runner_state"; running: boolean; fps: number }
-    | { op: "tick_health"; data: { targetMs: number; tickMs: number; health: "healthy" | "degraded" | "unhealthy" | "unknown" } }
-    | { op: "error"; message: string }
-    | { op: string; [k: string]: any };
+ export type WSMessage =
+     | { op: "hello"; state: any }
+     | { op: "tick"; data: any }
+     | { op: "tick_delta"; data: any }
+     | { op: "trace"; data: any }
+     | { op: "reset"; state: any }
+     | { op: "levers"; levers: any }
+     | { op: "shrine"; shrine: any }
+     | { op: "mouthpiece"; mouthpiece: any }
+     | { op: "tiles"; tiles: any }
+     | { op: "stockpiles"; stockpiles: any }
+     | { op: "jobs"; jobs: any }
+     | { op: "runner_state"; running: boolean; fps: number }
+     | { op: "tick_health"; data: { targetMs: number; tickMs: number; health: "healthy" | "degraded" | "unhealthy" | "unknown" } }
+     | { op: "error"; message: string }
+     | { op: string; [k: string]: any };
 
 export class WSClient {
   private ws: WebSocket | null = null;

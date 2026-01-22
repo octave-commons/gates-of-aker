@@ -1,9 +1,10 @@
 (ns fantasia.sim.agents
   (:require [fantasia.sim.facets :as f]
-            [fantasia.sim.events :as events]
-            [fantasia.sim.spatial :as spatial]
-            [fantasia.sim.hex :as hex]
-            [fantasia.sim.constants :as const]))
+           [fantasia.sim.spatial_facets :as sf]
+           [fantasia.sim.events :as events]
+           [fantasia.sim.spatial :as spatial]
+           [fantasia.sim.hex :as hex]
+           [fantasia.sim.constants :as const]))
 
 (defn update-needs
   "Decay warmth/food/sleep relative to cold snap."
@@ -262,3 +263,9 @@
                     (assoc :recall (:new-recall res)))
       :mentions (:mentions res)
       :traces (:traces res)}))
+
+(defn query-need-axis!
+  "Query facet axis for need-based behavior.
+   Returns empty map for now - TODO: Implement facet queries."
+  [world agent axis concept-words]
+  {})

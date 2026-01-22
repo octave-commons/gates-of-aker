@@ -36,6 +36,12 @@
  (def ^:const wolf-attack-food-gain 0.05)
  (def ^:const wolf-kill-food-gain 1.0)
 
+ ;; Vision constants
+ (def ^:const player-vision-radius 15)
+ (def ^:const wolf-vision-radius 10)
+ (def ^:const bear-vision-radius 8)
+ (def ^:const deer-vision-radius 6)
+
 ;; Reproduction constants
 (def ^:const reproduction-affinity-threshold 0.75)
 
@@ -66,6 +72,9 @@
 (def ^:const max-structure-level 3)
 (def ^:const default-stockpile-max-qty 120)
 
-;; Tick constants
-(def ^:const default-recent-max 50)
-(def ^:const default-trace-max 200)
+ ;; Combat durability constants
+ (def ^:const max-defense-multiplier 0.5)
+
+ ;; Tick constants
+ (def ^:const default-recent-max 50)
+ (def ^:const default-trace-max 200)

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { toggleMute, isMuted, markUserInteraction, playTone } from "../audio";
+ import { useState, useCallback } from "react";
+ import { toggleMute, isMuted, markUserInteraction, playTone } from "../audio";
 
  type TickControlsProps = {
    onTick: (amount: number) => void;
@@ -11,16 +11,17 @@ import { toggleMute, isMuted, markUserInteraction, playTone } from "../audio";
    onSetFps: (value: number) => void;
  };
  
- export function TickControls({
-   onTick,
-   onReset,
-   isRunning,
-   onToggleRun,
-   tick,
-   fps,
-   onSetFps,
- }: TickControlsProps) {
-  const [localMuted, setLocalMuted] = useState(isMuted());
+  export function TickControls({
+    onTick,
+    onReset,
+    isRunning,
+    onToggleRun,
+    tick,
+    fps,
+    onSetFps,
+  }: TickControlsProps) {
+   const [localMuted, setLocalMuted] = useState(isMuted());
+  const [tickDisabled, setTickDisabled] = useState(false);
 
   const handleToggleMute = () => {
     markUserInteraction();
@@ -40,6 +41,25 @@ import { toggleMute, isMuted, markUserInteraction, playTone } from "../audio";
       playTone(392.00, 0.15);
     }
   };
+
+  const handleTick = useCallback((amount: number) => {
+    if (tickDisabled) return;
+    markUserInteraction();
+    setTickDisabled(true);
+    onTick(amount);
+    setTimeout(() => setTickDisabled(false), 200);
+  }, [onTick, tickDisabled]);
+
+  const handleReset = useCallback(() => {
+    markUserInteraction();
+    onReset();
+  }, [onReset]);
+
+  const handleFpsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    markUserInteraction();
+    const val = parseInt(e.target.value, 10);
+    if (!isNaN(val)) onSetFps(val);
+  }, [onSetFps]);
 
    return (
       <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>

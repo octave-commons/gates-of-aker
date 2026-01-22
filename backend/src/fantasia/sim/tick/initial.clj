@@ -1,14 +1,15 @@
 (ns fantasia.sim.tick.initial
-    (:require [clojure.set :as set]
-              [clojure.string :as str]
-              [fantasia.sim.hex :as hex]
-              [fantasia.sim.biomes :as biomes]
-              [fantasia.sim.time :as sim-time]
-              [fantasia.sim.tick.trees :as trees]
-              [fantasia.sim.jobs :as jobs]
-              [fantasia.sim.jobs.providers :as job-providers]
-              [fantasia.sim.constants :as const]
-              [fantasia.sim.traces :as traces]))
+     (:require [clojure.set :as set]
+               [clojure.string :as str]
+               [fantasia.sim.hex :as hex]
+               [fantasia.sim.biomes :as biomes]
+               [fantasia.sim.time :as sim-time]
+               [fantasia.sim.tick.trees :as trees]
+               [fantasia.sim.jobs :as jobs]
+               [fantasia.sim.jobs.providers :as job-providers]
+               [fantasia.sim.constants :as const]
+               [fantasia.sim.traces :as traces]
+               [fantasia.sim.spatial_facets :as sf]))
 
 (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
@@ -208,73 +209,59 @@
     (reduce (fn [w pos] (jobs/add-item! w pos :fruit 1)) world positions)))
 
 (defn initial-world [opts]
-   (let [{:keys [seed bounds tree-density]} opts
-          actual-seed (or seed 1)
-          tree-density (or tree-density 0.08)
-          rand-gen (rng actual-seed)
-         hex-bounds (hex/normalize-bounds bounds {:shape :rect :w 128 :h 128})
-         hex-map {:kind :hex
-                   :layout :pointy
-                   :bounds hex-bounds}
-            base-world
-             {:seed actual-seed
-              :tick 0
-              :map hex-map
-              :tiles {}
-              :shrine nil
-              :temperature 0.6
-              :cold-snap 0.4
-              :daylight 0.7
-              :jobs []
-              :items {}
-              :stockpiles {}
-              :levers {:iconography {:fire->patron 0.80
-                                     :lightning->storm 0.75
-                                     :storm->deity 0.85}
-                        :mouthpiece-agent-id nil
-                        :ollama-embed-url "http://localhost:11434/api/embed"
-                        :ollama-embed-model "nomic-embed-text"
-                        :ollama-embed-timeout-ms 10000
-                        :ollama-url "http://localhost:11434/api/generate"
-                        :ollama-model "qwen3:4b"
-                        :ollama-timeout-ms 60000
-                        :ollama-retries 1
-                        :ollama-retry-delay-ms 2000
-                        :ollama-keep-alive-enabled true
-                        :ollama-keep-alive-interval-ms 300000}
-           :institutions
-           {:temple {:id :temple
-                     :name "Temple of Embers"
-                     :entropy 0.2
-                     :broadcast-every 6
-                     :canonical {:facets [:fire :judgment :winter]
-                                 :claim-hint :claim/winter-judgment-flame}}}
-            :edges {[:cold :fire] 0.60
-                   [:trees :fire] 0.45
-                   [:lightning :storm] 0.70
-                   [:storm :deity/storm] 0.80
-                   [:fire :patron/fire] 0.80
-                   [:patron/fire :judgment] 0.35
-                   [:deity/storm :awe] 0.25
-                   [:judgment :awe] 0.25}
-                :ledger {}
-                :memories {}
-                 :recent-events []
-                :recent-max const/default-recent-max
-                :traces []
-                :trace-max const/default-trace-max
-                :books {}
-                :books-list []
-                 :favor 0.0
-                 :faith 0.0
-                 :deities {:patron/fire {:faith 0.0}
-                           :deity/storm {:faith 0.0}}
-                :champions []
-               :cultures {"culture-1" (traces/create-culture "culture-1"
-                                                          "The Northern Covenant"
-                                                          [:fire :winter :judgment :community :sacrifice]
-                                                          ["revelation" "covenant" "judgment" "test" "sacred" "embers" "cold" "judgment"])}
-               :jobs-by-id {}}
+    (let [{:keys [seed bounds tree-density]} opts
+           actual-seed (or seed 1)
+           tree-density (or tree-density 0.08)
+           rand-gen (rng actual-seed)
+          hex-bounds (hex/normalize-bounds bounds {:shape :rect :w 128 :h 128})
+          hex-map {:kind :hex
+                    :layout :pointy
+                    :bounds hex-bounds}
+          ;; Initialize entity facet registry for facet/memory system
+          _ (sf/init-entity-facets!)
+             base-world
+              {:seed actual-seed
+               :tick 0
+               :map hex-map
+               :tiles {}
+               :shrine nil
+               :temperature 0.6
+               :cold-snap 0.4
+               :daylight 0.7
+               :jobs []
+               :items {}
+               :stockpiles {}
+               :levers {:iconography {:fire->patron 0.80
+                                      :lightning->storm 0.75
+                                      :storm->deity 0.85
+                                      :fire->patron/fire 0.80
+                                      :patron/fire->judgment 0.35}
+                          :mouthpiece-agent-id nil}
+               :institutions
+               {:temple {:id :temple
+                        :name "Temple of Embers"
+                        :entropy 0.2
+                        :broadcast-every 6
+                        :canonical {:facets [:fire :judgment :winter]
+                                  :claim-hint :claim/winter-judgment-flame}}}
+               :memories {}
+               :recent-events []
+               :recent-max const/default-recent-max
+               :traces []
+               :trace-max const/default-trace-max
+               :books {}
+               :books-list []
+                :favor 0.0
+                   :faith 0.0
+                   :deities {:patron/fire {:faith 0.0}
+                            :deity/storm {:faith 0.0}}
+                   :champions []
+                   :cultures {"culture-1" (traces/create-culture "culture-1"
+                                                            "The Northern Covenant"
+                                                            [:fire :winter :judgment :community :sacrifice]
+                                                            ["revelation" "covenant" "judgment" "test" "sacred" "embers" "cold" "judgment"])}
+                :tile-visibility {}
+                 :jobs-by-id {}}
            base-world (assoc base-world :calendar (sim-time/calendar-info base-world))
           world-with-biomes (biomes/generate-biomes! base-world)
          world-with-resources (biomes/spawn-biome-resources! world-with-biomes)

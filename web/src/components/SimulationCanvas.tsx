@@ -33,6 +33,10 @@ type SimulationCanvasProps = {
   showNames?: boolean;
   showStats?: boolean;
   speechBubbles?: SpeechBubble[];
+  visibilityData?: Record<string, any> | null;
+  selectedVisibilityAgentId?: number | null;
+  tileVisibility?: Record<string, "hidden" | "revealed" | "visible">;
+  revealedTilesSnapshot?: Record<string, any>;
 };
 
 export function SimulationCanvas({
@@ -48,6 +52,10 @@ export function SimulationCanvas({
   showNames = true,
   showStats = true,
   speechBubbles = [],
+  visibilityData = null,
+  selectedVisibilityAgentId = null,
+  tileVisibility = {},
+  revealedTilesSnapshot = {},
 }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -63,6 +71,49 @@ export function SimulationCanvas({
   const [cameraStart, setCameraStart] = useState<CameraState | null>(null);
 
   const keysPressed = useRef<Set<string>>(new Set());
+
+  const getTileVisibilityState = (q: number, r: number): "hidden" | "revealed" | "visible" => {
+    if (selectedVisibilityAgentId === null) return "visible";
+    const tileKey = `${q},${r}`;
+    return tileVisibility[tileKey] ?? "hidden";
+  };
+
+  const isVisible = (entity: any, type: "agent" | "tile" | "item" | "stockpile") => {
+    if (!selectedVisibilityAgentId || !visibilityData) return true;
+
+    const selectedAgent = (snapshot.agents ?? []).find((a: Agent) => a.id === selectedVisibilityAgentId);
+    if (!selectedAgent || !hasPos(selectedAgent)) return true;
+
+    const viewerPos = selectedAgent.pos as AxialCoords;
+    const viewerPosStr = `${viewerPos[0]},${viewerPos[1]}`;
+    const visibilityMap = visibilityData[viewerPosStr];
+
+    if (!visibilityMap) return true;
+
+    switch (type) {
+      case "agent": {
+        const visibleAgentIds = visibilityMap.visible_agent_ids ?? [];
+        return visibleAgentIds.includes(entity.id);
+      }
+      case "tile": {
+        const visibleTiles = visibilityMap.visible_tiles ?? [];
+        const tileKey = typeof entity.q === "number" ? `${entity.q},${entity.r}` : entity;
+        return visibleTiles.includes(tileKey);
+      }
+      case "item": {
+        const visibleItems = visibilityMap.visible_items ?? [];
+        const itemKey = typeof entity.q === "number" ? `${entity.q},${entity.r}` : entity;
+        return visibleItems.includes(itemKey);
+      }
+      case "stockpile": {
+        const visibleStockpiles = visibilityMap.visible_stockpiles ?? [];
+        const stockpileKey = typeof entity.q === "number" ? `${entity.q},${entity.r}` : entity;
+        return visibleStockpiles.includes(stockpileKey);
+      }
+      default:
+        return true;
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -91,6 +142,7 @@ export function SimulationCanvas({
   }, []);
 
   useEffect(() => {
+    console.log("[SimulationCanvas] Snapshot changed, agent count:", snapshot?.agents?.length);
     let animationFrameId: number;
 
     const handleCameraMovement = () => {
@@ -208,53 +260,76 @@ export function SimulationCanvas({
       rocky: CONFIG.colors.BIOME.rocky
     };
 
-    ctx.globalAlpha = 0.4;
-    const gridLineWidth = Math.max(0.5, 1 / camera.zoom);
+     const isVisibilityFiltered = selectedVisibilityAgentId !== null && visibilityData !== null;
+     ctx.globalAlpha = isVisibilityFiltered ? 0.2 : 0.4;
+     const gridLineWidth = Math.max(0.5, 1 / camera.zoom);
 
-    for (const hex of hexesToDraw) {
-      const tileKey = `${hex[0]},${hex[1]}`;
-      const tile = snapshot.tiles?.[tileKey];
+     for (const hex of hexesToDraw) {
+       const tileKey = `${hex[0]},${hex[1]}`;
+       const visibilityState = getTileVisibilityState(hex[0], hex[1]);
+       const tile = visibilityState === "revealed" ? revealedTilesSnapshot[tileKey] : snapshot.tiles?.[tileKey];
 
-      const [px, py] = axialToPixel(hex, size);
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE, i);
-        if (i === 0) {
-          ctx.moveTo(cx, cy);
-        } else {
-          ctx.lineTo(cx, cy);
-        }
-      }
-      ctx.closePath();
+       const [px, py] = axialToPixel(hex, size);
+       const isTileVisible = isVisible({ q: hex[0], r: hex[1] }, "tile");
 
-      const biomeColor = tile?.biome ? biomeColors[tile.biome as string] : null;
-      if (biomeColor) {
-        ctx.fillStyle = biomeColor;
-        ctx.fill();
-      }
-      ctx.strokeStyle = "#777";
-      ctx.lineWidth = gridLineWidth;
-      ctx.stroke();
+       ctx.beginPath();
+       for (let i = 0; i < 6; i++) {
+         const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE, i);
+         if (i === 0) {
+           ctx.moveTo(cx, cy);
+         } else {
+           ctx.lineTo(cx, cy);
+         }
+       }
+       ctx.closePath();
 
-        if (tile?.resource === "tree") {
-          ctx.fillStyle = CONFIG.colors.RESOURCE.tree;
-          ctx.beginPath();
-          ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        if (tile?.resource === "grain") {
-          ctx.fillStyle = CONFIG.colors.RESOURCE.grain;
-          ctx.beginPath();
-          ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.25, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        if (tile?.resource === "rock") {
-          ctx.fillStyle = CONFIG.colors.RESOURCE.rock;
-          ctx.beginPath();
-          ctx.rect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.5);
-          ctx.fill();
-        }
-        if (tile?.structure === "wall-ghost") {
+       if (visibilityState === "hidden") {
+         ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+         ctx.fill();
+         ctx.strokeStyle = "#222";
+        } else if (visibilityState === "revealed") {
+          const biomeColor = tile?.biome ? biomeColors[tile.biome as string] : null;
+          if (biomeColor) {
+            ctx.fillStyle = biomeColor;
+            ctx.globalAlpha = 0.35;
+            ctx.fill();
+          }
+          ctx.strokeStyle = "#555";
+       } else {
+         const biomeColor = tile?.biome ? biomeColors[tile.biome as string] : null;
+         if (biomeColor) {
+           ctx.fillStyle = biomeColor;
+           ctx.globalAlpha = isVisibilityFiltered ? 0.6 : 0.4;
+           ctx.fill();
+         }
+         ctx.strokeStyle = isVisibilityFiltered ? "#999" : "#777";
+       }
+       ctx.lineWidth = gridLineWidth;
+       ctx.stroke();
+       ctx.globalAlpha = 1;
+
+        if (visibilityState !== "hidden" && tile?.resource === "tree") {
+            const treeColor = visibilityState === "revealed" ? "#5a7a5a" : CONFIG.colors.RESOURCE.tree;
+            ctx.fillStyle = treeColor;
+            ctx.beginPath();
+            ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          if (visibilityState !== "hidden" && tile?.resource === "grain") {
+            const grainColor = visibilityState === "revealed" ? "#b8a878" : CONFIG.colors.RESOURCE.grain;
+            ctx.fillStyle = grainColor;
+            ctx.beginPath();
+            ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          if (visibilityState !== "hidden" && tile?.resource === "rock") {
+            const rockColor = visibilityState === "revealed" ? "#6a6a6a" : CONFIG.colors.RESOURCE.rock;
+            ctx.fillStyle = rockColor;
+            ctx.beginPath();
+            ctx.rect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.5);
+            ctx.fill();
+          }
+         if (visibilityState !== "hidden" && tile?.structure === "wall-ghost") {
           ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallGhost;
           ctx.lineWidth = 2;
           ctx.setLineDash([4, 2]);
@@ -269,210 +344,234 @@ export function SimulationCanvas({
          }
          ctx.closePath();
          ctx.stroke();
-         ctx.setLineDash([]);
-         ctx.lineWidth = 1;
-       }
-        if (tile?.structure === "wall") {
-          ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-             const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE - 3, i);
-             if (i === 0) {
-               ctx.moveTo(cx, cy);
-             } else {
-               ctx.lineTo(cx, cy);
+          ctx.setLineDash([]);
+          ctx.lineWidth = 1;
+        }
+          if (visibilityState !== "hidden" && tile?.structure === "wall") {
+            const wallColor = visibilityState === "revealed" ? "#5a5a5a" : CONFIG.colors.STRUCTURE.wall;
+            ctx.fillStyle = wallColor;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+               const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE - 3, i);
+               if (i === 0) {
+                 ctx.moveTo(cx, cy);
+               } else {
+                 ctx.lineTo(cx, cy);
+               }
              }
-           }
-           ctx.closePath();
-           ctx.fill();
-           ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-
-        if (tile?.structure === "road") {
-          const roadWidth = Math.max(2, CONFIG.canvas.HEX_SIZE * 0.12);
-          ctx.strokeStyle = CONFIG.colors.STRUCTURE.road;
-          ctx.lineWidth = roadWidth;
-          ctx.lineCap = "round";
-          ctx.beginPath();
-          ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.45, py);
-          ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.45, py);
-          ctx.stroke();
-          ctx.strokeStyle = CONFIG.colors.STRUCTURE.roadStroke;
-          ctx.lineWidth = roadWidth * 0.4;
-          ctx.beginPath();
-          ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py);
-          ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py);
-          ctx.stroke();
-          ctx.lineCap = "butt";
-          ctx.lineWidth = 1;
-        }
-
-        // Render additional structures
-        if (tile?.structure === "campfire") {
-            ctx.fillStyle = "#ff6b00";
-            ctx.beginPath();
-            ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.3, 0, Math.PI * 2);
-            ctx.fill();
-           
-           // Add flames effect
-           ctx.fillStyle = "#ffa726";
-           ctx.beginPath();
-            ctx.arc(px - 2, py - 2, CONFIG.canvas.HEX_SIZE * 0.15, 0, Math.PI * 2);
-            ctx.fill();
-          }
-
-          if (tile?.structure === "house") {
-            ctx.fillStyle = CONFIG.colors.STRUCTURE.house;
-            ctx.beginPath();
-            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.2);
-            ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.35);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.2);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.fillStyle = "#5d4037";
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.22, py + CONFIG.canvas.HEX_SIZE * 0.15, CONFIG.canvas.HEX_SIZE * 0.44, CONFIG.canvas.HEX_SIZE * 0.25);
-          }
-
-          if (tile?.structure === "lumberyard") {
-            ctx.fillStyle = CONFIG.colors.STRUCTURE.lumberyard;
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.28, py - CONFIG.canvas.HEX_SIZE * 0.18, CONFIG.canvas.HEX_SIZE * 0.56, CONFIG.canvas.HEX_SIZE * 0.36);
-            ctx.strokeStyle = "#3e2723";
-            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.28, py - CONFIG.canvas.HEX_SIZE * 0.18, CONFIG.canvas.HEX_SIZE * 0.56, CONFIG.canvas.HEX_SIZE * 0.36);
-          }
-
-          if (tile?.structure === "orchard") {
-            ctx.fillStyle = CONFIG.colors.STRUCTURE.orchard;
-            ctx.beginPath();
-            ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.28, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#2e7d32";
-            ctx.beginPath();
-            ctx.arc(px, py - CONFIG.canvas.HEX_SIZE * 0.08, CONFIG.canvas.HEX_SIZE * 0.16, 0, Math.PI * 2);
-            ctx.fill();
-          }
-
-          if (tile?.structure === "granary") {
-            ctx.fillStyle = CONFIG.colors.STRUCTURE.granary;
-            ctx.beginPath();
-            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.3, py + CONFIG.canvas.HEX_SIZE * 0.18);
-            ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.28);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.3, py + CONFIG.canvas.HEX_SIZE * 0.18);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = "#8d6e63";
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.18, py + CONFIG.canvas.HEX_SIZE * 0.18, CONFIG.canvas.HEX_SIZE * 0.36, CONFIG.canvas.HEX_SIZE * 0.18);
-          }
-
-          if (tile?.structure === "farm") {
-            ctx.fillStyle = CONFIG.colors.STRUCTURE.farm;
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.4);
-            ctx.strokeStyle = "#827717";
+             ctx.closePath();
+             ctx.fill();
+             ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
             ctx.lineWidth = 1;
-            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.4);
-            ctx.strokeStyle = "#9e9d24";
-            ctx.beginPath();
-            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.15);
-            ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.15);
-            ctx.moveTo(px, py - CONFIG.canvas.HEX_SIZE * 0.15);
-            ctx.lineTo(px, py + CONFIG.canvas.HEX_SIZE * 0.15);
-            ctx.moveTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.15);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.15);
             ctx.stroke();
           }
 
-          if (tile?.structure === "quarry") {
-            ctx.fillStyle = CONFIG.colors.STRUCTURE.quarry;
+          if (visibilityState !== "hidden" && tile?.structure === "road") {
+            const roadWidth = Math.max(2, CONFIG.canvas.HEX_SIZE * 0.12);
+            const roadColor = visibilityState === "revealed" ? "#5a5a5a" : CONFIG.colors.STRUCTURE.road;
+            ctx.strokeStyle = roadColor;
+            ctx.lineWidth = roadWidth;
+            ctx.lineCap = "round";
             ctx.beginPath();
-            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.3, py + CONFIG.canvas.HEX_SIZE * 0.2);
-            ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.2);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.1);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.2);
-            ctx.closePath();
-            ctx.fill();
-          }
-
-         if (tile?.structure === "statue/dog") {
-           ctx.fillStyle = "#9e9e9e";
-           ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.6);
-           ctx.strokeStyle = "#616161";
-           ctx.lineWidth = 1;
-           ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.6);
-         }
-
-          if (tile?.structure === "warehouse") {
-            ctx.fillStyle = CONFIG.colors.STRUCTURE.wall;
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
-            ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
-            
-           // Add roof detail
-           ctx.fillStyle = "#757575";
-           ctx.beginPath();
-           ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.5, py - CONFIG.canvas.HEX_SIZE * 0.3);
-           ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.5);
-           ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.5, py - CONFIG.canvas.HEX_SIZE * 0.3);
-           ctx.closePath();
-           ctx.fill();
-          }
-
-          if (tile?.structure === "temple") {
-            ctx.fillStyle = "#1a237e";
+            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.45, py);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.45, py);
+            ctx.stroke();
+            ctx.strokeStyle = CONFIG.colors.STRUCTURE.roadStroke;
+            ctx.lineWidth = roadWidth * 0.4;
             ctx.beginPath();
-            ctx.moveTo(px, py - CONFIG.canvas.HEX_SIZE * 0.4);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.1);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.25);
-            ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.25);
-            ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.1);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Add pillars
-            ctx.fillStyle = "#3949ab";
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.25, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.1, CONFIG.canvas.HEX_SIZE * 0.3);
-            ctx.fillRect(px + CONFIG.canvas.HEX_SIZE * 0.15, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.1, CONFIG.canvas.HEX_SIZE * 0.3);
-          }
-
-          if (tile?.structure === "school") {
-            ctx.fillStyle = "#795548";
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.4);
-            ctx.strokeStyle = "#4e342e";
+            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py);
+            ctx.stroke();
+            ctx.lineCap = "butt";
             ctx.lineWidth = 1;
-            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.4);
-            
-            // Add roof
-            ctx.fillStyle = "#5d4037";
-            ctx.beginPath();
-            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.2);
-            ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.45);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.2);
-            ctx.closePath();
-            ctx.fill();
           }
 
-          if (tile?.structure === "library") {
-            ctx.fillStyle = "#4e342e";
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.25, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.5);
-            ctx.strokeStyle = "#3e2723";
+         // Render additional structures
+          if (visibilityState !== "hidden" && tile?.structure === "campfire") {
+              const campfireColor = visibilityState === "revealed" ? "#cc5500" : "#ff6b00";
+              ctx.fillStyle = campfireColor;
+              ctx.beginPath();
+              ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.3, 0, Math.PI * 2);
+              ctx.fill();
+
+             // Add flames effect
+             const flameColor = visibilityState === "revealed" ? "#cc8600" : "#ffa726";
+             ctx.fillStyle = flameColor;
+             ctx.beginPath();
+              ctx.arc(px - 2, py - 2, CONFIG.canvas.HEX_SIZE * 0.15, 0, Math.PI * 2);
+             ctx.fill();
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "house") {
+              const houseColor = visibilityState === "revealed" ? "#7c6952" : CONFIG.colors.STRUCTURE.house;
+              ctx.fillStyle = houseColor;
+              ctx.beginPath();
+              ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.2);
+              ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.35);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.2);
+              ctx.closePath();
+              ctx.fill();
+
+              const doorColor = visibilityState === "revealed" ? "#4a352c" : "#5d4037";
+              ctx.fillStyle = doorColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.22, py + CONFIG.canvas.HEX_SIZE * 0.15, CONFIG.canvas.HEX_SIZE * 0.44, CONFIG.canvas.HEX_SIZE * 0.25);
+            }
+
+           if (visibilityState !== "hidden" && tile?.structure === "lumberyard") {
+              const lumberyardColor = visibilityState === "revealed" ? "#8b7355" : CONFIG.colors.STRUCTURE.lumberyard;
+              ctx.fillStyle = lumberyardColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.28, py - CONFIG.canvas.HEX_SIZE * 0.18, CONFIG.canvas.HEX_SIZE * 0.56, CONFIG.canvas.HEX_SIZE * 0.36);
+              ctx.strokeStyle = "#3e2723";
+              ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.28, py - CONFIG.canvas.HEX_SIZE * 0.18, CONFIG.canvas.HEX_SIZE * 0.56, CONFIG.canvas.HEX_SIZE * 0.36);
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "orchard") {
+              const orchardColor = visibilityState === "revealed" ? "#8b835c" : CONFIG.colors.STRUCTURE.orchard;
+              ctx.fillStyle = orchardColor;
+              ctx.beginPath();
+              ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.28, 0, Math.PI * 2);
+              ctx.fill();
+              const topColor = visibilityState === "revealed" ? "#236327" : "#2e7d32";
+              ctx.fillStyle = topColor;
+              ctx.beginPath();
+              ctx.arc(px, py - CONFIG.canvas.HEX_SIZE * 0.08, CONFIG.canvas.HEX_SIZE * 0.16, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "granary") {
+              const granaryColor = visibilityState === "revealed" ? "#8b7355" : CONFIG.colors.STRUCTURE.granary;
+              ctx.fillStyle = granaryColor;
+              ctx.beginPath();
+              ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.3, py + CONFIG.canvas.HEX_SIZE * 0.18);
+              ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.28);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.3, py + CONFIG.canvas.HEX_SIZE * 0.18);
+              ctx.closePath();
+              ctx.fill();
+              const baseColor = visibilityState === "revealed" ? "#704e4f" : "#8d6e63";
+              ctx.fillStyle = baseColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.18, py + CONFIG.canvas.HEX_SIZE * 0.18, CONFIG.canvas.HEX_SIZE * 0.36, CONFIG.canvas.HEX_SIZE * 0.18);
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "farm") {
+              const farmColor = visibilityState === "revealed" ? "#6a6612" : CONFIG.colors.STRUCTURE.farm;
+              ctx.fillStyle = farmColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.4);
+              ctx.strokeStyle = "#827717";
+              ctx.lineWidth = 1;
+              ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.4);
+              const lineColor = visibilityState === "revealed" ? "#7e7e1d" : "#9e9d24";
+              ctx.strokeStyle = lineColor;
+              ctx.beginPath();
+              ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.15);
+              ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.15);
+              ctx.moveTo(px, py - CONFIG.canvas.HEX_SIZE * 0.15);
+              ctx.lineTo(px, py + CONFIG.canvas.HEX_SIZE * 0.15);
+              ctx.moveTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.15);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.15);
+              ctx.stroke();
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "quarry") {
+              const quarryColor = visibilityState === "revealed" ? "#6a6a6a" : CONFIG.colors.STRUCTURE.quarry;
+              ctx.fillStyle = quarryColor;
+              ctx.beginPath();
+              ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.3, py + CONFIG.canvas.HEX_SIZE * 0.2);
+              ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.2, py - CONFIG.canvas.HEX_SIZE * 0.2);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.1);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.2, py + CONFIG.canvas.HEX_SIZE * 0.2);
+              ctx.closePath();
+              ctx.fill();
+            }
+
+          if (visibilityState !== "hidden" && tile?.structure === "statue/dog") {
+            const statueColor = visibilityState === "revealed" ? "#7e7e7e" : "#9e9e9e";
+            ctx.fillStyle = statueColor;
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.6);
+            ctx.strokeStyle = "#616161";
             ctx.lineWidth = 1;
-            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.25, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.5);
-            
-            // Add roof
-            ctx.fillStyle = "#6d4c41";
+            ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.3, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.6, CONFIG.canvas.HEX_SIZE * 0.6);
+          }
+
+            if (visibilityState !== "hidden" && tile?.structure === "warehouse") {
+              const warehouseColor = visibilityState === "revealed" ? "#5a5a5a" : CONFIG.colors.STRUCTURE.wall;
+              ctx.fillStyle = warehouseColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
+              ctx.strokeStyle = CONFIG.colors.STRUCTURE.wallStroke;
+              ctx.lineWidth = 2;
+              ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.3, CONFIG.canvas.HEX_SIZE * 0.8, CONFIG.canvas.HEX_SIZE * 0.6);
+
+            // Add roof detail
+            const roofColor = visibilityState === "revealed" ? "#5e5e5e" : "#757575";
+            ctx.fillStyle = roofColor;
             ctx.beginPath();
-            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.25);
+            ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.5, py - CONFIG.canvas.HEX_SIZE * 0.3);
             ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.5);
-            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.25);
+            ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.5, py - CONFIG.canvas.HEX_SIZE * 0.3);
             ctx.closePath();
             ctx.fill();
-            
-            // Add book symbol
-            ctx.fillStyle = "#8d6e63";
-            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.1, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.15);
-          }
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "temple") {
+              const templeColor = visibilityState === "revealed" ? "#141c63" : "#1a237e";
+              ctx.fillStyle = templeColor;
+              ctx.beginPath();
+              ctx.moveTo(px, py - CONFIG.canvas.HEX_SIZE * 0.4);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.1);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.25);
+              ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py + CONFIG.canvas.HEX_SIZE * 0.25);
+              ctx.lineTo(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.1);
+              ctx.closePath();
+              ctx.fill();
+
+              // Add pillars
+              const pillarColor = visibilityState === "revealed" ? "#2d3b88" : "#3949ab";
+              ctx.fillStyle = pillarColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.25, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.1, CONFIG.canvas.HEX_SIZE * 0.3);
+              ctx.fillRect(px + CONFIG.canvas.HEX_SIZE * 0.15, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.1, CONFIG.canvas.HEX_SIZE * 0.3);
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "school") {
+              const schoolColor = visibilityState === "revealed" ? "#604438" : "#795548";
+              ctx.fillStyle = schoolColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.4);
+              ctx.strokeStyle = "#4e342e";
+              ctx.lineWidth = 1;
+              ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.4);
+
+              // Add roof
+              const roofColor = visibilityState === "revealed" ? "#4a342c" : "#5d4037";
+              ctx.fillStyle = roofColor;
+              ctx.beginPath();
+              ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.2);
+              ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.45);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.2);
+              ctx.closePath();
+              ctx.fill();
+            }
+
+            if (visibilityState !== "hidden" && tile?.structure === "library") {
+              const libraryColor = visibilityState === "revealed" ? "#3e2a25" : "#4e342e";
+              ctx.fillStyle = libraryColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.25, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.5);
+              ctx.strokeStyle = "#3e2723";
+              ctx.lineWidth = 1;
+              ctx.strokeRect(px - CONFIG.canvas.HEX_SIZE * 0.35, py - CONFIG.canvas.HEX_SIZE * 0.25, CONFIG.canvas.HEX_SIZE * 0.7, CONFIG.canvas.HEX_SIZE * 0.5);
+
+              // Add roof
+              const roofColor = visibilityState === "revealed" ? "#573d35" : "#6d4c41";
+              ctx.fillStyle = roofColor;
+              ctx.beginPath();
+              ctx.moveTo(px - CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.25);
+              ctx.lineTo(px, py - CONFIG.canvas.HEX_SIZE * 0.5);
+              ctx.lineTo(px + CONFIG.canvas.HEX_SIZE * 0.4, py - CONFIG.canvas.HEX_SIZE * 0.25);
+              ctx.closePath();
+              ctx.fill();
+
+              // Add book symbol
+              const bookColor = visibilityState === "revealed" ? "#71574f" : "#8d6e63";
+              ctx.fillStyle = bookColor;
+              ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.1, py - CONFIG.canvas.HEX_SIZE * 0.05, CONFIG.canvas.HEX_SIZE * 0.2, CONFIG.canvas.HEX_SIZE * 0.15);
+            }
      }
      ctx.globalAlpha = 1;
      ctx.strokeStyle = "#111";
@@ -510,6 +609,7 @@ export function SimulationCanvas({
       }
     };
     for (const [tileKey, itemData] of Object.entries(items)) {
+      if (!isVisible(tileKey, "item")) continue;
       const [q, r] = tileKey.split(",").map(Number) as [number, number];
       const [ix, iy] = axialToPixel([q, r], size);
       const entries = Object.entries(itemData as Record<string, unknown>)
@@ -533,6 +633,7 @@ export function SimulationCanvas({
 
     const stockpiles = snapshot.stockpiles ?? {};
     for (const [tileKey, stockpile] of Object.entries(stockpiles)) {
+      if (!isVisible(tileKey, "stockpile")) continue;
       const [q, r] = tileKey.split(",").map(Number) as [number, number];
       const [sx, sy] = axialToPixel([q, r], size);
       const spRaw = stockpile as Record<string, unknown>;
@@ -770,8 +871,10 @@ export function SimulationCanvas({
     drawRelationshipLinks();
 
     for (const agent of snapshot.agents ?? []) {
-      if (!hasPos(agent)) continue;
+      if (!hasPos(agent) || !isVisible(agent, "agent")) continue;
       const [aq, ar] = agent.pos as AxialCoords;
+      const tileVisibilityState = getTileVisibilityState(aq, ar);
+      if (tileVisibilityState === "hidden") continue;
       const [ax, ay] = axialToPixel([aq, ar], size);
       const agentId = agent.id;
       const path = agentPaths[agentId] ?? [];
@@ -858,7 +961,7 @@ export function SimulationCanvas({
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       ctx.restore();
     }
-  }, [snapshot, mapConfig, selectedCell, selectedAgentId, camera]);
+  }, [snapshot, mapConfig, selectedCell, selectedAgentId, camera, showRelationships, showNames, showStats, speechBubbles, visibilityData, selectedVisibilityAgentId, agentPaths, tileVisibility, revealedTilesSnapshot]);
 
   useEffect(() => {
     if (!mapConfig || !focusPos) return;
@@ -884,6 +987,11 @@ export function SimulationCanvas({
 
     const [q, r] = pixelToAxial(worldX, worldY, CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING);
     const cell: AxialCoords = [q, r];
+
+    const visibilityState = getTileVisibilityState(q, r);
+    if (visibilityState === "hidden") {
+      return;
+    }
 
     const hit = (snapshot.agents ?? []).find((a: Agent) => {
       if (!hasPos(a)) return false;

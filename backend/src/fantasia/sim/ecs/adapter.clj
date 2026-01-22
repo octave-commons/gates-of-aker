@@ -87,17 +87,26 @@
             (be/get-all-entities-with-component ecs-world stockpile-type))))
 
 (defn ecs->snapshot
-  "Convert ECS world to old-style snapshot for WebSocket broadcast."
-  [ecs-world global-state]
-  {:tick (:tick global-state)
-   :shrine (:shrine global-state)
-   :levers (:levers global-state)
-   :map (:map global-state)
-   :tiles (ecs->tiles-map ecs-world)
-   :recent-events (:recent-events global-state)
-   :attribution (:attribution global-state)
-   :jobs (:jobs global-state)
-   :items (:items global-state)
-   :stockpiles (ecs->stockpiles-map ecs-world)
-   :agents (ecs->agent-list ecs-world)
-   :ledger (:ledger global-state)})
+   "Convert ECS world to old-style snapshot for WebSocket broadcast."
+   [ecs-world global-state]
+   (let [tile-visibility (:tile-visibility global-state {})
+         all-tiles (ecs->tiles-map ecs-world)
+         visible-tiles (if (empty? tile-visibility)
+                         all-tiles
+                         (into {}
+                               (filter (fn [[tile-key]]
+                                         (let [vis (get tile-visibility tile-key :hidden)]
+                                           (or (= vis :visible) (= vis :revealed))))
+                                       all-tiles)))]
+     {:tick (:tick global-state)
+      :shrine (:shrine global-state)
+      :levers (:levers global-state)
+      :map (:map global-state)
+      :tiles visible-tiles
+      :recent-events (:recent-events global-state)
+      :attribution (:attribution global-state)
+      :jobs (:jobs global-state)
+      :items (:items global-state)
+      :stockpiles (ecs->stockpiles-map ecs-world)
+      :agents (ecs->agent-list ecs-world)
+      :ledger (:ledger global-state)}))

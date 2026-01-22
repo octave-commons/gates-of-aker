@@ -113,9 +113,10 @@
 - Exercise `/sim/reset`, `/sim/tick`, and `/sim/run` endpoints after changing simulation code; include curl snippets in PR discussions.
 - Prefer feature flags behind env vars when experimenting; remove dead flags before merging.
 - Keep release builds reproducible by tagging the backend commit hash inside PR descriptions when shipping the frontend.
-- Coordinate port usage when running locally; backend default 3000 and frontend 5173 should stay open.
-- Document any long-running futures or watchers you add, including how to stop them cleanly.
-- When adding migrations or data backfills, script them and check those scripts into `/docs/notes` or `/scripts` once that dir exists.
+ - Coordinate port usage when running locally; backend default 3000 and frontend 5173 should stay open.
+ - Document any long-running futures or watchers you add, including how to stop them cleanly.
+ - When adding migrations or data backfills, script them and check those scripts into `/docs/notes` or `/scripts` once that dir exists.
+ - Backend restarts and recompiles automatically on file changes; no manual restart needed after code changes.
 
 ## Docs & Knowledge Base
 

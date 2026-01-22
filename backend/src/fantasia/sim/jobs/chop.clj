@@ -1,6 +1,7 @@
 (ns fantasia.sim.jobs.chop
-   (:require [fantasia.sim.hex :as hex]
-             [fantasia.sim.pathing]))
+    (:require [fantasia.dev.logging :as log]
+              [fantasia.sim.hex :as hex]
+              [fantasia.sim.pathing]))
 
 (defn create-chop-job [pos]
    {:id (random-uuid)
@@ -16,13 +17,13 @@
          tile-key (vector q r)
          pos (:target job)
          tile (get-in world [:tiles tile-key])]
-     (when (and tile (= (:resource tile) :tree))
-       (println "[JOB:COMPLETE]"
-                {:type :job/chop-tree
-                 :target pos
-                 :outcome (str "Produced 5 wood at " pos)})
-       (-> world
-           (update-in [:tiles tile-key] assoc :resource :wood :qty 5)))))
+      (when (and tile (= (:resource tile) :tree))
+        (log/log-info "[JOB:COMPLETE]"
+                 {:type :job/chop-tree
+                  :target pos
+                  :outcome (str "Produced 5 wood at " pos)})
+        (-> world
+            (update-in [:tiles tile-key] assoc :resource :wood :qty 5)))))
 
 (defn progress-chop! [world job delta]
   (let [new-progress (min (+ (:progress job) delta) (:required job))]

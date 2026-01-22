@@ -1,4 +1,4 @@
-(ns fantasia.sim.jobs
+ (ns fantasia.sim.jobs
    (:require [clojure.set :as set]
               [clojure.string :as str]
               [fantasia.dev.logging :as log]
@@ -7,7 +7,9 @@
               [fantasia.sim.hex :as hex]
               [fantasia.sim.scribes :as scribes]))
 
-(defn tile-key [q r] [q r])
+(declare total-item-qty)
+
+ (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
 (defn parse-key-pos [[q r]] [q r])
 
@@ -66,15 +68,15 @@
 (def max-structure-level 3)
 
 (def job-provider-config
-   {:lumberyard {:job-type :job/harvest-wood :max-jobs 3}
-    :orchard {:job-type :job/harvest-fruit :max-jobs 1}
-    :granary {:job-type :job/harvest-grain :max-jobs 2}
-    :farm {:job-type :job/farm :max-jobs 2}
-    :quarry {:job-type :job/mine :max-jobs 3}
-    :workshop {:job-type :job/builder :max-jobs 2}
-    :improvement-hall {:job-type :job/improve :max-jobs 1}
-    :smelter {:job-type :job/smelt :max-jobs 1}
-    :library {:job-type :job/scribe :max-jobs 3}})
+   {:lumberyard {:job-type :job/harvest-wood :max-jobs 6}
+    :orchard {:job-type :job/harvest-fruit :max-jobs 4}
+    :granary {:job-type :job/harvest-grain :max-jobs 4}
+    :farm {:job-type :job/farm :max-jobs 4}
+    :quarry {:job-type :job/mine :max-jobs 6}
+    :workshop {:job-type :job/builder :max-jobs 6}
+    :improvement-hall {:job-type :job/improve :max-jobs 3}
+    :smelter {:job-type :job/smelt :max-jobs 3}
+    :library {:job-type :job/scribe :max-jobs 6}})
 
 (def improvable-structures
   #{:lumberyard :orchard :granary :farm :quarry :workshop :smelter :warehouse :library})
@@ -348,11 +350,55 @@
           (sort-by (fn [pos] (hex/distance campfire-pos pos)))
           first)))
 
+(defn- structure-exists? [world structure-type]
+  (some #(= (:structure %) structure-type) (vals (:tiles world))))
+
+(defn generate-missing-structures-jobs! [world]
+  (let [campfire-pos (find-campfire-pos world)
+        target (find-structure-site world campfire-pos)
+        existing-jobs (->> (:jobs world)
+                          (filter #(= (:type %) :job/build-structure))
+                          (map :structure)
+                          set)
+        log-qty (+ (total-item-qty (:items world) :log)
+                   (total-item-qty (:items world) :wood))
+        build-site (or target (when campfire-pos
+                             (first (filter #(empty-build-site? world %)
+                                           (positions-within-radius campfire-pos 2)))))]
+    (log/log-info "[JOB:AUTO-BUILD:CHECK]" {:campfire-pos campfire-pos
+                                              :build-site build-site
+                                              :log-qty log-qty
+                                              :workshop-exists (structure-exists? world :workshop)
+                                              :library-exists (structure-exists? world :library)
+                                              :existing-build-jobs existing-jobs})
+    (cond-> world
+      (and build-site
+           (not (structure-exists? world :workshop))
+           (not (contains? existing-jobs :workshop))
+           (>= log-qty 3))
+      (do
+        (log/log-info "[JOB:AUTO-BUILD]" {:structure :workshop :reason :missing-critical})
+        (add-job-to-world! world
+          (assoc (create-job :job/build-structure build-site)
+                 :structure :workshop
+                 :stockpile {:resource :log :max-qty 120})))
+
+      (and build-site
+           (not (structure-exists? world :library))
+           (not (contains? existing-jobs :library))
+           (>= log-qty 3))
+      (do
+        (log/log-info "[JOB:AUTO-BUILD]" {:structure :library :reason :missing-critical})
+        (add-job-to-world! world
+          (assoc (create-job :job/build-structure build-site)
+                 :structure :library
+                 :stockpile {:resource :log :max-qty 120}))))))
+
 (defn- find-build-fire-site [world pos]
-  (->> (positions-within-radius pos 3)
-       (filter #(empty-build-site? world %))
-       (sort-by (fn [p] (hex/distance pos p)))
-       first))
+   (->> (positions-within-radius pos 3)
+        (filter #(empty-build-site? world %))
+        (sort-by (fn [p] (hex/distance pos p)))
+        first))
 
 (defn- tiles-with-resource [world resource]
   (->> (:tiles world)

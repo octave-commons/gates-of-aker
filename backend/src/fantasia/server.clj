@@ -131,11 +131,24 @@
       (json-resp 200 {:connected true :latency_ms latency :model ollama-model})
       (json-resp 200 {:connected false :latency_ms latency :model ollama-model :error (:error result)}))))
 
+(defn get-visible-tiles
+  "Return only visible or revealed tiles from state."
+  [state]
+  (let [tile-visibility (:tile-visibility state {})]
+    (if (empty? tile-visibility)
+      (:tiles state)
+      (into {}
+            (filter (fn [[tile-key]]
+                      (let [vis (get tile-visibility tile-key :hidden)]
+                        (or (= vis :visible) (= vis :revealed))))
+                  (:tiles state))))))
+
 (defn handle-ws [req]
   (http/with-channel req ch
     (swap! *clients conj ch)
     (ws-send! ch {:op "hello"
-                  :state (select-keys (sim/get-state) [:tick :shrine :levers :map :tiles])})
+                  :state (merge (select-keys (sim/get-state) [:tick :shrine :levers :map :agents :tile-visibility :revealed-tiles-snapshot])
+                                {:tiles (get-visible-tiles (sim/get-state))})})
     (http/on-close ch (fn [_] (swap! *clients disj ch)))
     (http/on-receive ch
       (fn [raw]
@@ -176,7 +189,7 @@
 
             "place_wall_ghost"
             (do (sim/place-wall-ghost! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
             "appoint_mouthpiece"
             (do (sim/appoint-mouthpiece! (:agent_id msg))
@@ -198,15 +211,15 @@
 
             "place_campfire"
             (do (sim/place-campfire! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
             "place_statue_dog"
             (do (sim/place-statue-dog! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
             "place_tree"
             (do (sim/place-tree! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
             "place_deer"
             (do (sim/place-deer! (:pos msg))
@@ -226,8 +239,8 @@
               (when (and structure (:pos msg))
                 (sim/queue-build-job! structure (:pos msg) stockpile)
                 (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))})
-                (when (= structure :wall)
-                  (broadcast! {:op "tiles" :tiles (:tiles (sim/get-state))}))
+              (when (= structure :wall)
+                   (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
                 (when (= structure :shrine)
                   (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))))
 

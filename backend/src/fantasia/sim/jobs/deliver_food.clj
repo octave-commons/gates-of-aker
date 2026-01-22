@@ -1,4 +1,5 @@
-(ns fantasia.sim.jobs.deliver-food)
+(ns fantasia.sim.jobs.deliver-food
+  (:require [fantasia.dev.logging :as log]))
 
 (defn create-deliver-food-job [from-pos to-pos qty]
    {:id (random-uuid)
@@ -20,10 +21,10 @@
          qty (:qty job)
          stockpiles (:stockpiles world)
          sp (get stockpiles tile-key)
-         current-qty (or (when sp (:current-qty sp)) 0)
-         new-qty (+ current-qty qty)]
-     (println "[JOB:COMPLETE]" {:type :job/deliver-food :agent-id agent-id :target pos :qty qty})
-     (if sp
+          current-qty (or (when sp (:current-qty sp)) 0)
+          new-qty (+ current-qty qty)]
+      (log/log-info "[JOB:COMPLETE]" {:type :job/deliver-food :agent-id agent-id :target pos :qty qty})
+      (if sp
        (assoc-in world [:stockpiles tile-key :current-qty] new-qty)
        (assoc-in world [:stockpiles tile-key] {:resource :food :max-qty 200 :current-qty new-qty}))))
 

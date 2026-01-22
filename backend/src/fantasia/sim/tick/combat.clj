@@ -11,10 +11,16 @@
 (def ^:private wolf-sight-range const/wolf-sight-range)
 
 (def ^:private role-damage
-  {:wolf 0.16
-   :bear 0.22
-   :deer 0.0
-   :default 0.12})
+   {:wolf 0.16
+    :bear 0.22
+    :deer 0.0
+    :default 0.12})
+
+(defn- defense-reduction
+  [agent]
+  (let [fortitude (get-in agent [:stats :fortitude] 0.0)
+        multiplier (min 1.0 (max 0.0 fortitude))]
+    (* multiplier const/max-defense-multiplier)))
 
 (defn- alive-agent?
   [agent]
@@ -82,25 +88,31 @@
              :tick (:tick world)}]))
 
 (defn- apply-attack
-  [world attacker target]
-  (let [damage (damage-for (:role attacker))
-        target-id (:id target)
-        health (double (get-in world [:agents target-id :needs :health] 1.0))
-        health' (max 0.0 (- health damage))
-        world' (assoc-in world [:agents target-id :needs :health] health')
-        world' (if (and (= (:role attacker) :wolf))
-                 (update-in world' [:agents (:id attacker) :needs :food] + const/wolf-attack-food-gain)
-                 world')]
-    (if (<= health' 0.0)
-      (apply-kill-effects world' attacker target)
-      [world' {:type :hunt-attack
-               :attacker-id (:id attacker)
-               :attacker-role (:role attacker)
-               :target-id (:id target)
-               :target-role (:role target)
-               :pos (:pos target)
-               :damage damage
-               :tick (:tick world)}])))
+   [world attacker target]
+   (let [damage (damage-for (:role attacker))
+         target-id (:id target)
+         reduction (if (= (:faction target) :player)
+                     (defense-reduction target)
+                     0.0)
+         reduced-damage (* damage (- 1.0 reduction))
+         health (double (get-in world [:agents target-id :needs :health] 1.0))
+         health' (max 0.0 (- health reduced-damage))
+         world' (assoc-in world [:agents target-id :needs :health] health')
+         world' (if (and (= (:role attacker) :wolf))
+                  (update-in world' [:agents (:id attacker) :needs :food] + const/wolf-attack-food-gain)
+                  world')]
+     (if (<= health' 0.0)
+       (apply-kill-effects world' attacker target)
+       [world' {:type :hunt-attack
+                :attacker-id (:id attacker)
+                :attacker-role (:role attacker)
+                :target-id (:id target)
+                :target-role (:role target)
+                :pos (:pos target)
+                :damage reduced-damage
+                :original-damage damage
+                :defense-reduction reduction
+                :tick (:tick world)}])))
 
 (defn process-combat!
   "Apply one combat step for all agents. Returns [world events] tuple."
@@ -116,12 +128,12 @@
                [(first result) (conj acc-events (second result))]
                [result acc-events]))
            [w (conj acc-events {:type :hunt-start
-                                 :attacker-id (:id attacker)
-                                 :attacker-role (:role attacker)
-                                 :target-id (:id target)
-                                 :target-role (:role target)
-                                 :pos (:pos target)
-                                 :tick (:tick w)})]))
+                               :attacker-id (:id attacker)
+                               :attacker-role (:role attacker)
+                               :target-id (:id target)
+                               :target-role (:role target)
+                               :pos (:pos target)
+                               :tick (:tick w)})])
          [w acc-events])
        [w acc-events]))
    [world []]

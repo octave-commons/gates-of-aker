@@ -1,27 +1,35 @@
 (ns fantasia.sim.tick.core
-  (:require [fantasia.sim.agents :as agents]
-            [fantasia.sim.social :as social]
-            [fantasia.sim.events.runtime :as runtime]
-            [fantasia.sim.institutions :as institutions]
-            [fantasia.sim.world :as world]
-             [fantasia.sim.jobs :as jobs]
-             [fantasia.sim.jobs.providers :as job-providers]
-             [fantasia.sim.hex :as hex]
-             [fantasia.sim.pathing]
-             [fantasia.sim.time :as sim-time]
-             [fantasia.sim.tick.initial :as initial]
-             [fantasia.sim.tick.combat :as combat]
-             [fantasia.sim.tick.trees :as trees]
-             [fantasia.sim.tick.movement :as movement]
-             [fantasia.sim.tick.mortality :as mortality]
-             [fantasia.sim.tick.food-decay :as food-decay]
-             [fantasia.sim.reproduction :as reproduction]
-             [fantasia.sim.houses :as houses]
-             [fantasia.sim.constants :as const]))
+    (:require [fantasia.sim.agents :as agents]
+               [fantasia.sim.social :as social]
+               [fantasia.sim.events.runtime :as runtime]
+               [fantasia.sim.institutions :as institutions]
+               [fantasia.sim.world :as world]
+                [fantasia.sim.jobs :as jobs]
+                [fantasia.sim.jobs.providers :as job-providers]
+                [fantasia.sim.hex :as hex]
+                [fantasia.sim.pathing]
+                [fantasia.sim.time :as sim-time]
+                [fantasia.sim.tick.initial :as initial]
+                [fantasia.sim.tick.combat :as combat]
+                [fantasia.sim.tick.trees :as trees]
+                [fantasia.sim.tick.movement :as movement]
+                [fantasia.sim.tick.mortality :as mortality]
+                [fantasia.sim.tick.food-decay :as food-decay]
+                [fantasia.sim.reproduction :as reproduction]
+                [fantasia.sim.houses :as houses]
+                [fantasia.sim.los :as los]
+                [fantasia.sim.memories :as mem]
+                [fantasia.sim.constants :as const]))
 
 (def ^:dynamic *state (atom (initial/initial-world 1)))
+(def ^:dynamic *previous-state (atom nil))
 
 (defn get-state [] @*state)
+(defn get-previous-state [] @*previous-state)
+
+(defn update-state! [new-world]
+  (clojure.core/reset! *previous-state @*state)
+  (clojure.core/reset! *state new-world))
 
 (defn reset-world!
   ([] (reset-world! {}))
@@ -35,7 +43,14 @@
   (swap! *state assoc :shrine pos))
 
 (defn appoint-mouthpiece! [agent-id]
-  (swap! *state assoc-in [:levers :mouthpiece-agent-id] agent-id))
+   (swap! *state assoc-in [:levers :mouthpiece-agent-id] agent-id))
+
+(defn process-memory-lifecycle!
+  "Process memory decay and cleanup each tick."
+  [world]
+  (-> world
+      (mem/decay-memories!)
+      (mem/clean-expired-memories! 0.05)))
 
 (defn ^:dynamic tick-once [world]
     (let [t (inc (:tick world))
@@ -48,12 +63,13 @@
                  (assoc :daylight daylight)
                  (assoc :cold-snap cold-snap))
            w1 (assoc w1 :calendar (sim-time/calendar-info w1))
-            w2 (-> w1
-                     (trees/spread-trees!)
-                     (job-providers/auto-generate-jobs!)
-                     (jobs/auto-assign-jobs!)
-                     (trees/drop-tree-fruits!)
-                     (food-decay/decay-food!))
+             w2 (-> w1
+                      (trees/spread-trees!)
+                      (job-providers/auto-generate-jobs!)
+                      (jobs/generate-missing-structures-jobs!)
+                      (jobs/auto-assign-jobs!)
+                      (trees/drop-tree-fruits!)
+                      (food-decay/decay-food!))
          [w3 agents1] (loop [w w2
                              agents (:agents w2)
                              acc-w w2
@@ -64,11 +80,12 @@
                                 a'' (agents/update-needs w' a')]
                             (recur w' (rest agents) w' (conj acc-a a'')))))
          w3 (assoc w3 :agents agents1)
-         [w4 combat-events] (combat/process-combat! w3)
-         w4 (-> w4
-                (jobs/cleanup-hunt-jobs!)
-                (mortality/process-mortality!))
-         agents2 (:agents w4)
+          [w4 combat-events] (combat/process-combat! w3)
+          w4 (-> w4
+                 (jobs/cleanup-hunt-jobs!)
+                 (mortality/process-mortality!)
+                 (process-memory-lifecycle!))
+          agents2 (:agents w4)
         ev (runtime/generate w4 agents2)
         ev-step (if ev
                   (reduce
@@ -186,38 +203,49 @@
          traces' (->> (concat (:traces w5) (:traces inst-step))
                        (take-last (:trace-max w5))
                        vec)
-         world' (-> w5
-                    (assoc :agents agents8)
-                    (assoc :next-agent-id (:next-agent-id reproduction-step))
-                   (assoc :ledger ledger2)
-                   (assoc :recent-events recent')
-                   (assoc :traces traces'))]
-      {:world world'
-      :out {:tick t
-            :event ev
-            :combat-events combat-events
-            :mentions (:mentions inst-step)
-            :traces (:traces inst-step)
-            :attribution attr
-            :social-interactions (:social-interactions talk-step)
-            :books (:books w5)
-            :snapshot (world/snapshot world' attr)}}))
+           world' (-> w5
+                      (assoc :agents agents8)
+                       (assoc :next-agent-id (:next-agent-id reproduction-step))
+                      (assoc :ledger ledger2)
+                      (assoc :recent-events recent')
+                       (assoc :traces traces'))
+           visibility-update (los/update-tile-visibility! world')
+           world'' (merge world' visibility-update)]
+        {:world world''
+        :out {:tick t
+              :event ev
+              :combat-events combat-events
+              :mentions (:mentions inst-step)
+              :traces (:traces inst-step)
+              :attribution attr
+              :social-interactions (:social-interactions talk-step)
+              :books (:books w5)
+              :snapshot (world/snapshot world'' attr)
+              :delta-snapshot (let [old-world (get-state)]
+                                 (update-state! world'')
+                                 (world/delta-snapshot old-world world'' attr))}}))
 
 (defn tick! [n]
-  (loop [i 0
-         outs []]
+   (loop [i 0
+          outs []]
     (if (>= i n)
       outs
-      (let [{:keys [world out]} (tick-once (get-state))]
-        (clojure.core/reset! *state world)
-        (recur (inc i) (conj outs out))))))
+      (let [out (tick-once (get-state))]
+        (recur (inc i) (conj outs out (:out out)))))))
 
-(defn next-agent-id []
-  (if-let [agents (:agents (get-state))]
-    (if (empty? agents)
-      0
-      (inc (apply max (map :id agents))))
-    0))
+(defn next-agent-id
+  ([world]
+   (if-let [agents (:agents world)]
+     (if (empty? agents)
+       0
+       (inc (apply max (map :id agents))))
+     0))
+  ([]
+   (if-let [agents (:agents (get-state))]
+     (if (empty? agents)
+       0
+       (inc (apply max (map :id agents))))
+     0)))
 
 (defn spawn-wolf! [world pos]
   (let [agent-id (next-agent-id)
