@@ -19,6 +19,8 @@ export { ResourceTotalsPanel } from "./ResourceTotalsPanel";
 export { FactionsPanel } from "./FactionsPanel";
 export { MythPanel } from "./MythPanel";
 export { VisibilityControlPanel } from "./VisibilityControlPanel";
+export { MemoryOverlay } from "./MemoryOverlay";
+export { facetControls } from "./facetControls";
 export { TabPanel } from "./TabPanel";
 export { SplashScreen } from "./SplashScreen";
 export { MainMenu } from "./MainMenu";
