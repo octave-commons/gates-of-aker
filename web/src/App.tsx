@@ -170,9 +170,13 @@ export function App() {
     return agentPaths[agentId] ?? [];
   };
 
-   const [buildMode, setBuildMode] = useState(false);
-   const [stockpileMode, setStockpileMode] = useState(false);
-     const [fps, setFps] = useState(15);
+  const [buildMode, setBuildMode] = useState(false);
+  const [stockpileMode, setStockpileMode] = useState(false);
+    const [fps, setFps] = useState(15);
+    const [memories, setMemories] = useState<any[]>([]);
+    const [facetLimit, setFacetLimit] = useState(16);
+    const [visionRadius, setVisionRadius] = useState(10);
+    const [showMemories, setShowMemories] = useState(false);
  
    const [worldWidth, setWorldWidth] = useState<number | null>(null);
    const [worldHeight, setWorldHeight] = useState<number | null>(null);
@@ -871,8 +875,9 @@ export function App() {
           onFacetLimitChange={handleFacetLimitChange}
           onVisionRadiusChange={handleVisionRadiusChange}
         />
+      </div>
 
-        <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
         <StatusBar status={status} tickHealth={tickHealth} />
 
         <WorldInfoPanel calendar={calendar} />
