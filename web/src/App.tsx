@@ -22,6 +22,8 @@ import {
   MainMenu,
   OllamaTestPage,
   VisibilityControlPanel,
+  MemoryOverlay,
+  FacetControls,
 } from "./components";
 import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
@@ -854,9 +856,23 @@ export function App() {
           tileVisibility={tileVisibility}
           revealedTilesSnapshot={revealedTilesSnapshot}
         />
-      </div>
 
-      <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+        <MemoryOverlay
+          memories={memories}
+          mapConfig={mapConfig}
+          showMemories={showMemories}
+          strengthThreshold={0.3}
+        />
+
+        <FacetControls
+          mapConfig={mapConfig}
+          facetLimit={facetLimit}
+          visionRadius={visionRadius}
+          onFacetLimitChange={handleFacetLimitChange}
+          onVisionRadiusChange={handleVisionRadiusChange}
+        />
+
+        <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
         <StatusBar status={status} tickHealth={tickHealth} />
 
         <WorldInfoPanel calendar={calendar} />
