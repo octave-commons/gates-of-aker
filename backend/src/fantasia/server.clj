@@ -200,14 +200,10 @@
                        (broadcast! {:op "event" :data ev}))
                      (doseq [tr (:traces o)]
                        (broadcast! {:op "trace" :data tr}))
-                     (doseq [si (:social-interactions o)]
-                       (broadcast! {:op "social_interaction" :data si}))
-                     (doseq [ce (:combat-events o)]
-                       (broadcast! {:op "combat_event" :data ce}))))))
-         (catch Exception e
-           (println "[WS] Error handling message:" (.getMessage e)))))
-         (catch Exception e
-           (println "[WS] Error handling message:" (.getMessage e)))))
+                      (doseq [si (:social-interactions o)]
+                        (broadcast! {:op "social_interaction" :data si}))
+                      (doseq [ce (:combat-events o)]
+                        (broadcast! {:op "combat_event" :data ce}))))
 
             "reset"
             (let [opts {:seed (long (or (:seed msg) 1))

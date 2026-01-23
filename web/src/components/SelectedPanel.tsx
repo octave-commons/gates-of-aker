@@ -45,9 +45,7 @@ export function SelectedPanel({
         return tileVisibility[key];
       }
     }
-    console.log("[SelectedPanel] tileVisibility keys:", keys.slice(0, 10));
-    console.log("[SelectedPanel] Looking for tile:", selectedCell, "testKeys:", testKeys);
-    return "unknown";
+    return "hidden";
   }, [selectedCell, tileVisibility]);
   const [isCollapsed, setIsCollapsed] = useState(false);
 

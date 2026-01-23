@@ -131,8 +131,10 @@
                    (assoc :ledger ledger2)
                    (assoc :recent-events recent')
                    (assoc :traces traces'))
-        visibility-update (los/update-tile-visibility! world')
-        world'' (merge world' visibility-update)]
+         visibility-update (los/update-tile-visibility! world')
+         world'' (-> world'
+                     (update :tile-visibility merge (:tile-visibility visibility-update))
+                     (update :revealed-tiles-snapshot merge (:revealed-tiles-snapshot visibility-update)))]
     {:world world''
      :out {:tick t
            :event ev
