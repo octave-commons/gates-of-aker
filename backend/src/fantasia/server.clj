@@ -313,7 +313,7 @@
             (do (sim/set-vision-radius! (:radius msg))
                 (broadcast! {:op "vision_radius" :radius (:radius msg)}))
 
-             (ws-send! ch {:op "error" :message "unknown op"})))))))
+             (ws-send! ch {:op "error" :message "unknown op"}))))))))
 
 (def app
   (ring/ring-handler
