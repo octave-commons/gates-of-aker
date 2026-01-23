@@ -152,16 +152,17 @@
       (json-resp 200 {:connected false :latency_ms latency :model ollama-model :error (:error result)}))))
 
 (defn get-visible-tiles
-  "Return only visible or revealed tiles from state."
-  [state]
-  (let [tile-visibility (:tile-visibility state {})]
-    (if (empty? tile-visibility)
-      (:tiles state)
-      (into {}
-            (filter (fn [[tile-key]]
-                      (let [vis (get tile-visibility tile-key :hidden)]
-                        (or (= vis :visible) (= vis :revealed))))
-                  (:tiles state))))))
+   "Return only visible or revealed tiles from state.
+   Tiles without a visibility marker are treated as visible."
+   [state]
+   (let [tile-visibility (:tile-visibility state {})]
+     (if (empty? tile-visibility)
+       (:tiles state)
+       (into {}
+             (filter (fn [[tile-key]]
+                       (let [vis (get tile-visibility tile-key)]
+                         (or (nil? vis) (= vis :visible) (= vis :revealed))))
+                   (:tiles state))))))
 
 (defn handle-ws [req]
   (http/with-channel req ch

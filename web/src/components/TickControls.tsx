@@ -1,4 +1,4 @@
-  import React, { useState, useCallback } from "react";
+  import { useState, useCallback } from "react";
   import { toggleMute, isMuted, markUserInteraction, playTone } from "../audio";
 
  type TickControlsProps = {

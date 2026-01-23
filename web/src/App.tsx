@@ -38,7 +38,7 @@ type SpeechBubble = {
   interactionType: string;
   timestamp: number;
 };
-import { clamp01, fmt, colorForRole, safeStringify } from "./utils";
+import { clamp01, fmt, colorForRole, safeStringify, normalizeKeyedMap } from "./utils";
 import { CONFIG } from "./config/constants";
 
 const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
@@ -101,45 +101,24 @@ const SOCIAL_TONE_SEQUENCES: Record<string, number[]> = {
    "Teaching": [2, 4, 2],
  };
 
-const toSequence = (notes: number[], octaveShift: number = 0) =>
-  notes.map((note) => getScaleFrequency(note, octaveShift));
+   const toSequence = (notes: number[], octaveShift: number = 0) =>
+   notes.map((note) => getScaleFrequency(note, octaveShift));
 
-  const normalizeTileKey = (rawKey: string) => {
-  const trimmed = rawKey.trim();
-  if (trimmed.includes(",") && !trimmed.includes("[")) {
-    return trimmed.replace(/\s+/g, "");
-  }
-  const match = trimmed.match(/^\[(-?\d+)[,\s]+(-?\d+)\]$/);
-  if (match) {
-    return `${match[1]},${match[2]}`;
-  }
-  return trimmed;
-};
-
-    const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined): Record<string, T> => {
-     if (!input || typeof input !== "object") return {} as Record<string, T>;
-     const normalized: Record<string, T> = {};
-     const keys = Object.keys(input);
-     if (keys.length > 0 && window.location.hostname === "localhost") {
-       console.log("[APP] normalizeKeyedMap:", keys.length, "keys, first:", keys[0]);
-     }
-     for (const [key, value] of Object.entries(input)) {
-       const normalizedKey = normalizeTileKey(key);
-       normalized[normalizedKey] = value;
-     }
-     return normalized;
-   };
-
-  const normalizeSnapshot = (state: any) => {
-    if (!state || typeof state !== "object") return state;
-    const normalizedTiles = normalizeKeyedMap(state.tiles);
-    return {
-      ...state,
-      tiles: normalizedTiles,
-      items: normalizeKeyedMap(state.items),
-      stockpiles: normalizeKeyedMap(state.stockpiles),
+    const normalizeSnapshot = (state: any) => {
+      if (!state || typeof state !== "object") return state;
+      const normalizedTiles = normalizeKeyedMap(state.tiles);
+      return {
+        ...state,
+        tiles: normalizedTiles,
+        items: normalizeKeyedMap(state.items),
+        stockpiles: normalizeKeyedMap(state.stockpiles),
+      };
     };
-  };
+
+export type AgentVisibility = {
+  id: number;
+  visibleTiles: Set<string>;
+};
 
 export function App() {
   const navigate = useNavigate();
@@ -164,11 +143,12 @@ export function App() {
 
     const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
-    const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
-     const [selectedVisibilityAgentId, setSelectedVisibilityAgentId] = useState<number | null>(null);
+      const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
+      const [selectedVisibilityAgentId, setSelectedVisibilityAgentId] = useState<number | null>(null);
       const [visibilityData, setVisibilityData] = useState<Record<string, any> | null>(null);
-   const [tileVisibility, setTileVisibility] = useState<Record<string, "hidden" | "revealed" | "visible">>({});
-   const [revealedTilesSnapshot, setRevealedTilesSnapshot] = useState<Record<string, any>>({});
+      const [tileVisibility, setTileVisibility] = useState<Record<string, "hidden" | "revealed" | "visible">>({});
+      const [revealedTilesSnapshot, setRevealedTilesSnapshot] = useState<Record<string, any>>({});
+      const [agentVisibilityMaps, setAgentVisibilityMaps] = useState<Record<number, Set<string>>>({});
 
      useEffect(() => {
      }, [snapshot]);
@@ -415,16 +395,17 @@ export function App() {
     return new WSClient(
       wsUrl,
       (m: WSMessage) => {
-            if (m.op === "hello") {
-               const state = normalizeSnapshot(m.state ?? {});
-               console.log("[APP] hello: tile count:", Object.keys(state.tiles ?? {}).length, "agents:", state.agents?.length);
-                 const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
-             const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
-             setTick(state.tick ?? 0);
-             setSnapshot(state);
-             setTileVisibility(tv);
-             setRevealedTilesSnapshot(rts);
-            prevSnapshotRef.current = state;
+             if (m.op === "hello") {
+                const state = normalizeSnapshot(m.state ?? {});
+                   const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+               const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
+               const avm = state?.agent_visibility ?? {};
+               setTick(state.tick ?? 0);
+               setSnapshot(state);
+               setTileVisibility(tv);
+               setRevealedTilesSnapshot(rts);
+               setAgentVisibilityMaps(avm);
+             prevSnapshotRef.current = state;
            if (state.map) {
              setMapConfig(state.map as HexConfig);
            }
@@ -443,17 +424,28 @@ export function App() {
               handleDeathTone(nextSnapshot);
               handleTickAudio(nextSnapshot);
             }
-               if (m.op === "tick_delta") {
-                 const delta = m.data as any;
-                  const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
-                 const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
-                 setTick(delta?.tick ?? 0);
-                 setSnapshot((prev: any) => applyDelta(prev, delta));
-                 setVisibilityData(delta?.visibility ?? null);
-                 setTileVisibility(tv);
-                 setRevealedTilesSnapshot(rts);
-                 handleDeltaAudio(delta);
-               }
+                if (m.op === "tick_delta") {
+                  const delta = m.data as any;
+                   const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
+                  const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
+                  const avm = delta?.agent_visibility;
+                  setTick(delta?.tick ?? 0);
+                  setSnapshot((prev: any) => applyDelta(prev, delta));
+                  setVisibilityData(delta?.visibility ?? null);
+                  setTileVisibility(tv);
+                  setRevealedTilesSnapshot(rts);
+                  if (avm && typeof avm === "object") {
+                    setAgentVisibilityMaps((prev: Record<number, Set<string>>) => ({
+                      ...prev,
+                      ...Object.entries(avm).reduce((acc, [agentId, tiles]) => {
+                        const numId = parseInt(String(agentId), 10);
+                        const tilesArray = Array.isArray(tiles) ? tiles : [];
+                        return { ...acc, [numId]: new Set(tilesArray) };
+                      }, {})
+                    }));
+                  }
+                  handleDeltaAudio(delta);
+                }
         if (m.op === "trace") {
             const incoming = m.data as Trace;
             setTraces((prev) => {
@@ -906,15 +898,19 @@ export function App() {
             onSetFps={setFpsValue}
           />
 
-          {/* Selected Panel */}
+           {/* Selected Panel */}
           <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)", minHeight: 200 }}>
             <SelectedPanel
               selectedCell={selectedCell}
               selectedTile={selectedTile}
               selectedTileItems={selectedTileItems}
               selectedTileAgents={selectedTileAgents}
-              selectedAgentId={selectedAgentId}
+              selectedAgentId={selectedVisibilityAgentId}
               selectedAgent={selectedAgent}
+              selectedVisibilityAgentId={selectedVisibilityAgentId}
+              agentVisibilityMaps={agentVisibilityMaps}
+              agents={agents}
+              onSetVisibilityAgentId={setSelectedVisibilityAgentId}
             />
          </div>
 

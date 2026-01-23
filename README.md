@@ -67,7 +67,7 @@ clojure -R:nrepl
 (sim/reset-world! {:seed 42 :tree-density 0.1})
 
 ; Set simulation levers
-(sim/set-levers! {:ollama-model "llama2" :belief-propagation-rate 0.5})
+(sim/set-levers! {:ollama-model "qwen3:4b" :belief-propagation-rate 0.5})
 
 ; Place entities
 (sim/place-shrine! [10 10])

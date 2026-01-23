@@ -102,27 +102,32 @@
          old-snapshots (:revealed-tiles-snapshot world {})
          all-tiles (keys (:tiles world))]
      (println "[VISIBILITY] Currently visible tiles:" (count current-visible-tiles) "out of" (count all-tiles) "total tiles")
-     (let [new-visibility (reduce
-                             (fn [vis-map tile-key]
-                               (let [old-state (get old-visibility tile-key :hidden)
-                                     currently-visible? (contains? current-visible-tiles tile-key)]
-                                 (cond
-                                   (= old-state :visible)
-                                   (if currently-visible?
-                                     vis-map
-                                     (assoc vis-map tile-key :revealed))
+    (let [new-visibility (reduce
+                              (fn [vis-map tile-key]
+                                (let [old-state (get old-visibility tile-key)
+                                      currently-visible? (contains? current-visible-tiles tile-key)]
+                                  (cond
+                                    (nil? old-state)
+                                    (if currently-visible?
+                                      (assoc vis-map tile-key :visible)
+                                      vis-map)
 
-                                   (= old-state :revealed)
-                                   (if currently-visible?
-                                     (assoc vis-map tile-key :visible)
-                                     vis-map)
+                                    (= old-state :visible)
+                                    (if currently-visible?
+                                      vis-map
+                                      (assoc vis-map tile-key :revealed))
 
-                                   :else
-                                   (if currently-visible?
-                                     (assoc vis-map tile-key :visible)
-                                     (assoc vis-map tile-key :hidden)))))
-                             {}
-                             all-tiles)
+                                    (= old-state :revealed)
+                                    (if currently-visible?
+                                      (assoc vis-map tile-key :visible)
+                                      vis-map)
+
+                                    (= old-state :hidden)
+                                    (if currently-visible?
+                                      (assoc vis-map tile-key :visible)
+                                      vis-map))))
+                              {}
+                              all-tiles)
             tiles-to-snapshot (concat
                                 (filter #(not (contains? old-visibility %)) current-visible-tiles)
                                 (filter #(= (get old-visibility %) :visible) current-visible-tiles)

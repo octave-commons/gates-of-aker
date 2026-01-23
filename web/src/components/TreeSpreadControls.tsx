@@ -1,5 +1,3 @@
-import React from "react";
-
 type TreeSpreadControlsProps = {
   spreadProbability: number;
   minInterval: number;

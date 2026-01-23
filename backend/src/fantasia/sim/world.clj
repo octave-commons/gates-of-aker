@@ -6,48 +6,50 @@
              [fantasia.sim.constants :as const]))
 
 (defn snapshot
-    "Produce a UI-friendly snapshot of world state + attribution map."
-    [world attribution]
-    (let [agent-name-by-id (->> (:agents world)
-                                (map (fn [agent]
-                                       [(:id agent) (:name agent)]))
-                                (into {}))
-          tile-visibility (:tile-visibility world {})
-          visible-tiles (if (empty? tile-visibility)
-                          (:tiles world)
-                          (into {}
-                                (filter (fn [[tile-key]]
-                                          (let [vis (get tile-visibility tile-key :hidden)]
-                                            (or (= vis :visible) (= vis :revealed))))
-                                        (:tiles world))))]
-      {:tick (:tick world)
-        :shrine (:shrine world)
-        :temperature (:temperature world)
-        :cold-snap (:cold-snap world)
-        :daylight (:daylight world)
-        :calendar (:calendar world)
-        :levers (:levers world)
-        :map (:map world)
-        :tiles visible-tiles
-        :recent-events (:recent-events world)
-        :attribution attribution
-        :jobs (:jobs world)
-        :items (:items world)
-        :stockpiles (:stockpiles world)
-       :agents (mapv (fn [a]
-                       (let [relationships (:relationships a)
-                             rel-summary (->> relationships
-                                             (map (fn [[agent-id rel]]
-                                                    {:agent-id agent-id
-                                                     :name (get agent-name-by-id agent-id)
-                                                     :affinity (:affinity rel 0.5)
-                                                     :last-interaction (:last-interaction rel)}))
-                                             (sort-by (fn [rel] (- (double (:affinity rel 0.0)))))
-                                             (take 3)
-                                             vec)]
-                         {:id (:id a)
-                          :name (:name a)
-                          :pos (:pos a)
+     "Produce a UI-friendly snapshot of world state + attribution map."
+     [world attribution]
+     (let [agent-name-by-id (->> (:agents world)
+                                 (map (fn [agent]
+                                        [(:id agent) (:name agent)]))
+                                 (into {}))
+           tile-visibility (:tile-visibility world {})
+           agent-visibility (:agent-visibility world {})
+           visible-tiles (if (empty? tile-visibility)
+                           (:tiles world)
+                           (into {}
+                                 (filter (fn [[tile-key]]
+                                           (let [vis (get tile-visibility tile-key :hidden)]
+                                             (or (= vis :visible) (= vis :revealed))))
+                                         (:tiles world))))]
+       {:tick (:tick world)
+         :shrine (:shrine world)
+         :temperature (:temperature world)
+         :cold-snap (:cold-snap world)
+         :daylight (:daylight world)
+         :calendar (:calendar world)
+         :levers (:levers world)
+         :map (:map world)
+         :tiles visible-tiles
+         :agent-visibility agent-visibility
+         :recent-events (:recent-events world)
+         :attribution attribution
+         :jobs (:jobs world)
+         :items (:items world)
+         :stockpiles (:stockpiles world)
+        :agents (mapv (fn [a]
+                        (let [relationships (:relationships a)
+                              rel-summary (->> relationships
+                                              (map (fn [[agent-id rel]]
+                                                     {:agent-id agent-id
+                                                      :name (get agent-name-by-id agent-id)
+                                                      :affinity (:affinity rel 0.5)
+                                                      :last-interaction (:last-interaction rel)}))
+                                              (sort-by (fn [rel] (- (double (:affinity rel 0.0)))))
+                                              (take 3)
+                                              vec)]
+                          {:id (:id a)
+                           :name (:name a)
+                           :pos (:pos a)
                           :role (:role a)
                           :faction (:faction a)
                           :stats (:stats a)
