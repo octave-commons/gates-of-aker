@@ -1,26 +1,54 @@
-import React, { useState, type CSSProperties } from "react";
+import React, { useState, useMemo, type CSSProperties } from "react";
 import { Agent } from "../types";
 import { getMovementSteps, safeStringify } from "../utils";
 
- type SelectedPanelProps = {
-   selectedCell: [number, number] | null;
-   selectedTile: Record<string, unknown> | null;
-   selectedTileItems: Record<string, number>;
-   selectedTileAgents: Agent[];
-   selectedAgentId: number | null;
-   selectedAgent: Agent | null;
-   style?: CSSProperties;
- };
+   type SelectedPanelProps = {
+     selectedCell: [number, number] | null;
+     selectedTile: Record<string, unknown> | null;
+     selectedTileItems: Record<string, number>;
+     selectedTileAgents: Agent[];
+     selectedAgentId: number | null;
+     selectedAgent: Agent | null;
+     selectedVisibilityAgentId: number | null;
+     agentVisibilityMaps: Record<number, Set<string>>;
+     agents: Agent[];
+     onSetVisibilityAgentId: (id: number | null) => void;
+     tileVisibility: Record<string, "hidden" | "revealed" | "visible">;
+     style?: CSSProperties;
+   };
 
 export function SelectedPanel({
-   selectedCell,
-   selectedTile,
-   selectedTileItems,
-   selectedTileAgents,
-   selectedAgentId,
-   selectedAgent,
-   style = {},
- }: SelectedPanelProps) {
+    selectedCell,
+    selectedTile,
+    selectedTileItems,
+    selectedTileAgents,
+    selectedAgentId,
+    selectedAgent,
+    selectedVisibilityAgentId,
+    agentVisibilityMaps,
+    agents,
+    onSetVisibilityAgentId,
+    tileVisibility,
+    style = {},
+  }: SelectedPanelProps) {
+  const visibilityState = useMemo(() => {
+    if (!selectedCell) return "unknown";
+    const keys = Object.keys(tileVisibility);
+    const testKeys = [
+      `${selectedCell[0]},${selectedCell[1]}`,
+      `${selectedCell[0]}, ${selectedCell[1]}`,
+      `${selectedCell[0]},  ${selectedCell[1]}`,
+      `  ${selectedCell[0]},${selectedCell[1]}`,
+    ];
+    for (const key of testKeys) {
+      if (tileVisibility[key]) {
+        return tileVisibility[key];
+      }
+    }
+    console.log("[SelectedPanel] tileVisibility keys:", keys.slice(0, 10));
+    console.log("[SelectedPanel] Looking for tile:", selectedCell, "testKeys:", testKeys);
+    return "unknown";
+  }, [selectedCell, tileVisibility]);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const normalizeValue = (value: unknown, fallback = "None") => {
@@ -52,7 +80,7 @@ export function SelectedPanel({
     renderRow("Wind", normalizeValue(selectedTile?.wind)),
     renderRow("Humidity", normalizeValue(selectedTile?.humidity)),
     renderRow("Pressure", normalizeValue(selectedTile?.pressure)),
-    renderRow("Visibility", normalizeValue(selectedTile?.visibility)),
+    renderRow("Visibility", normalizeValue(visibilityState)),
     renderRow("Time", normalizeValue(selectedTile?.time)),
     renderRow("Season", normalizeValue(selectedTile?.season)),
     renderRow("Day/Night", normalizeValue(selectedTile?.dayNight)),

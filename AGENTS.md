@@ -1,25 +1,31 @@
 
+## Docs & Knowledge Base
+
+- `HACK.md` captures the creative vision; skim it before implementing new features to preserve thematic intent.
+- `docs/notes` should read like a changelog of facts; include API contracts, schemas, and non-obvious algorithms there.
+ - When adding future AGENTS files in subdirectories, explicitly reference this file to clarify inheritance.
+ 
+- [[ESTIMATION]]
+- [[BUILD]]
+- [[BACKEND]]
+- [[FRONTEND]]
 - [[OBSIDIAN]]  -> `OBSIDIAN.md` - Obsidian Specific Instructions for knowledge graphing and plugins
 - [[README]] -> `README.md`- Project overview, basic setup and testing commands, explains how to use it and what it is for.
 - [[HACK.md]] - High-level vision and inspirations
 - [[HOME]] - Obsidian home page, day to day thinking and note taking. Obsidian data views welcome.
+- [[MISSION]]
+- [[DIRECTORIES]]
+- [[TOOLCHAINS]]
+- [[LINTING]]
+- [[LOGGING]]
+- [[TESTING]]
+
+- [[orphaned files output]]
 - [[2026-01-15-roadmap]] - Most current roadmap
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
 - [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
 - [[spec/2026-01-15-myth-engine.md]] - Myth engine
-- [[MISSION]]
-- [[ESTIMATION]]
-- [[DIRECTORIES]]
-- [[TOOLCHAINS]]
-- [[BUILD]]
-- [[LINTING]]
-- [[LOGGING]]
-- [[TESTING]]
-- [[orphaned files output]]
-- [[BACKEND]]
-- [[FRONTEND]]
-
 
 ## Shared Conventions & Error Handling
 - Naming: kebab-case for files (Clojure namespaces), camelCase for TS variables, SCREAMING_SNAKE_CASE reserved for constants.
@@ -39,14 +45,6 @@
 - Performance: profile long-running `sim/tick!` operations before optimizing; measure first.
 - Internationalization: not required yet; keep strings central for future extraction.
 
-
-## Docs & Knowledge Base
-
-- `HACK.md` captures the creative vision; skim it before implementing new features to preserve thematic intent.
-- `docs/inbox` is volatile; annotate entries with timestamps if you add exploratory notes.
-- `docs/notes` should read like a changelog of facts; include API contracts, schemas, and non-obvious algorithms there.
- - Keep AGENTS.md roughly ~150 lines; update it whenever commands or norms change.
- - When adding future AGENTS files in subdirectories, explicitly reference this file to clarify inheritance.
 
 ## GitHub Issue and Spec Labeling
 
@@ -68,10 +66,6 @@
 - Cross-reference issues and specs using `Related-Issues: [1, 2, 3]` in spec frontmatter
 - Update labels when issue status changes (e.g., `status:active` when work starts)
 - See `spec/labeling-system.md` for GitHub CLI commands to create all labels
-
-## Cursor / Copilot Rules
-- No Cursor or Copilot instruction files exist; any future ones must be reflected here verbatim.
-- Until then, consider this AGENTS.md the single source of truth for agent behavior.
 
 ## Labeling System Summary (2026-01-22)
 

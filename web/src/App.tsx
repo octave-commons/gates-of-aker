@@ -424,28 +424,31 @@ export function App() {
               handleDeathTone(nextSnapshot);
               handleTickAudio(nextSnapshot);
             }
-                if (m.op === "tick_delta") {
-                  const delta = m.data as any;
-                   const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
-                  const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
-                  const avm = delta?.agent_visibility;
-                  setTick(delta?.tick ?? 0);
-                  setSnapshot((prev: any) => applyDelta(prev, delta));
-                  setVisibilityData(delta?.visibility ?? null);
-                  setTileVisibility(tv);
-                  setRevealedTilesSnapshot(rts);
-                  if (avm && typeof avm === "object") {
-                    setAgentVisibilityMaps((prev: Record<number, Set<string>>) => ({
-                      ...prev,
-                      ...Object.entries(avm).reduce((acc, [agentId, tiles]) => {
-                        const numId = parseInt(String(agentId), 10);
-                        const tilesArray = Array.isArray(tiles) ? tiles : [];
-                        return { ...acc, [numId]: new Set(tilesArray) };
-                      }, {})
-                    }));
-                  }
-                  handleDeltaAudio(delta);
-                }
+                 if (m.op === "tick_delta") {
+                   const delta = m.data as any;
+                    const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
+                   const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
+                   const avm = delta?.agent_visibility;
+                   if (delta && Object.keys(tv).length > 0 && Object.keys(tv).length < 5) {
+                     console.log("[App] tick_delta received, tileVisibility sample:", Object.entries(tv).slice(0, 3));
+                   }
+                   setTick(delta?.tick ?? 0);
+                   setSnapshot((prev: any) => applyDelta(prev, delta));
+                   setVisibilityData(delta?.visibility ?? null);
+                   setTileVisibility(tv);
+                   setRevealedTilesSnapshot(rts);
+                   if (avm && typeof avm === "object") {
+                     setAgentVisibilityMaps((prev: Record<number, Set<string>>) => ({
+                       ...prev,
+                       ...Object.entries(avm).reduce((acc, [agentId, tiles]) => {
+                         const numId = parseInt(String(agentId), 10);
+                         const tilesArray = Array.isArray(tiles) ? tiles : [];
+                         return { ...acc, [numId]: new Set(tilesArray) };
+                       }, {})
+                     }));
+                   }
+                   handleDeltaAudio(delta);
+                 }
         if (m.op === "trace") {
             const incoming = m.data as Trace;
             setTraces((prev) => {
@@ -900,18 +903,19 @@ export function App() {
 
            {/* Selected Panel */}
           <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)", minHeight: 200 }}>
-            <SelectedPanel
-              selectedCell={selectedCell}
-              selectedTile={selectedTile}
-              selectedTileItems={selectedTileItems}
-              selectedTileAgents={selectedTileAgents}
-              selectedAgentId={selectedVisibilityAgentId}
-              selectedAgent={selectedAgent}
-              selectedVisibilityAgentId={selectedVisibilityAgentId}
-              agentVisibilityMaps={agentVisibilityMaps}
-              agents={agents}
-              onSetVisibilityAgentId={setSelectedVisibilityAgentId}
-            />
+             <SelectedPanel
+               selectedCell={selectedCell}
+               selectedTile={selectedTile}
+               selectedTileItems={selectedTileItems}
+               selectedTileAgents={selectedTileAgents}
+               selectedAgentId={selectedVisibilityAgentId}
+               selectedAgent={selectedAgent}
+               selectedVisibilityAgentId={selectedVisibilityAgentId}
+               agentVisibilityMaps={agentVisibilityMaps}
+               agents={agents}
+               onSetVisibilityAgentId={setSelectedVisibilityAgentId}
+               tileVisibility={tileVisibility}
+             />
          </div>
 
         {/* Factions Panel */}

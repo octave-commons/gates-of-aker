@@ -7,8 +7,12 @@ review @spec/ and @docs/planning
 # Clojure coverage report backend
 !`cd backend/ && clojure -X:coverage`
 
+
 # Vite test runner coverage report frontend
+
+!`cd web/ && npm run typecheck`
 !`cd web/ && npm run coverage`
+
 
 Where are we at in our project?
 Which milestone are we working on?

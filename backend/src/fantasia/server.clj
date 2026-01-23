@@ -1,16 +1,17 @@
 (ns fantasia.server
-  (:gen-class)
-  (:require
-    [cheshire.core :as json]
-    [clojure.string :as str]
-    [org.httpkit.server :as http]
-    [reitit.ring :as ring]
-    [fantasia.sim.tick :as sim]
-    [fantasia.sim.world :as world]
-    [fantasia.sim.jobs :as jobs]
-    [fantasia.sim.scribes :as scribes]
-    [nrepl.server :as nrepl]
-    [fantasia.dev.logging :as log]))
+   (:gen-class)
+   (:require
+     [cheshire.core :as json]
+     [clojure.string :as str]
+     [org.httpkit.server :as http]
+     [reitit.ring :as ring]
+     [fantasia.sim.tick :as sim]
+     [fantasia.sim.world :as world]
+     [fantasia.sim.los :as los]
+     [fantasia.sim.jobs :as jobs]
+     [fantasia.sim.scribes :as scribes]
+     [nrepl.server :as nrepl]
+     [fantasia.dev.logging :as log]))
 
 (defn json-resp
   ([m] (json-resp 200 m))
@@ -119,7 +120,9 @@
                            target-ms (:ms @*runner)
                            health (compute-health-status tick-ms target-ms)]
                        (swap! *runner assoc :tick-ms tick-ms)
-                       (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                         (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                        (when-let [ds (:delta-snapshot o)]
+                          (broadcast! {:op "tick_delta" :data ds}))
                        (broadcast! {:op "tick_health" :data {:target-ms target-ms :tick-ms tick-ms :health health}})
                        (when-let [ev (:event o)]
                          (broadcast! {:op "event" :data ev}))
@@ -165,31 +168,46 @@
                    (:tiles state))))))
 
 (defn handle-ws [req]
-  (http/with-channel req ch
-    (swap! *clients conj ch)
-    (ws-send! ch {:op "hello"
-                  :state (merge (select-keys (sim/get-state) [:tick :shrine :levers :map :agents :tile-visibility :revealed-tiles-snapshot])
-                                {:tiles (get-visible-tiles (sim/get-state))})})
-    (http/on-close ch (fn [_] (swap! *clients disj ch)))
-    (http/on-receive ch
-      (fn [raw]
-        (let [msg (try (-> (json/parse-string raw true) keywordize-deep)
-                       (catch Exception _ nil))
-              op (:op msg)]
-          (case op
-             "tick"
-             (let [n (int (or (:n msg) 1))
-                   outs (sim/tick! n)]
-               (doseq [o outs]
-                  (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                  (when-let [ev (:event o)]
-                    (broadcast! {:op "event" :data ev}))
-                  (doseq [tr (:traces o)]
-                    (broadcast! {:op "trace" :data tr}))
-                  (doseq [si (:social-interactions o)]
-                    (broadcast! {:op "social_interaction" :data si}))
-                  (doseq [ce (:combat-events o)]
-                    (broadcast! {:op "combat_event" :data ce}))))
+  (try
+    (http/with-channel req ch
+      (swap! *clients conj ch)
+      (let [initial-state (sim/get-state)
+            state-with-visibility (if (empty? (:tile-visibility initial-state))
+                                  (let [visibility (los/update-tile-visibility! initial-state)]
+                                    (println "[WS] Initializing visibility state for new client")
+                                    (merge initial-state visibility))
+                                  initial-state)
+            visible-tiles (get-visible-tiles state-with-visibility)]
+        (println "[WS] New client connected, sending hello with tile-visibility count:" (count (:tile-visibility state-with-visibility)))
+        (ws-send! ch {:op "hello"
+                      :state (merge (select-keys state-with-visibility [:tick :shrine :levers :map :agents :tile-visibility :revealed-tiles-snapshot])
+                                            {:tiles visible-tiles})}))
+      (http/on-close ch (fn [_] (swap! *clients disj ch)))
+      (http/on-receive ch
+        (fn [raw]
+          (let [msg (try (-> (json/parse-string raw true) keywordize-deep)
+                         (catch Exception _ nil))
+                op (:op msg)]
+            (case op
+               "tick"
+               (let [n (int (or (:n msg) 1))
+                     outs (sim/tick! n)]
+                 (doseq [o outs]
+                     (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                     (when-let [ds (:delta-snapshot o)]
+                       (broadcast! {:op "tick_delta" :data ds}))
+                     (when-let [ev (:event o)]
+                       (broadcast! {:op "event" :data ev}))
+                     (doseq [tr (:traces o)]
+                       (broadcast! {:op "trace" :data tr}))
+                     (doseq [si (:social-interactions o)]
+                       (broadcast! {:op "social_interaction" :data si}))
+                     (doseq [ce (:combat-events o)]
+                       (broadcast! {:op "combat_event" :data ce}))))))
+         (catch Exception e
+           (println "[WS] Error handling message:" (.getMessage e)))))
+         (catch Exception e
+           (println "[WS] Error handling message:" (.getMessage e)))))
 
             "reset"
             (let [opts {:seed (long (or (:seed msg) 1))
