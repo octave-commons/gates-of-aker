@@ -144,7 +144,7 @@
   (let [start-time (System/currentTimeMillis)
         test-prompt "test"
         ollama-model (get-in @sim/*state [:levers :ollama-model] scribes/ollama-model)
-        result (scribes/call-ollama-sync! test-prompt ollama-model)
+        result (scribes/call-ollama! test-prompt ollama-model)
         end-time (System/currentTimeMillis)
         latency (- end-time start-time)]
     (if (:success result)
