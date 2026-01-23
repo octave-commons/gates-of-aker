@@ -27,7 +27,7 @@
         vertices (vec (for [i (range num-points)]
                           (let [angle (to-radians (* i (/ 360 num-points)))
                                 q (int (+ center-q (* radius (Math/cos angle))))
-                                r (int (+ center-r (* radius (Math/sin angle)))]
+                                r (int (+ center-r (* radius (Math/sin angle)))))]
                             [q r])))
         num-verts (count vertices)
         edges (vec (for [i (range num-verts)]
