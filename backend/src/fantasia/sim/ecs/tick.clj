@@ -1,10 +1,11 @@
 (ns fantasia.sim.ecs.tick
-  (:require [brute.entity :as be]
-            [fantasia.sim.ecs.core]
-            [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.ecs.systems.needs-decay]
-            [fantasia.sim.ecs.systems.movement]
-            [fantasia.sim.ecs.adapter]))
+   (:require [brute.entity :as be]
+             [fantasia.sim.ecs.core]
+             [fantasia.sim.ecs.components :as c]
+             [fantasia.sim.ecs.systems.needs-decay]
+             [fantasia.sim.ecs.systems.movement]
+             [fantasia.sim.ecs.systems.job_processing]
+             [fantasia.sim.ecs.adapter]))
 
 (def ^:dynamic *ecs-world (atom (fantasia.sim.ecs.core/create-ecs-world)))
 (def ^:dynamic *global-state (atom {}))

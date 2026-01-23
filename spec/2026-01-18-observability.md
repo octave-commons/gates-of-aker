@@ -1,4 +1,12 @@
-# Observability & Debugging Spec: Job System and Pathing #debugging #logging #testing #jobs #pathing #colony-sim #observability
+# Observability & Debugging Spec: Job System and Pathing
+
+---
+Type: spec
+Component: backend
+Priority: medium
+Status: proposed
+Estimated-Effort: 16 hours
+---
 
 ## Context
 

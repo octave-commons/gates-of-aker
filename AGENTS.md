@@ -123,9 +123,57 @@
 - `HACK.md` captures the creative vision; skim it before implementing new features to preserve thematic intent.
 - `docs/inbox` is volatile; annotate entries with timestamps if you add exploratory notes.
 - `docs/notes` should read like a changelog of facts; include API contracts, schemas, and non-obvious algorithms there.
-- Keep AGENTS.md roughly ~150 lines; update it whenever commands or norms change.
-- When adding future AGENTS files in subdirectories, explicitly reference this file to clarify inheritance.
+ - Keep AGENTS.md roughly ~150 lines; update it whenever commands or norms change.
+ - When adding future AGENTS files in subdirectories, explicitly reference this file to clarify inheritance.
+
+## GitHub Issue and Spec Labeling
+
+- **[[spec/labeling-system.md]]** - Comprehensive labeling system for GitHub issues and spec files
+- All GitHub issues MUST use standardized labels for:
+  - **Priority** (critical, high, medium, low)
+  - **Component** (backend, frontend, testing, ecs, myth, champion, factions, world)
+  - **Type** (bug, feature, refactor, performance, security, documentation, design, testing, task)
+  - **Status** (proposed, active, in-review, blocked, waiting, done)
+  - **Complexity** (trivial, small, medium, large, xlarge)
+  - **Milestone** (1-7, 3.5)
+- All spec files MUST include frontmatter with:
+  - Type (spec, design, review, status, roadmap)
+  - Component (backend, frontend, etc.)
+  - Priority (critical, high, medium, low)
+  - Status (draft, proposed, approved, implemented, deprecated)
+  - Related GitHub issue IDs
+  - Estimated effort (story points or hours)
+- Cross-reference issues and specs using `Related-Issues: [1, 2, 3]` in spec frontmatter
+- Update labels when issue status changes (e.g., `status:active` when work starts)
+- See `spec/labeling-system.md` for GitHub CLI commands to create all labels
 
 ## Cursor / Copilot Rules
 - No Cursor or Copilot instruction files exist; any future ones must be reflected here verbatim.
 - Until then, consider this AGENTS.md the single source of truth for agent behavior.
+
+## Labeling System Summary (2026-01-22)
+
+All GitHub issues and spec files now use standardized labeling system defined in `spec/labeling-system.md`.
+
+**Labels Created:**
+- Priority: critical (🔴), high (🟠), medium (🟡), low (🟢)
+- Component: backend, frontend, testing, ecs, myth, champion, factions, world, infrastructure
+- Type: bug, feature, refactor, performance, security, documentation, design, testing, task
+- Status: proposed, active, in-review, blocked, waiting, done
+- Complexity: trivial, small, medium, large, xlarge
+- Milestone: 1, 2, 3, 3.5, 4, 5, 6, 7
+
+**Spec Frontmatter Added:**
+- Core specs (core-loop, myth-engine, champion-agency, roadmap)
+- Backend issue specs (CRITICAL-001, TEST-001, SECURITY-001, ARCH-001, ARCH-002, STYLE-001)
+- ECS migration README
+- Frontend code review
+- Milestone 3.5 reports
+
+**GitHub Issues Labeled:**
+- Milestone 3-7 issues labeled with appropriate priority, component, type, complexity
+- Design specs (myth engine, combat, agent architecture, champion, communication) labeled
+- Documentation issues labeled
+- Status labels set to `proposed` for all active work
+
+**See `spec/labeling-system.md` for complete labeling system documentation.**

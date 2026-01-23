@@ -1,5 +1,15 @@
 # Milestone 2 — Walls, Pathing, and Build Ghosts
 
+---
+Type: spec
+Component: backend
+Priority: high
+Status: implemented
+Related-Issues: [3]
+Milestone: 2
+Estimated-Effort: 24 hours
+---
+
 ## Related Documentation
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
 - [[docs/notes/planning/2025-01-15-mvp.md]] - MVP definition

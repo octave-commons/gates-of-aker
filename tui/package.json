@@ -1,0 +1,25 @@
+{
+  "name": "fantasia-tui",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Terminal UI for Fantasia simulation",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "blessed": "^0.1.81",
+    "chalk": "^5.3.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/blessed": "^0.1.21",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

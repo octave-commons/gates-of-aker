@@ -87,11 +87,11 @@
     (doseq [agent player-agents]
       (println "[VISIBILITY] Player agent:" (:name agent) "at" (:pos agent) "with role" (:role agent) "and faction" (:faction agent)))
     (->> player-agents
-         (mapcat (fn [agent]
-                   (let [radius (get-vision-radius agent)]
-                     (positions-in-vision (:pos agent) radius))))
-         (map #(str (first %) "," (second %)))
-         set)))
+          (mapcat (fn [agent]
+                    (let [radius (get-vision-radius agent)]
+                      (positions-in-vision (:pos agent) radius))))
+          (map str)
+          set)))
 
 (defn update-tile-visibility!
    "Update tile visibility state and save snapshots for newly revealed tiles.

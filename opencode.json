@@ -62,5 +62,8 @@
       "pm2*":"ask",
       "pm2*logs*--nostream*":"allow"
     }
+  },
+  "tools":{
+    "*take_screenshot":false
   }
 }

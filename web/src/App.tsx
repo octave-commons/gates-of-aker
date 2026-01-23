@@ -103,7 +103,7 @@ const SOCIAL_TONE_SEQUENCES: Record<string, number[]> = {
 const toSequence = (notes: number[], octaveShift: number = 0) =>
   notes.map((note) => getScaleFrequency(note, octaveShift));
 
-const normalizeTileKey = (rawKey: string) => {
+  const normalizeTileKey = (rawKey: string) => {
   const trimmed = rawKey.trim();
   if (trimmed.includes(",") && !trimmed.includes("[")) {
     return trimmed.replace(/\s+/g, "");
@@ -112,27 +112,45 @@ const normalizeTileKey = (rawKey: string) => {
   if (match) {
     return `${match[1]},${match[2]}`;
   }
+  const bracketMatch = trimmed.match(/^\[(-?\d+),(-?\d+)\]$/);
+  if (bracketMatch) {
+    return `${bracketMatch[1]},${bracketMatch[2]}`;
+  }
   return trimmed;
 };
 
-const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined) => {
-  if (!input || typeof input !== "object") return input;
-  const normalized: Record<string, T> = {};
-  for (const [key, value] of Object.entries(input)) {
-    normalized[normalizeTileKey(key)] = value;
-  }
-  return normalized;
-};
+  const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined) => {
+   if (!input || typeof input !== "object") return input;
+   const normalized: Record<string, T> = {};
+   const keys = Object.keys(input);
+   if (keys.length > 0 && keys[0].includes("[") && window.location.hostname === "localhost") {
+     console.log("[APP] normalizeKeyedMap sample raw keys:", keys.slice(0, 5));
+     console.log("[APP] Input map keys count:", keys.length);
+   }
+   for (const [key, value] of Object.entries(input)) {
+     const normalizedKey = normalizeTileKey(key);
+     if (normalizedKey !== key && window.location.hostname === "localhost") {
+       console.log("[APP] normalized key:", key, "->", normalizedKey);
+     }
+     normalized[normalizedKey] = value;
+   }
+   return normalized;
+ };
 
-const normalizeSnapshot = (state: any) => {
-  if (!state || typeof state !== "object") return state;
-  return {
-    ...state,
-    tiles: normalizeKeyedMap(state.tiles),
-    items: normalizeKeyedMap(state.items),
-    stockpiles: normalizeKeyedMap(state.stockpiles),
+  const normalizeSnapshot = (state: any) => {
+    if (!state || typeof state !== "object") return state;
+    const normalizedTiles = normalizeKeyedMap(state.tiles);
+    if (window.location.hostname === "localhost") {
+      console.log("[APP] normalizeSnapshot - original tile count:", Object.keys(state.tiles ?? {}).length);
+      console.log("[APP] normalizeSnapshot - normalized tile count:", Object.keys(normalizedTiles ?? {}).length);
+    }
+    return {
+      ...state,
+      tiles: normalizedTiles,
+      items: normalizeKeyedMap(state.items),
+      stockpiles: normalizeKeyedMap(state.stockpiles),
+    };
   };
-};
 
 export function App() {
   const [appState, setAppState] = useState<AppState>("splash");
@@ -408,15 +426,17 @@ export function App() {
     return new WSClient(
       wsUrl,
       (m: WSMessage) => {
-         if (m.op === "hello") {
-           const state = normalizeSnapshot(m.state ?? {});
-           const tv = state?.tile_visibility ?? state?.["tile-visibility"] ?? {};
-           const rts = state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {};
-           setTick(state.tick ?? 0);
-           setSnapshot(state);
-           setTileVisibility(tv);
-           setRevealedTilesSnapshot(rts);
-           prevSnapshotRef.current = state;
+          if (m.op === "hello") {
+              const state = normalizeSnapshot(m.state ?? {});
+              console.log("[APP] hello: tile keys sample:", Object.keys(state.tiles ?? {}).slice(0, 5));
+             console.log("[APP] hello: tile count:", Object.keys(state.tiles ?? {}).length);
+             const tv = normalizeKeyedMap(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+             const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
+             setTick(state.tick ?? 0);
+             setSnapshot(state);
+             setTileVisibility(tv);
+             setRevealedTilesSnapshot(rts);
+            prevSnapshotRef.current = state;
            if (state.map) {
              setMapConfig(state.map as HexConfig);
            }
@@ -437,17 +457,17 @@ export function App() {
              handleDeathTone(nextSnapshot);
              handleTickAudio(nextSnapshot);
            }
-              if (m.op === "tick_delta") {
-                const delta = m.data as any;
-                const tv = delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {};
-                const rts = delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {};
-                setTick(delta?.tick ?? 0);
-                setSnapshot((prev: any) => applyDelta(prev, delta));
-                setVisibilityData(delta?.visibility ?? null);
-                setTileVisibility(tv);
-                setRevealedTilesSnapshot(rts);
-                handleDeltaAudio(delta);
-              }
+               if (m.op === "tick_delta") {
+                 const delta = m.data as any;
+                 const tv = normalizeKeyedMap(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
+                 const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
+                 setTick(delta?.tick ?? 0);
+                 setSnapshot((prev: any) => applyDelta(prev, delta));
+                 setVisibilityData(delta?.visibility ?? null);
+                 setTileVisibility(tv);
+                 setRevealedTilesSnapshot(rts);
+                 handleDeltaAudio(delta);
+               }
         if (m.op === "trace") {
             const incoming = m.data as Trace;
             setTraces((prev) => {
@@ -464,19 +484,19 @@ export function App() {
            prevBookCountRef.current = newBookCount;
            setBooks(newBooks);
          }
-           if (m.op === "reset") {
-                setTraces([]);
-                setSelectedCell(null);
-                setSelectedAgentId(null);
-                setSpeechBubbles([]);
-                setTileVisibility({});
-                setRevealedTilesSnapshot({});
-               const state = normalizeSnapshot(m.state ?? {});
-               const tv = state?.tile_visibility ?? state?.["tile-visibility"] ?? {};
-               const rts = state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {};
-               setSnapshot(state);
-               setTileVisibility(tv);
-               setRevealedTilesSnapshot(rts);
+            if (m.op === "reset") {
+                 setTraces([]);
+                 setSelectedCell(null);
+                 setSelectedAgentId(null);
+                 setSpeechBubbles([]);
+                 setTileVisibility({});
+                 setRevealedTilesSnapshot({});
+                const state = normalizeSnapshot(m.state ?? {});
+                const tv = normalizeKeyedMap(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+                const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
+                setSnapshot(state);
+                setTileVisibility(tv);
+                setRevealedTilesSnapshot(rts);
                prevSnapshotRef.current = state;
               if (state.map) {
                 setMapConfig(state.map as HexConfig);

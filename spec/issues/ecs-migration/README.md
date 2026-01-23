@@ -1,6 +1,16 @@
 # ECS Migration Issues
 
-This directory contains GitHub issues for the Entity-Component-System migration from monolithic data structures to ECS using the Brute library.
+---
+Type: roadmap
+Component: ecs
+Priority: high
+Status: approved
+Related-Issues: [4]
+Milestone: 3.5
+Estimated-Effort: 18-24 days (30 SP)
+---
+
+This directory contains GitHub issues for the Entity-Component-System migration from monolithic data structures to ECS using by Brute library.
 
 ## Issues
 

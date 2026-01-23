@@ -1,5 +1,15 @@
 # Gates of Aker Roadmap
 
+---
+Type: roadmap
+Component: world
+Priority: high
+Status: approved
+Related-Issues: [4, 5, 6, 7, 8]
+Milestone: 0
+Estimated-Effort: 160 hours
+---
+
 ## Related Documentation
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Detailed roadmap with implementation notes
 - [[README.md]] - Project overview

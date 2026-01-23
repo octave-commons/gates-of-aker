@@ -6,8 +6,11 @@
     [org.httpkit.server :as http]
     [reitit.ring :as ring]
     [fantasia.sim.tick :as sim]
+    [fantasia.sim.world :as world]
     [fantasia.sim.jobs :as jobs]
-    [fantasia.sim.scribes :as scribes]))
+    [fantasia.sim.scribes :as scribes]
+    [nrepl.server :as nrepl]
+    [fantasia.dev.logging :as log]))
 
 (defn json-resp
   ([m] (json-resp 200 m))
@@ -71,6 +74,23 @@
 
 (defonce *clients (atom #{}))
 (defonce *runner (atom {:running? false :future nil :ms 66 :tick-ms 0}))
+(defonce *nrepl-server (atom nil))
+
+(defn- start-nrepl!
+  []
+  (when-not @*nrepl-server
+    (let [port (or (some-> (System/getenv "NREPL_PORT") Integer/parseInt) 7888)
+          server (nrepl/start-server :port port)]
+      (reset! *nrepl-server server)
+      (log/log-info "nREPL server started on port" port)
+      server)))
+
+(defn- stop-nrepl!
+  []
+  (when-let [server @*nrepl-server]
+    (nrepl/stop-server server)
+    (reset! *nrepl-server nil)
+    (log/log-info "nREPL server stopped")))
 
 (defn ws-send! [ch msg]
   (http/send! ch (json/generate-string msg)))
@@ -200,11 +220,11 @@
             (if-let [path (sim/get-agent-path! (:agent_id msg))]
               (broadcast! {:op "agent_path" :agent-id (:agent_id msg) :path path})
               (broadcast! {:op "error" :message "Agent not found or has no path"}))
-            
+
             "place_stockpile"
             (do (sim/place-stockpile! (:pos msg) (:resource msg) (:max_qty msg))
                 (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
-            
+
             "place_warehouse"
             (do (sim/place-warehouse! (:pos msg) (:resource msg) (:max_qty msg))
                 (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
@@ -289,9 +309,11 @@
 
        ["/ws" {:get handle-ws}]
 
-       ["/sim/state"
-        {:get (fn [_] (json-resp 200 (sim/get-state)))
-         :options (fn [_] (json-resp 200 {:ok true}))}]
+        ["/sim/state"
+         {:get (fn [_] (let [state (sim/get-state)
+                              snapshot (world/snapshot state {})]
+                          (json-resp 200 snapshot)))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
 
          ["/sim/reset"
           {:post (fn [req]
@@ -330,6 +352,8 @@
 (defn -main [& _]
   (let [port 3000]
     (println (str "Fantasia backend listening on http://localhost:" port))
+    (start-nrepl!)
+    (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable stop-nrepl!))
     (scribes/start-ollama-keep-alive!)
     (http/run-server app {:port port})
     @(promise)))

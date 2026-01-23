@@ -24,8 +24,8 @@ module.exports = {
       {
           name:"gates-web",
           interpreter: "bash",
-          script:"bin/backend-dev",
-          args:["dev"],
+          script:"npm",
+          args:["run", "dev"],
           cwd: "./web",
           instances: 1,
           autorestart: false,

@@ -1,0 +1,60 @@
+(ns fantasia.sim.ecs.systems.job-assignment
+  (:require [brute.entity :as be]
+            [fantasia.sim.ecs.components :as c]))
+
+(def job-priorities
+  {:job/eat 100
+   :job/warm-up 95
+   :job/build-fire 70
+   :job/sleep 90
+   :job/hunt 75
+   :job/chop-tree 60
+   :job/mine 60
+   :job/harvest-wood 58
+   :job/harvest-fruit 58
+   :job/harvest-grain 58
+   :job/harvest-stone 58
+   :job/farm 58
+   :job/smelt 57
+   :job/build-house 55
+   :job/improve 52
+   :job/haul 50
+   :job/deliver-food 45
+   :job/build-wall 40
+   :job/builder 38
+   :job/build-structure 35
+   :job/scribe 40})
+
+(defn player-agent?
+  "Check if agent has player faction."
+  [role-component]
+  (= (:type role-component) :player))
+
+(defn alive-agent?
+  "Check if agent status indicates alive."
+  [status-component]
+  (:alive? status-component))
+
+(defn get-job-priority
+  "Get priority value for job type."
+  [job-type]
+  (get job-priorities job-type 50))
+
+(defn process
+  "Process job assignment for all agents with idle status."
+  [ecs-world global-state]
+  (let [role-type (be/get-component-type (c/->Role :priest))
+        all-agents (be/get-all-entities-with-component ecs-world role-type)
+        status-type (be/get-component-type (c/->AgentStatus true false false nil))
+        idle-agents (filter (fn [agent-id]
+                             (let [status (be/get-component ecs-world agent-id status-type)]
+                               (and (:idle? status) (alive-agent? status))))
+                          all-agents)
+        ecs-world' (reduce (fn [acc agent-id]
+                              (let [status (be/get-component acc agent-id status-type)]
+                                (if (and (:idle? status) (alive-agent? status))
+                                  acc
+                                  acc)))
+                            ecs-world
+                            idle-agents))
+    ecs-world'))

@@ -1,5 +1,15 @@
 # 2026-01-19 — Ensure Agents Auto-Reassign Jobs or Idle-Watch Queue
 
+---
+Type: spec
+Component: backend
+Priority: medium
+Status: implemented
+Related-Issues: [4]
+Milestone: 3
+Estimated-Effort: 8 hours
+---
+
 ## Related Issues / PRs
 - Issue #4 "Milestone 3 — Colony Job Loop" tracks overall worker automation; this change addresses the sub-problem of agents lingering without jobs after completion.
 - No open PRs cover this behavior (checked `gh pr list` on 2026-01-19).

@@ -1,5 +1,15 @@
 # Milestone 3 — Colony Core (Jobs, Needs, Stockpiles)
 
+---
+Type: spec
+Component: backend
+Priority: high
+Status: implemented
+Related-Issues: [4]
+Milestone: 3
+Estimated-Effort: 40 hours
+---
+
 ## Context
 - Roadmap: docs/notes/planning/2026-01-15-roadmap.md (Sprint 3)
 - Depends on: Milestone 2 (Walls, Pathing, and Build Ghosts) ✅ Complete

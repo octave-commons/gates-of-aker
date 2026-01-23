@@ -9,10 +9,13 @@
    Optional rng overrides random sampling for deterministic tests."
   ([world agents]
    (generate world agents nil))
-  ([world agents rng]
-    (let [t (:tick world)
-          ^java.util.Random r (or rng (java.util.Random. (long (+ (:seed world) (* 7919 t)))))
-          p (.nextDouble r)
+   ([world agents rng]
+        (let [t (or (:tick world) 0)
+              seed (or (:seed world) 1)
+              r (if rng 
+                    rng 
+                    (java.util.Random. (long (+ seed (* 7919 t)))))
+           p (.nextDouble r)
           bounds (get-in world [:map :bounds] {:w 32 :h 32})
           [w h] (if (= (:shape bounds) :rect) [(:w bounds) (:h bounds)] [32 32])
           pos [(.nextInt r (int (max 1 w))) (.nextInt r (int (max 1 h)))]
@@ -22,13 +25,15 @@
                                           (Math/abs (long (- (second (:pos a)) (second pos))))) 4)))
                          (mapv :id))
           witness-score (min 1.0 (/ (count witnesses) 6.0))
-          cold (:cold-snap world)
-          fear (->> agents
-                    (map #(get-in % [:needs :warmth] 0.6))
-                    (map (fn [w] (- 1.0 (double w))))
-                    (reduce + 0.0)
-                    (/ (max 1 (count agents)))
-                    (min 1.0))
+           cold (or (:cold-snap world) 0.0)
+           fear (if (empty? agents)
+                   0.0
+                   (->> agents
+                     (map #(get-in % [:needs :warmth] 0.6))
+                     (map (fn [w] (- 1.0 (double w))))
+                     (reduce + 0.0)
+                     (/ (count agents))
+                     (min 1.0)))
           ev (cond
                (< p (+ 0.015 (* 0.015 cold) (* 0.01 fear)))
                {:type :winter-pyre

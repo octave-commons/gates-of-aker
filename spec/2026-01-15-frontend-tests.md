@@ -1,5 +1,13 @@
 # Spec: Frontend Unit Tests
 
+---
+Type: spec
+Component: testing
+Priority: medium
+Status: proposed
+Estimated-Effort: 16 hours
+---
+
 ## Prompt
 "Let's get some unit tests going for the frontend" — introduce a maintainable testing harness plus representative component coverage for the React/Vite UI in `/web`.
 

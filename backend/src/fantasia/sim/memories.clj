@@ -23,22 +23,22 @@
     (assoc-in world [:memories memory-id] memory)))
 
 (defn decay-memories!
-  "Apply time-based decay to all memory facets."
-  [world]
-  (let [tick (:tick world)
-        decayed-count (->> (:memories world)
-                          vals
-                          (filter #(< (:strength %) 1.0))
-                          count)]
-    (when (> decayed-count 0)
-      (log/log-debug "[MEMORY:DECAY]"
-                    {:decay-count decayed-count}))
-    (reduce-kv
-      (fn [w' id memory]
-        (let [new-strength (max 0.0 (- (:strength memory) (:decay-rate memory)))]
-          (assoc-in w' [:memories id] (assoc memory :strength new-strength))))
-      (:memories world)
-      {})))
+   "Apply time-based decay to all memory facets."
+   [world]
+   (let [tick (:tick world)
+         decayed-count (->> (:memories world)
+                           vals
+                           (filter #(< (:strength %) 1.0))
+                           count)]
+     (when (> decayed-count 0)
+       (log/log-debug "[MEMORY:DECAY]"
+                     {:decay-count decayed-count}))
+     (reduce-kv
+       (fn [w' id memory]
+         (let [new-strength (max 0.0 (- (:strength memory) (:decay-rate memory)))]
+           (assoc-in w' [:memories id] (assoc memory :strength new-strength))))
+       world
+       (:memories world))))
 
 (defn get-memories-in-range
   "Return all memories within distance bounds, filtered by strength > threshold."

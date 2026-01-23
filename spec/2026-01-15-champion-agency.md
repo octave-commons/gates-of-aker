@@ -1,5 +1,15 @@
 # Champion Agency & Needs Spec
 
+---
+Type: design
+Component: champion
+Priority: high
+Status: approved
+Related-Issues: [5, 20, 21]
+Milestone: 4
+Estimated-Effort: 30 hours
+---
+
 ## Purpose
 Define how the player’s day-mode avatar (the champion) shares control with the simulation by tying manual authority to biological needs, social alignment, and pantheon bonds. Sources:
 - `docs/notes/2026-01-11-champion-design.md`

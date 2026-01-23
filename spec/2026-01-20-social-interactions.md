@@ -1,5 +1,14 @@
 # Social Interaction System & Myth Transmission
 
+---
+Type: spec
+Component: backend
+Priority: medium
+Status: proposed
+Milestone: 4
+Estimated-Effort: 32 hours
+---
+
 ## Overview
 Implement social interactions between allied agents that facilitate myth transmission, mood management, and lay groundwork for divine favor system (Milestone 4).
 

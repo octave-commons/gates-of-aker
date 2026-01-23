@@ -1,5 +1,13 @@
 # Spec: Docker Compose Setup (2026-01-16)
 
+---
+Type: spec
+Component: infrastructure
+Priority: low
+Status: proposed
+Estimated-Effort: 4 hours
+---
+
 ## Code References
 - `AGENTS.md:35-117` outline backend/frontend commands, ports 3000/5173, and tooling expectations that containers must mirror.
 - `README.md:17-38` documents prerequisite tooling plus `clojure -M:server` and `npm run dev --prefix web` flows we need to reproduce via Compose.

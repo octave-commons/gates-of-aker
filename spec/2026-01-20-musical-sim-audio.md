@@ -1,5 +1,13 @@
 # Musical Simulation Audio
 
+---
+Type: spec
+Component: frontend
+Priority: low
+Status: implemented
+Estimated-Effort: 12 hours
+---
+
 ## Summary
 - Add tone sequences for every job completion and need threshold crossing.
 - Make hunting/combat audible with distinct motifs.

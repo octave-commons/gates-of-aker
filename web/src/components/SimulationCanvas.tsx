@@ -73,9 +73,13 @@ export function SimulationCanvas({
   const keysPressed = useRef<Set<string>>(new Set());
 
   const getTileVisibilityState = (q: number, r: number): "hidden" | "revealed" | "visible" => {
-    if (selectedVisibilityAgentId === null) return "visible";
+    if (selectedVisibilityAgentId === null || selectedVisibilityAgentId === undefined) return "visible";
     const tileKey = `${q},${r}`;
-    return tileVisibility[tileKey] ?? "hidden";
+    const vis = tileVisibility[tileKey];
+    if (window.location.hostname === "localhost" && q === 0 && r === 0) {
+      console.log("[CANVAS] getTileVisibilityState(0, 0):", vis, "selectedVisibilityAgentId:", selectedVisibilityAgentId);
+    }
+    return vis ?? "hidden";
   };
 
   const isVisible = (entity: any, type: "agent" | "tile" | "item" | "stockpile") => {
@@ -199,10 +203,16 @@ export function SimulationCanvas({
     return () => canvas.removeEventListener("wheel", handleWheel);
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container || !snapshot || !mapConfig) return;
+
+    if (window.location.hostname === "localhost" && snapshot?.tiles) {
+      const tileKeys = Object.keys(snapshot.tiles);
+      console.log("[CANVAS] First 5 tile keys:", tileKeys.slice(0, 5));
+      console.log("[CANVAS] Sample tile lookup '0,0':", snapshot.tiles["0,0"]);
+    }
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -222,6 +232,8 @@ export function SimulationCanvas({
     canvas.style.height = `${containerRect.height}px`;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#333";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -264,49 +276,61 @@ export function SimulationCanvas({
      ctx.globalAlpha = isVisibilityFiltered ? 0.2 : 0.4;
      const gridLineWidth = Math.max(0.5, 1 / camera.zoom);
 
-     for (const hex of hexesToDraw) {
-       const tileKey = `${hex[0]},${hex[1]}`;
-       const visibilityState = getTileVisibilityState(hex[0], hex[1]);
-       const tile = visibilityState === "revealed" ? revealedTilesSnapshot[tileKey] : snapshot.tiles?.[tileKey];
+       for (const hex of hexesToDraw) {
+         const tileKey = `${hex[0]},${hex[1]}`;
+         const visibilityState = getTileVisibilityState(hex[0], hex[1]);
+         const tile = visibilityState === "revealed" ? revealedTilesSnapshot[tileKey] : snapshot.tiles?.[tileKey];
 
-       const [px, py] = axialToPixel(hex, size);
-       const isTileVisible = isVisible({ q: hex[0], r: hex[1] }, "tile");
-
-       ctx.beginPath();
-       for (let i = 0; i < 6; i++) {
-         const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE, i);
-         if (i === 0) {
-           ctx.moveTo(cx, cy);
-         } else {
-           ctx.lineTo(cx, cy);
+         if (window.location.hostname === "localhost" && hex[0] === 0 && hex[1] === 0) {
+           console.log("[CANVAS] Drawing hex [0,0]:");
+           console.log("  tileKey:", tileKey);
+           console.log("  visibilityState:", visibilityState);
+           console.log("  snapshot.tiles keys:", Object.keys(snapshot.tiles ?? {}).slice(0, 5));
+           console.log("  tile:", tile);
          }
-       }
-       ctx.closePath();
 
-       if (visibilityState === "hidden") {
-         ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-         ctx.fill();
-         ctx.strokeStyle = "#222";
-        } else if (visibilityState === "revealed") {
+        const [px, py] = axialToPixel(hex, size);
+        const isTileVisible = isVisible({ q: hex[0], r: hex[1] }, "tile");
+
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const [cx, cy] = hexCorner([px, py], CONFIG.canvas.HEX_SIZE, i);
+          if (i === 0) {
+            ctx.moveTo(cx, cy);
+          } else {
+            ctx.lineTo(cx, cy);
+          }
+        }
+        ctx.closePath();
+
+        if (visibilityState === "hidden") {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+          ctx.fill();
+          ctx.strokeStyle = "#222";
+         } else if (visibilityState === "revealed") {
+           const biomeColor = tile?.biome ? biomeColors[tile.biome as string] : null;
+           if (biomeColor) {
+             ctx.fillStyle = biomeColor;
+             ctx.globalAlpha = 0.35;
+             ctx.fill();
+           } else {
+             console.log("[CANVAS] Revealed tile has no biome:", tileKey, tile);
+           }
+           ctx.strokeStyle = "#555";
+        } else {
           const biomeColor = tile?.biome ? biomeColors[tile.biome as string] : null;
           if (biomeColor) {
             ctx.fillStyle = biomeColor;
-            ctx.globalAlpha = 0.35;
+            ctx.globalAlpha = isVisibilityFiltered ? 0.6 : 0.4;
             ctx.fill();
+          } else {
+            console.log("[CANVAS] Visible tile has no biome:", tileKey, tile);
           }
-          ctx.strokeStyle = "#555";
-       } else {
-         const biomeColor = tile?.biome ? biomeColors[tile.biome as string] : null;
-         if (biomeColor) {
-           ctx.fillStyle = biomeColor;
-           ctx.globalAlpha = isVisibilityFiltered ? 0.6 : 0.4;
-           ctx.fill();
-         }
-         ctx.strokeStyle = isVisibilityFiltered ? "#999" : "#777";
-       }
-       ctx.lineWidth = gridLineWidth;
-       ctx.stroke();
-       ctx.globalAlpha = 1;
+          ctx.strokeStyle = isVisibilityFiltered ? "#999" : "#777";
+        }
+        ctx.lineWidth = gridLineWidth;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
 
         if (visibilityState !== "hidden" && tile?.resource === "tree") {
             const treeColor = visibilityState === "revealed" ? "#5a7a5a" : CONFIG.colors.RESOURCE.tree;

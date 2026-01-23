@@ -156,17 +156,38 @@ const getMovementSteps = (stats?: Record<string, number>) => {
      updated.agents = applyAgentDeltas(prev.agents || [], delta.changed_agents);
    }
  
-   if (delta.changed_tiles) {
-     updated.tiles = { ...(prev.tiles || {}), ...delta.changed_tiles };
-   }
+    if (delta.changed_tiles) {
+      const normalizedTiles: Record<string, any> = {};
+      for (const [key, value] of Object.entries(delta.changed_tiles)) {
+        const normalizedKey = key.includes("[") 
+          ? key.replace(/^\[(-?\d+)[,\s]+(-?\d+)\]$/, (_, q, r) => `${q},${r}`)
+          : key;
+        normalizedTiles[normalizedKey] = value;
+      }
+      updated.tiles = { ...(prev.tiles || {}), ...normalizedTiles };
+    }
  
-   if (delta.changed_items) {
-     updated.items = { ...(prev.items || {}), ...delta.changed_items };
-   }
+    if (delta.changed_items) {
+      const normalizedItems: Record<string, any> = {};
+      for (const [key, value] of Object.entries(delta.changed_items)) {
+        const normalizedKey = key.includes("[") 
+          ? key.replace(/^\[(-?\d+)[,\s]+(-?\d+)\]$/, (_, q, r) => `${q},${r}`)
+          : key;
+        normalizedItems[normalizedKey] = value;
+      }
+      updated.items = { ...(prev.items || {}), ...normalizedItems };
+    }
  
-   if (delta.changed_stockpiles) {
-     updated.stockpiles = { ...(prev.stockpiles || {}), ...delta.changed_stockpiles };
-   }
+    if (delta.changed_stockpiles) {
+      const normalizedStockpiles: Record<string, any> = {};
+      for (const [key, value] of Object.entries(delta.changed_stockpiles)) {
+        const normalizedKey = key.includes("[") 
+          ? key.replace(/^\[(-?\d+)[,\s]+(-?\d+)\]$/, (_, q, r) => `${q},${r}`)
+          : key;
+        normalizedStockpiles[normalizedKey] = value;
+      }
+      updated.stockpiles = { ...(prev.stockpiles || {}), ...normalizedStockpiles };
+    }
  
    if (delta.changed_jobs) {
      updated.jobs = delta.changed_jobs;

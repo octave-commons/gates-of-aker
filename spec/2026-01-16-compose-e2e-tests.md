@@ -1,5 +1,13 @@
 # Spec: Compose-backed E2E Tests (2026-01-16)
 
+---
+Type: spec
+Component: testing
+Priority: medium
+Status: proposed
+Estimated-Effort: 24 hours
+---
+
 ## Code References
 - `compose.yaml` defines `backend` + `web` services (clojure + node) sharing source mounts.
 - `backend/src/fantasia/server.clj:141-159` exposes HTTP + WS endpoints on port 3000.

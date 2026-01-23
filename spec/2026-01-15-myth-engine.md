@@ -1,5 +1,15 @@
 # Myth Engine Spec
 
+---
+Type: design
+Component: myth
+Priority: high
+Status: approved
+Related-Issues: [8, 19]
+Milestone: 7
+Estimated-Effort: 60 hours
+---
+
 ## Related Documentation
 - [[README.md]] - Project overview
 - [[AGENTS.md]] - Coding standards

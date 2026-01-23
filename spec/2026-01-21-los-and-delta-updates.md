@@ -1,5 +1,14 @@
 # Line of Sight and Delta Updates Spec
 
+---
+Type: spec
+Component: backend
+Priority: high
+Status: proposed
+Milestone: 4
+Estimated-Effort: 40 hours
+---
+
 ## Problem
 The backend sends the entire world snapshot on every tick, which is inefficient. Only agents within line of sight should receive updates, and only changed data should be transmitted.
 

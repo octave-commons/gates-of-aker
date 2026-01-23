@@ -12,7 +12,10 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
 ## Prerequisites
 - Java 17+ (set `JAVA_HOME` accordingly) for the Clojure tools.
 - Clojure CLI (`clojure` command) with access to Maven Central.
-- Node.js 20 LTS and npm for the frontend.
+- Bun for the frontend (https://bun.sh). Install via:
+  ```bash
+  curl -fsSL https://bun.sh/install | bash
+  ```
 
 ## Getting Started
 1. **Clone** the repo and open a shell at the repo root.
@@ -21,20 +24,66 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
    (cd backend && clojure -P)
    ```
 3. **Install frontend deps:**
-   ```bash
-   npm install --prefix web
-   ```
+    ```bash
+    bun install --prefix web
+    ```
 
 ## Running the Stacks
 ### Backend
-- Dev server: `clojure -M:server` (serves HTTP+WS on `http://localhost:3000`).
+- Dev server: `clojure -M:server` (serves HTTP+WS on `http://localhost:3000`; also starts nREPL on port 7888).
 - Hot reload loop: `clojure -X:watch-server` (restarts when `src/` or `deps.edn` changes).
-- REPL + server: `clojure -M:server -r` for interactive tinkering.
+- Custom nREPL port: Set `NREPL_PORT` environment variable before starting (e.g., `NREPL_PORT=7889 clojure -M:server`).
+
+#### Using nREPL for Dynamic Interaction
+The backend includes an nREPL server for interactive development and dynamic simulation manipulation. Connect using your preferred editor (CIDER, Calva, conjure) or CLI:
+
+**CLI connection:**
+```bash
+# Start the backend server (nREPL runs on port 7888 by default)
+clojure -M:server
+
+# In another terminal, connect to the running nREPL
+clj -R:nrepl
+# or
+clojure -R:nrepl
+```
+
+**Editor connections:**
+- **Emacs/CIDER**: Use `cider-connect` and specify `localhost:7888`
+- **VS Code/Calva**: Connect to running REPL on port 7888
+- **Neovim/Conjure**: Configure to connect to `localhost:7888`
+
+**Common nREPL operations:**
+```clojure
+(require '[fantasia.sim.tick :as sim])
+
+; Inspect current simulation state
+(sim/get-state)
+
+; Manually advance the simulation
+(sim/tick! 1)
+
+; Reset the world with specific seed
+(sim/reset-world! {:seed 42 :tree-density 0.1})
+
+; Set simulation levers
+(sim/set-levers! {:ollama-model "llama2" :belief-propagation-rate 0.5})
+
+; Place entities
+(sim/place-shrine! [10 10])
+(sim/place-wolf! [5 5])
+(sim/place-tree! [7 8])
+
+; Access shared atoms
+(require '[fantasia.server :as server])
+@server/*clients
+@server/*runner
+```
 
 ### Frontend
-- Dev server: `npm run dev --prefix web` (Vite on port 5173, expected to talk to backend on 3000).
-- Build: `npm run build --prefix web` (runs `tsc -b` then `vite build`).
-- Preview: `npm run preview --prefix web` to serve the production bundle locally.
+- Dev server: `bun run dev` (from `web/` directory, Vite on port 5173, expected to talk to backend on 3000).
+- Build: `bun run build` (runs `tsc -b` then `vite build`).
+- Preview: `bun run preview` to serve the production bundle locally.
 
 ## Docker Compose
 - Prereq: Docker Engine/Desktop 20.10+ with Compose v2.
@@ -44,7 +93,7 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
   docker compose up --build
   ```
   - Backend container (`backend`) runs `clojure -M:server` and binds `localhost:3000`.
-  - Frontend container (`web`) runs `npm run dev -- --host 0.0.0.0 --port 5173` and binds `http://localhost:5173`.
+  - Frontend container (`web`) runs `bun run dev -- --host 0.0.0.0 --port 5173` and binds `http://localhost:5173`.
 - Stop with `Ctrl+C`; add `-d` to detach. Compose mounts the repo plus caches (`~/.m2`, `web/node_modules`) so edits on the host refresh inside containers.
 - Override the UI’s API origin (default `http://localhost:3000`) by setting `VITE_BACKEND_ORIGIN` before `docker compose up`; the value propagates into the Vite dev server.
 

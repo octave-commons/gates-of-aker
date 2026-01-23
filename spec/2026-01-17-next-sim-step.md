@@ -1,5 +1,15 @@
 # Next Simulation Addition — Hex Map Backbone
 
+---
+Type: spec
+Component: backend
+Priority: high
+Status: implemented
+Related-Issues: []
+Milestone: 1
+Estimated-Effort: 24 hours
+---
+
 ## Context
 - The current world schema (`backend/src/fantasia/sim/tick.clj:23-58`) is a fixed 20×20 square grid with `:size [20 20]`, cartesian agent positions, and tree coordinates stored as a plain set, so no notion of axial neighbors or tile metadata exists.
 - Agent proximity and conversations rely on Manhattan distance on that square grid (`backend/src/fantasia/sim/agents.clj:36-43`), which bakes the square assumption into social logic and prevents later hex-aware mechanics like faction rings.

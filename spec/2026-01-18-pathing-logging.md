@@ -1,5 +1,13 @@
 # Pathing Module Logging
 
+---
+Type: spec
+Component: backend
+Priority: low
+Status: proposed
+Estimated-Effort: 4 hours
+---
+
 ## Overview
 Add logging throughout `backend/src/fantasia/sim/pathing.clj` to track pathfinding operations and aid debugging.
 

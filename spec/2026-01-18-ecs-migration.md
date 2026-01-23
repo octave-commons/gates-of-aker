@@ -1,5 +1,15 @@
 # ECS Migration Design
 
+---
+Type: spec
+Component: ecs
+Priority: high
+Status: proposed
+Related-Issues: []
+Milestone: 3.5
+Estimated-Effort: 80 hours
+---
+
 ## Context
 Current architecture uses nested maps for entities (agents, tiles, jobs) scattered across world state. This approach is becoming unmanageable as complexity increases. Migration to ECS (Entity-Component-System) will provide:
 - Clear separation of data (components) and behavior (systems)

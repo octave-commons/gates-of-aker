@@ -1,5 +1,14 @@
 # ECS Integration Specification
 
+---
+Type: spec
+Component: ecs
+Priority: high
+Status: proposed
+Milestone: 3.5
+Estimated-Effort: 24 hours
+---
+
 **Date:** 2026-01-18  
 **Status:** Phase 1 Complete (Core Systems Working)
 

@@ -1,5 +1,14 @@
 # Semantic Packet & Mention System Spec
 
+---
+Type: spec
+Component: myth
+Priority: high
+Status: proposed
+Milestone: 6
+Estimated-Effort: 40 hours
+---
+
 ## Purpose
 Formalize how agent communications become structured packets that feed the mention ledger, facet activations, and myth engine. Sources:
 - `docs/notes/2026-01-11-agent-info-transmission.md`
