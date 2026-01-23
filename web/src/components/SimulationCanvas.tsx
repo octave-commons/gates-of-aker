@@ -267,27 +267,35 @@ export function SimulationCanvas({
     }
 
     const biomeColors: Record<string, string> = {
-      forest: CONFIG.colors.BIOME.forest,
-      field: CONFIG.colors.BIOME.field,
-      rocky: CONFIG.colors.BIOME.rocky
+      forest: CONFIG.colors.BIOME?.forest ?? "#2e7d32",
+      field: CONFIG.colors.BIOME?.field ?? "#9e9e24",
+      rocky: CONFIG.colors.BIOME?.rocky ?? "#616161"
     };
+    if (window.location.hostname === "localhost") {
+      console.log("[CANVAS] CONFIG.colors:", CONFIG.colors);
+      console.log("[CANVAS] BIOME colors:", CONFIG.colors.BIOME);
+      console.log("[CANVAS] biomeColors:", biomeColors);
+    }
 
      const isVisibilityFiltered = selectedVisibilityAgentId !== null && visibilityData !== null;
      ctx.globalAlpha = isVisibilityFiltered ? 0.2 : 0.4;
      const gridLineWidth = Math.max(0.5, 1 / camera.zoom);
 
-       for (const hex of hexesToDraw) {
-         const tileKey = `${hex[0]},${hex[1]}`;
-         const visibilityState = getTileVisibilityState(hex[0], hex[1]);
-         const tile = visibilityState === "revealed" ? revealedTilesSnapshot[tileKey] : snapshot.tiles?.[tileKey];
+        for (const hex of hexesToDraw) {
+          const tileKey = `${hex[0]},${hex[1]}`;
+          const visibilityState = getTileVisibilityState(hex[0], hex[1]);
+          const tiles = snapshot.tiles ?? {};
+          const tile = visibilityState === "revealed" ? revealedTilesSnapshot[tileKey] : tiles[tileKey];
 
-if (window.location.hostname === "localhost" && hex[0] === 0 && hex[1] === 0) {
+ if (window.location.hostname === "localhost" && hex[0] === 0 && hex[1] === 0) {
             console.log("[CANVAS] Drawing hex [0,0]:");
             console.log("  tileKey:", tileKey);
             console.log("  visibilityState:", visibilityState);
-            console.log("  snapshot.tiles keys:", Object.keys(snapshot.tiles ?? {}).slice(0, 5));
+            console.log("  snapshot.tiles keys (first 10):", Object.keys(tiles).slice(0, 10));
+            console.log("  Has tileKey in snapshot.tiles?", tileKey in tiles);
             console.log("  tile:", tile);
             console.log("  tile data:", JSON.stringify(tile));
+            console.log("  biomeColors:", biomeColors);
           }
 
         const [px, py] = axialToPixel(hex, size);
