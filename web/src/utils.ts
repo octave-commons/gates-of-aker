@@ -4,6 +4,19 @@ const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
 
 const fmt = (n: unknown): string => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
 
+const safeStringify = (obj: unknown, space: number | string = 0): string => {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) {
+        return "[Circular]";
+      }
+      seen.add(value);
+    }
+    return value;
+  }, space);
+};
+
 const colorForRole = (role?: string): string => {
   switch (role) {
     case "priest":
@@ -144,19 +157,12 @@ const getMovementSteps = (stats?: Record<string, number>) => {
       }
       const match = trimmed.match(/^\[(-?\d+)[,\s]+(-?\d+)\]$/);
       if (match) {
-        const result = `${match[1]},${match[2]}`;
-        if (window.location.hostname === "localhost") {
-          console.log("[applyDelta] normalizeTileKey:", key, "->", result);
-        }
-        return result;
+        return `${match[1]},${match[2]}`;
       }
       return trimmed;
     };
 
-    console.log("[applyDelta] FULL delta:", JSON.stringify(delta, null, 2));
-    console.log("[applyDelta] Delta keys:", Object.keys(delta || {}));
-    console.log("[applyDelta] Changed agents:", delta?.changed_agents);
-    console.log("[applyDelta] Changed agents count:", Object.keys(delta?.changed_agents || {}).length);
+    console.log("[applyDelta] Delta tick:", delta?.global_updates?.tick, "Changed agents:", Object.keys(delta?.changed_agents || {}).length);
      const updated = { ...(prev || {}) };
  
    if (delta.global_updates) {
@@ -246,4 +252,4 @@ const getMovementSteps = (stats?: Record<string, number>) => {
     return updated;
  };
 
-export { clamp01, fmt, colorForRole, getAgentIcon, getMovementSteps, applyDelta };
+export { clamp01, fmt, colorForRole, getAgentIcon, getMovementSteps, applyDelta, safeStringify };

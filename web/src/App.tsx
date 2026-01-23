@@ -38,7 +38,7 @@ type SpeechBubble = {
   interactionType: string;
   timestamp: number;
 };
-import { clamp01, fmt, colorForRole } from "./utils";
+import { clamp01, fmt, colorForRole, safeStringify } from "./utils";
 import { CONFIG } from "./config/constants";
 
 const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
@@ -116,34 +116,23 @@ const toSequence = (notes: number[], octaveShift: number = 0) =>
   return trimmed;
 };
 
-   const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined): Record<string, T> => {
-    if (!input || typeof input !== "object") return {} as Record<string, T>;
-    const normalized: Record<string, T> = {};
-    const keys = Object.keys(input);
-    if (keys.length > 0 && window.location.hostname === "localhost") {
-      console.log("[APP] normalizeKeyedMap sample raw keys:", keys.slice(0, 5));
-      console.log("[APP] Input map keys count:", keys.length);
-      console.log("[APP] First key type:", typeof keys[0], "First key:", keys[0]);
-      console.log("[APP] Sample value:", JSON.stringify(input[keys[0]]));
-    }
-    for (const [key, value] of Object.entries(input)) {
-      const normalizedKey = normalizeTileKey(key);
-      if (normalizedKey !== key && window.location.hostname === "localhost") {
-        console.log("[APP] normalized key:", key, "->", normalizedKey);
-      }
-      normalized[normalizedKey] = value;
-    }
-    console.log("[APP] normalizeKeyedMap output count:", Object.keys(normalized).length);
-    return normalized;
-  };
+    const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined): Record<string, T> => {
+     if (!input || typeof input !== "object") return {} as Record<string, T>;
+     const normalized: Record<string, T> = {};
+     const keys = Object.keys(input);
+     if (keys.length > 0 && window.location.hostname === "localhost") {
+       console.log("[APP] normalizeKeyedMap:", keys.length, "keys, first:", keys[0]);
+     }
+     for (const [key, value] of Object.entries(input)) {
+       const normalizedKey = normalizeTileKey(key);
+       normalized[normalizedKey] = value;
+     }
+     return normalized;
+   };
 
   const normalizeSnapshot = (state: any) => {
     if (!state || typeof state !== "object") return state;
     const normalizedTiles = normalizeKeyedMap(state.tiles);
-    if (window.location.hostname === "localhost") {
-      console.log("[APP] normalizeSnapshot - original tile count:", Object.keys(state.tiles ?? {}).length);
-      console.log("[APP] normalizeSnapshot - normalized tile count:", Object.keys(normalizedTiles ?? {}).length);
-    }
     return {
       ...state,
       tiles: normalizedTiles,
@@ -426,21 +415,9 @@ export function App() {
     return new WSClient(
       wsUrl,
       (m: WSMessage) => {
-           if (m.op === "hello") {
-              const originalTileKeys = Object.keys(m.state?.tiles ?? {});
-              console.log("[APP] hello: ORIGINAL tile keys sample:", originalTileKeys.slice(0, 5));
-              console.log("[APP] hello: ORIGINAL tile count:", originalTileKeys.length);
-              if (originalTileKeys.length > 0) {
-                console.log("[APP] hello: Sample original tile value:", JSON.stringify(m.state.tiles[originalTileKeys[0]]));
-              }
-              const state = normalizeSnapshot(m.state ?? {});
-              console.log("[APP] hello: NORMALIZED tile keys sample:", Object.keys(state.tiles ?? {}).slice(0, 5));
-              console.log("[APP] hello: NORMALIZED tile count:", Object.keys(state.tiles ?? {}).length);
-              const normalizedTileKeys = Object.keys(state.tiles ?? {});
-              if (normalizedTileKeys.length > 0) {
-                console.log("[APP] hello: Sample normalized tile value:", JSON.stringify(state.tiles[normalizedTileKeys[0]]));
-              }
-             console.log("[APP] hello: tile count:", Object.keys(state.tiles ?? {}).length);
+            if (m.op === "hello") {
+               const state = normalizeSnapshot(m.state ?? {});
+               console.log("[APP] hello: tile count:", Object.keys(state.tiles ?? {}).length, "agents:", state.agents?.length);
                  const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
              const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
              setTick(state.tick ?? 0);
@@ -458,16 +435,14 @@ export function App() {
            }
          }
           if (m.op === "tick") {
-             console.log("[tick] Received tick:", m.data?.tick);
-             setTick(m.data?.tick ?? 0);
-             const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
-             console.log("[tick] Setting snapshot with", nextSnapshot?.agents?.length, "agents");
-             setSnapshot(nextSnapshot);
-             setMemories(nextSnapshot?.memories ?? []);
-             playTone(440, 0.08);
-             handleDeathTone(nextSnapshot);
-             handleTickAudio(nextSnapshot);
-           }
+              setTick(m.data?.tick ?? 0);
+              const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
+              setSnapshot(nextSnapshot);
+              setMemories(nextSnapshot?.memories ?? []);
+              playTone(440, 0.08);
+              handleDeathTone(nextSnapshot);
+              handleTickAudio(nextSnapshot);
+            }
                if (m.op === "tick_delta") {
                  const delta = m.data as any;
                   const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
@@ -783,13 +758,7 @@ export function App() {
     try {
       if (!selectedCell || !snapshot?.tiles) return null;
       const tileKey = `${selectedCell[0]},${selectedCell[1]}`;
-      const tile = snapshot.tiles[tileKey] ?? null;
-      if (window.location.hostname === "localhost") {
-        console.log("[APP] selectedTile lookup:", tileKey, "->", tile);
-        console.log("[APP] Available tile keys (first 10):", Object.keys(snapshot.tiles).slice(0, 10));
-        console.log("[APP] Sample tile value:", JSON.stringify(tile));
-      }
-      return tile;
+      return snapshot.tiles[tileKey] ?? null;
     } catch (error) {
       console.error("Error in selectedTile useMemo:", error);
       return null;

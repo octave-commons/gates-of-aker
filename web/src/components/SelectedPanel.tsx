@@ -1,6 +1,6 @@
 import React, { useState, type CSSProperties } from "react";
 import { Agent } from "../types";
-import { getMovementSteps } from "../utils";
+import { getMovementSteps, safeStringify } from "../utils";
 
  type SelectedPanelProps = {
    selectedCell: [number, number] | null;
@@ -43,7 +43,7 @@ export function SelectedPanel({
     renderRow("Biome", normalizeValue(selectedTile?.biome)),
     renderRow("Terrain", normalizeValue(selectedTile?.terrain)),
     renderRow("Structure", normalizeValue(selectedTile?.structure)),
-    renderRow("Tile data", JSON.stringify(selectedTile)),
+    renderRow("Tile data", safeStringify(selectedTile)),
   ];
 
   const itemEntries = Object.entries(selectedTileItems ?? {}).sort(([a], [b]) => a.localeCompare(b));
