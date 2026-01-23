@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Agent } from "../types";
 import { AgentCard } from "./AgentCard";
 import { CONFIG } from "../config/constants";

@@ -1,8 +1,10 @@
- type WorldInfoPanelProps = {
-   calendar?: Record<string, any> | null;
- };
- 
- const titleCase = (value: string | null | undefined) => {
+import React from "react";
+
+  type WorldInfoPanelProps = {
+    calendar?: Record<string, any> | null;
+  };
+
+  const titleCase = (value: string | null | undefined) => {
    if (!value) return "Unknown";
    return value.charAt(0).toUpperCase() + value.slice(1);
  };

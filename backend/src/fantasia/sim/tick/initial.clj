@@ -1,15 +1,16 @@
 (ns fantasia.sim.tick.initial
-     (:require [clojure.set :as set]
-               [clojure.string :as str]
-               [fantasia.sim.hex :as hex]
-               [fantasia.sim.biomes :as biomes]
-               [fantasia.sim.time :as sim-time]
-               [fantasia.sim.tick.trees :as trees]
-               [fantasia.sim.jobs :as jobs]
-               [fantasia.sim.jobs.providers :as job-providers]
-               [fantasia.sim.constants :as const]
-               [fantasia.sim.traces :as traces]
-               [fantasia.sim.spatial_facets :as sf]))
+      (:require [clojure.set :as set]
+                [clojure.string :as str]
+                [fantasia.sim.hex :as hex]
+                [fantasia.sim.biomes :as biomes]
+                [fantasia.sim.time :as sim-time]
+                [fantasia.sim.tick.trees :as trees]
+                [fantasia.sim.jobs :as jobs]
+                [fantasia.sim.jobs.providers :as job-providers]
+                [fantasia.sim.constants :as const]
+                [fantasia.sim.traces :as traces]
+                [fantasia.sim.spatial_facets :as sf]
+                [fantasia.sim.agent-visibility :as agent-visibility]))
 
 (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
@@ -320,8 +321,6 @@
                                                      (= i 0) :priest
                                                      (= i 1) :knight
                                                      :else :peasant))))))
-             world-with-wildlife
-             (-> world-with-agents
-                 (spawn-wildlife rand-gen {:role :deer :density 0.003 :biomes #{:forest :field}})
-                 (spawn-wildlife rand-gen {:role :wolf :density 0.0008 :biomes #{:forest}}))]
-         (job-providers/seed-initial-jobs world-with-wildlife agent-count))))
+               world-with-wildlife
+              (assoc world-with-agents :agent-visibility (agent-visibility/compute-all-agents-visibility world-with-agents))]
+          (job-providers/seed-initial-jobs world-with-wildlife agent-count))))

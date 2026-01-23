@@ -1,19 +1,30 @@
- export type WSMessage =
-     | { op: "hello"; state: any }
-     | { op: "tick"; data: any }
-     | { op: "tick_delta"; data: any }
-     | { op: "trace"; data: any }
-     | { op: "reset"; state: any }
-     | { op: "levers"; levers: any }
-     | { op: "shrine"; shrine: any }
-     | { op: "mouthpiece"; mouthpiece: any }
-     | { op: "tiles"; tiles: any }
-     | { op: "stockpiles"; stockpiles: any }
-     | { op: "jobs"; jobs: any }
-     | { op: "runner_state"; running: boolean; fps: number }
-     | { op: "tick_health"; data: { targetMs: number; tickMs: number; health: "healthy" | "degraded" | "unhealthy" | "unknown" } }
-     | { op: "error"; message: string }
-     | { op: string; [k: string]: any };
+import type { Snapshot, TickData } from "./types";
+
+export type WSMessage =
+  | { op: "hello"; state: Snapshot }
+  | { op: "tick"; data: TickData }
+  | { op: "tick_delta"; data: any }
+  | { op: "trace"; data: any }
+  | { op: "reset"; state: Snapshot }
+  | { op: "levers"; levers: any }
+  | { op: "shrine"; shrine: any }
+  | { op: "mouthpiece"; mouthpiece: any }
+  | { op: "tiles"; tiles: any }
+  | { op: "stockpiles"; stockpiles: any }
+  | { op: "jobs"; jobs: any }
+  | { op: "runner_state"; running: boolean; fps: number }
+  | { op: "tick_health"; data: { targetMs: number; tickMs: number; health: "healthy" | "degraded" | "unhealthy" | "unknown" } }
+  | { op: "error"; message: string }
+  | { op: string; [k: string]: any };
+
+function isValidMessage(msg: unknown): msg is WSMessage {
+  return (
+    typeof msg === "object" &&
+    msg !== null &&
+    "op" in msg &&
+    typeof (msg as WSMessage).op === "string"
+  );
+}
 
 export class WSClient {
   private ws: WebSocket | null = null;
@@ -29,7 +40,7 @@ export class WSClient {
     if (this.isConnected) {
       return;
     }
-    
+
     this.ws = new WebSocket(this.url);
     this.ws.onopen = () => {
       this.isConnected = true;
@@ -43,9 +54,13 @@ export class WSClient {
     this.ws.onmessage = (ev) => {
       try {
         const msg = JSON.parse(ev.data);
-        this.onMessage(msg);
-      } catch {
-        // ignore
+        if (isValidMessage(msg)) {
+          this.onMessage(msg);
+        } else {
+          console.error("[WS] Invalid message format:", msg);
+        }
+      } catch (e) {
+        console.error("[WS] Failed to parse message:", e);
       }
     };
   }

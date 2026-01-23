@@ -1,3 +1,5 @@
+import React from "react";
+
 type JobQueuePanelProps = {
   jobs: any[];
   collapsed?: boolean;

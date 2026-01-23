@@ -1,0 +1,25 @@
+
+## Frontend (TypeScript + React) Style Guide
+- Modules use ES modules with explicit extensions: third-party imports first, internal absolute/relative imports second.
+- Keep React components as functions; prefer hooks (`useState`, `useEffect`, `useMemo`, `useRef`) over class patterns.
+- Derive helpers locally (e.g., `fmt`, `clamp01`, `hasPos`) and keep them type-safe; export only what other modules need.
+- Always type app state; use tuple types (`[number, number]`) and discriminated unions for WS messages, as in `ws.ts`.
+- Favor `const` for bindings and arrow functions for event handlers; keep handlers defined near usage to ease reading.
+- Use inline styles only for debug UI; if/when styling grows, switch to CSS modules or Tailwind but document the choice here.
+- Restrict direct DOM access to refs; check for `null` before using canvas contexts or bounding rects.
+- When updating state derived from previous values, pass an updater function to `setState` to avoid stale closures.
+- Maintain deterministic render order: sort arrays before `.map` if visual stability is required.
+- Keep canvas drawing imperative but pure with respect to React state (no external mutable globals).
+- Manage WebSocket lifecycle through the `WSClient` helper; never instantiate raw `WebSocket` objects in components.
+- All outbound messages should follow backend op names exactly (`snake_case` for payload keys even in TS).
+- Guard optional values (e.g., `snapshot?.agents ?? []`) before iteration to avoid runtime crashes in strict mode.
+- Avoid `any`; if data is dynamic, wrap it in `Record<string, unknown>` and downcast safely.
+- Keep TypeScript strict mode enabled; do not relax compiler options without agreement.
+- Derive memos (`useMemo`) only when expensive; do not over-memoize trivial computations.
+- Prefer early returns in handlers for readability (see `placeShrineAtSelected`).
+- Use template literals for user-facing strings; keep debug text short and high-signal.
+- All arrays rendered in JSX must have stable keys (IDs, not indexes) unless data is static.
+- Snapshots displayed in `<pre>` should be run through `JSON.stringify` with spacing for readability; limit size when logs get large.
+- Keep UI state in a single component (`App`) until reuse pressure justifies extracting children; favour plain props over context for now.
+- Manage slider/range inputs as controlled components, storing numbers not strings; clamp values before sending to backend.
+- File naming: PascalCase for components (`App.tsx`), camelCase for utilities (`ws.ts`).

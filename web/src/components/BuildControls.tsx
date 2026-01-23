@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 type BuildControlsProps = {
   onPlaceWallGhost: (pos: [number, number]) => void;

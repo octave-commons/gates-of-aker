@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { WSClient, WSMessage } from "./ws";
 import { playDeathTone, playTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction, playBookCreatedTone, playHuntStartTone, playHuntAttackTone, playHuntKillTone } from "./audio";
 import { applyDelta } from "./utils";
@@ -29,7 +30,7 @@ import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
 
-type AppState = "splash" | "menu" | "simulation" | "ollama-test";
+
 
 type SpeechBubble = {
   agentId: number;
@@ -37,7 +38,7 @@ type SpeechBubble = {
   interactionType: string;
   timestamp: number;
 };
-import { clamp01, fmt, colorForRole } from "./utils";
+import { clamp01, fmt, colorForRole, safeStringify, normalizeKeyedMap } from "./utils";
 import { CONFIG } from "./config/constants";
 
 const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
@@ -100,58 +101,28 @@ const SOCIAL_TONE_SEQUENCES: Record<string, number[]> = {
    "Teaching": [2, 4, 2],
  };
 
-const toSequence = (notes: number[], octaveShift: number = 0) =>
-  notes.map((note) => getScaleFrequency(note, octaveShift));
+   const toSequence = (notes: number[], octaveShift: number = 0) =>
+   notes.map((note) => getScaleFrequency(note, octaveShift));
 
-  const normalizeTileKey = (rawKey: string) => {
-  const trimmed = rawKey.trim();
-  if (trimmed.includes(",") && !trimmed.includes("[")) {
-    return trimmed.replace(/\s+/g, "");
-  }
-  const match = trimmed.match(/^\[(-?\d+)[,\s]+(-?\d+)\]$/);
-  if (match) {
-    return `${match[1]},${match[2]}`;
-  }
-  return trimmed;
+    const normalizeSnapshot = (state: any) => {
+      if (!state || typeof state !== "object") return state;
+      const normalizedTiles = normalizeKeyedMap(state.tiles);
+      return {
+        ...state,
+        tiles: normalizedTiles,
+        items: normalizeKeyedMap(state.items),
+        stockpiles: normalizeKeyedMap(state.stockpiles),
+      };
+    };
+
+export type AgentVisibility = {
+  id: number;
+  visibleTiles: Set<string>;
 };
 
-  const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined) => {
-   if (!input || typeof input !== "object") return input;
-   const normalized: Record<string, T> = {};
-   const keys = Object.keys(input);
-   if (keys.length > 0 && keys[0].includes("[") && window.location.hostname === "localhost") {
-     console.log("[APP] normalizeKeyedMap sample raw keys:", keys.slice(0, 5));
-     console.log("[APP] Input map keys count:", keys.length);
-     console.log("[APP] Sample value:", JSON.stringify(input[keys[0]]));
-   }
-   for (const [key, value] of Object.entries(input)) {
-     const normalizedKey = normalizeTileKey(key);
-     if (normalizedKey !== key && window.location.hostname === "localhost") {
-       console.log("[APP] normalized key:", key, "->", normalizedKey);
-     }
-     normalized[normalizedKey] = value;
-   }
-   return normalized;
- };
-
-  const normalizeSnapshot = (state: any) => {
-    if (!state || typeof state !== "object") return state;
-    const normalizedTiles = normalizeKeyedMap(state.tiles);
-    if (window.location.hostname === "localhost") {
-      console.log("[APP] normalizeSnapshot - original tile count:", Object.keys(state.tiles ?? {}).length);
-      console.log("[APP] normalizeSnapshot - normalized tile count:", Object.keys(normalizedTiles ?? {}).length);
-    }
-    return {
-      ...state,
-      tiles: normalizedTiles,
-      items: normalizeKeyedMap(state.items),
-      stockpiles: normalizeKeyedMap(state.stockpiles),
-    };
-  };
-
 export function App() {
-  const [appState, setAppState] = useState<AppState>("splash");
-   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
+  const navigate = useNavigate();
+    const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
    const [tick, setTick] = useState(0);
     const [snapshot, setSnapshot] = useState<any>(null);
       const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
@@ -172,11 +143,12 @@ export function App() {
 
     const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
-    const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
-     const [selectedVisibilityAgentId, setSelectedVisibilityAgentId] = useState<number | null>(null);
+      const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
+      const [selectedVisibilityAgentId, setSelectedVisibilityAgentId] = useState<number | null>(null);
       const [visibilityData, setVisibilityData] = useState<Record<string, any> | null>(null);
-   const [tileVisibility, setTileVisibility] = useState<Record<string, "hidden" | "revealed" | "visible">>({});
-   const [revealedTilesSnapshot, setRevealedTilesSnapshot] = useState<Record<string, any>>({});
+      const [tileVisibility, setTileVisibility] = useState<Record<string, "hidden" | "revealed" | "visible">>({});
+      const [revealedTilesSnapshot, setRevealedTilesSnapshot] = useState<Record<string, any>>({});
+      const [agentVisibilityMaps, setAgentVisibilityMaps] = useState<Record<number, Set<string>>>({});
 
      useEffect(() => {
      }, [snapshot]);
@@ -371,20 +343,20 @@ export function App() {
     const [isInitializing, setIsInitializing] = useState(false);
 
   const handleSplashComplete = useCallback(() => {
-    setAppState("menu");
-  }, []);
+    navigate("/menu");
+  }, [navigate]);
 
   const handleNewGame = useCallback(() => {
-    setAppState("simulation");
-  }, []);
+    navigate("/sim");
+  }, [navigate]);
 
   const handleOllamaTest = useCallback(() => {
-    setAppState("ollama-test");
-  }, []);
+    navigate("/ollama-test");
+  }, [navigate]);
 
   const handleBackToMenu = useCallback(() => {
-    setAppState("menu");
-  }, []);
+    navigate("/menu");
+  }, [navigate]);
    const [isRunning, setIsRunning] = useState(false);
    const [tickHealth, setTickHealth] = useState<{
      targetMs: number;
@@ -423,28 +395,17 @@ export function App() {
     return new WSClient(
       wsUrl,
       (m: WSMessage) => {
-           if (m.op === "hello") {
-              const originalTileKeys = Object.keys(m.state?.tiles ?? {});
-              console.log("[APP] hello: ORIGINAL tile keys sample:", originalTileKeys.slice(0, 5));
-              console.log("[APP] hello: ORIGINAL tile count:", originalTileKeys.length);
-              if (originalTileKeys.length > 0) {
-                console.log("[APP] hello: Sample original tile value:", JSON.stringify(m.state.tiles[originalTileKeys[0]]));
-              }
-              const state = normalizeSnapshot(m.state ?? {});
-              console.log("[APP] hello: NORMALIZED tile keys sample:", Object.keys(state.tiles ?? {}).slice(0, 5));
-              console.log("[APP] hello: NORMALIZED tile count:", Object.keys(state.tiles ?? {}).length);
-              const normalizedTileKeys = Object.keys(state.tiles ?? {});
-              if (normalizedTileKeys.length > 0) {
-                console.log("[APP] hello: Sample normalized tile value:", JSON.stringify(state.tiles[normalizedTileKeys[0]]));
-              }
-             console.log("[APP] hello: tile count:", Object.keys(state.tiles ?? {}).length);
-             const tv = normalizeKeyedMap(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
-             const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
-             setTick(state.tick ?? 0);
-             setSnapshot(state);
-             setTileVisibility(tv);
-             setRevealedTilesSnapshot(rts);
-            prevSnapshotRef.current = state;
+             if (m.op === "hello") {
+                const state = normalizeSnapshot(m.state ?? {});
+                   const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+               const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
+               const avm = state?.agent_visibility ?? {};
+               setTick(state.tick ?? 0);
+               setSnapshot(state);
+               setTileVisibility(tv);
+               setRevealedTilesSnapshot(rts);
+               setAgentVisibilityMaps(avm);
+             prevSnapshotRef.current = state;
            if (state.map) {
              setMapConfig(state.map as HexConfig);
            }
@@ -455,27 +416,39 @@ export function App() {
            }
          }
           if (m.op === "tick") {
-             console.log("[tick] Received tick:", m.data?.tick);
-             setTick(m.data?.tick ?? 0);
-             const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
-             console.log("[tick] Setting snapshot with", nextSnapshot?.agents?.length, "agents");
-             setSnapshot(nextSnapshot);
-             setMemories(nextSnapshot?.memories ?? []);
-             playTone(440, 0.08);
-             handleDeathTone(nextSnapshot);
-             handleTickAudio(nextSnapshot);
-           }
-               if (m.op === "tick_delta") {
-                 const delta = m.data as any;
-                 const tv = normalizeKeyedMap(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
-                 const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
-                 setTick(delta?.tick ?? 0);
-                 setSnapshot((prev: any) => applyDelta(prev, delta));
-                 setVisibilityData(delta?.visibility ?? null);
-                 setTileVisibility(tv);
-                 setRevealedTilesSnapshot(rts);
-                 handleDeltaAudio(delta);
-               }
+              setTick(m.data?.tick ?? 0);
+              const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
+              setSnapshot(nextSnapshot);
+              setMemories(nextSnapshot?.memories ?? []);
+              playTone(440, 0.08);
+              handleDeathTone(nextSnapshot);
+              handleTickAudio(nextSnapshot);
+            }
+                 if (m.op === "tick_delta") {
+                   const delta = m.data as any;
+                    const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
+                   const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
+                   const avm = delta?.agent_visibility;
+                   if (delta && Object.keys(tv).length > 0 && Object.keys(tv).length < 5) {
+                     console.log("[App] tick_delta received, tileVisibility sample:", Object.entries(tv).slice(0, 3));
+                   }
+                   setTick(delta?.tick ?? 0);
+                   setSnapshot((prev: any) => applyDelta(prev, delta));
+                   setVisibilityData(delta?.visibility ?? null);
+                   setTileVisibility(tv);
+                   setRevealedTilesSnapshot(rts);
+                   if (avm && typeof avm === "object") {
+                     setAgentVisibilityMaps((prev: Record<number, Set<string>>) => ({
+                       ...prev,
+                       ...Object.entries(avm).reduce((acc, [agentId, tiles]) => {
+                         const numId = parseInt(String(agentId), 10);
+                         const tilesArray = Array.isArray(tiles) ? tiles : [];
+                         return { ...acc, [numId]: new Set(tilesArray) };
+                       }, {})
+                     }));
+                   }
+                   handleDeltaAudio(delta);
+                 }
         if (m.op === "trace") {
             const incoming = m.data as Trace;
             setTraces((prev) => {
@@ -500,7 +473,7 @@ export function App() {
                  setTileVisibility({});
                  setRevealedTilesSnapshot({});
                 const state = normalizeSnapshot(m.state ?? {});
-                const tv = normalizeKeyedMap(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+                const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
                 const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
                 setSnapshot(state);
                 setTileVisibility(tv);
@@ -780,13 +753,7 @@ export function App() {
     try {
       if (!selectedCell || !snapshot?.tiles) return null;
       const tileKey = `${selectedCell[0]},${selectedCell[1]}`;
-      const tile = snapshot.tiles[tileKey] ?? null;
-      if (window.location.hostname === "localhost") {
-        console.log("[APP] selectedTile lookup:", tileKey, "->", tile);
-        console.log("[APP] Available tile keys (first 10):", Object.keys(snapshot.tiles).slice(0, 10));
-        console.log("[APP] Sample tile value:", JSON.stringify(tile));
-      }
-      return tile;
+      return snapshot.tiles[tileKey] ?? null;
     } catch (error) {
       console.error("Error in selectedTile useMemo:", error);
       return null;
@@ -845,19 +812,12 @@ export function App() {
       reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
     };
 
-  if (appState === "splash") {
-    return <SplashScreen onComplete={handleSplashComplete} />;
-  }
-
-  if (appState === "menu") {
-    return <MainMenu onNewGame={handleNewGame} onOllamaTest={handleOllamaTest} />;
-  }
-
-  if (appState === "ollama-test") {
-    return <OllamaTestPage onBack={handleBackToMenu} />;
-  }
-
   return (
+    <Routes>
+      <Route path="/" element={<SplashScreen onComplete={handleSplashComplete} />} />
+      <Route path="/menu" element={<MainMenu onNewGame={handleNewGame} onOllamaTest={handleOllamaTest} />} />
+      <Route path="/ollama-test" element={<OllamaTestPage onBack={handleBackToMenu} />} />
+      <Route path="/sim" element={(
     <div
       onClick={() => markUserInteraction()}
       style={{ display: "grid", gridTemplateColumns: "1fr 320px 320px", overflow: "hidden", margin: 0 }}
@@ -941,16 +901,21 @@ export function App() {
             onSetFps={setFpsValue}
           />
 
-          {/* Selected Panel */}
+           {/* Selected Panel */}
           <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)", minHeight: 200 }}>
-            <SelectedPanel
-              selectedCell={selectedCell}
-              selectedTile={selectedTile}
-              selectedTileItems={selectedTileItems}
-              selectedTileAgents={selectedTileAgents}
-              selectedAgentId={selectedAgentId}
-              selectedAgent={selectedAgent}
-            />
+             <SelectedPanel
+               selectedCell={selectedCell}
+               selectedTile={selectedTile}
+               selectedTileItems={selectedTileItems}
+               selectedTileAgents={selectedTileAgents}
+               selectedAgentId={selectedVisibilityAgentId}
+               selectedAgent={selectedAgent}
+               selectedVisibilityAgentId={selectedVisibilityAgentId}
+               agentVisibilityMaps={agentVisibilityMaps}
+               agents={agents}
+               onSetVisibilityAgentId={setSelectedVisibilityAgentId}
+               tileVisibility={tileVisibility}
+             />
          </div>
 
         {/* Factions Panel */}
@@ -1123,7 +1088,9 @@ export function App() {
            collapsed={thoughtsCollapsed}
            onToggleCollapse={() => setThoughtsCollapsed(!thoughtsCollapsed)}
          />
-       </div>
-     </div>
-   );
- }
+        </div>
+      </div>
+    )} />
+    </Routes>
+  );
+}

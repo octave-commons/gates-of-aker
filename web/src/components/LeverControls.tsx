@@ -1,3 +1,5 @@
+import React from "react";
+
 type LeverControlsProps = {
   tick: number;
   fireToPatron: number;

@@ -24,10 +24,10 @@
    Returns updated ECS world."
     (let [levers (:levers global-state {})
           cold-snap (or (:cold-snap levers) 0.4)]
-     (-> ecs-world
-         (fantasia.sim.ecs.systems.needs-decay/process cold-snap)
-         (fantasia.sim.ecs.systems.movement/process)
-         (fantasia.sim.ecs.systems.agent-interaction/process))))
+      (-> ecs-world
+          (fantasia.sim.ecs.systems.needs-decay/process cold-snap)
+          (fantasia.sim.ecs.systems.movement/process)
+          ;; (fantasia.sim.ecs.systems.agent-interaction/process))))
 
 (defn tick-ecs-once [global-state]
   "Run one ECS tick with all systems."
@@ -72,29 +72,6 @@
     (println "[ECS] Created initial world")
     global-state))
 
-(defn import-agent [ecs-world agent-data]
-  "Import old-style agent map into ECS."
-  (let [[q r] (:pos agent-data)
-        id (:id agent-data)
-        role (:role agent-data)
-        {:keys [warmth food sleep]} (:needs agent-data)
-        {:keys [wood food-item]} (:inventory agent-data)
-        frontier {:facets (:frontier agent-data)}
-        recall {:events (:recall agent-data)}
-        result (fantasia.sim.ecs.core/create-agent ecs-world id q r role)]
-        entity-id (first result)
-        world' (second result)
-        _ (doseq [[k v] (seq (first (:needs agent-data) (into {}))]
-                  (be/add-component entity-id (c/->Needs k v 1.0 0.8 0.6 0.5 0.5 0.5 0.5 0.6 0.5)))
-        world' (be/add-component entity-id (c/->PersonalInventory wood food-item {}))
-        world' (be/add-component entity-id (c/->Frontier {}))
-        world' (be/add-component entity-id (c/->Recall {}))
-        world' (be/add-component entity-id (c/->AgentInfo id (str "agent-" id)))
-        world' (be/add-component entity-id (c/->Role role))
-        world' (be/add-component entity-id (c/->AgentStatus true false false nil))
-        world' (be/add-component entity-id (c/->PersonalInventory wood food-item {})))]
-    (let [ecs-world (be/add-component world' id (c/->Position q r))]
-          [entity-id ecs-world])))
 
 (defn import-tile [ecs-world tile-key tile-data]
   "Import old-style tile map into ECS."
