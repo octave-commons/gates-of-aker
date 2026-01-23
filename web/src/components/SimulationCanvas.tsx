@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { Agent, hasPos, PathPoint } from "../types";
 import type { HexConfig } from "../hex";

@@ -1,3 +1,5 @@
+import React from "react";
+
 type StatusBarProps = {
   status: "open" | "closed" | "error";
   tickHealth?: {

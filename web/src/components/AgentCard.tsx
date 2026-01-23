@@ -1,4 +1,4 @@
-import { memo } from "react";
+import React, { memo } from "react";
 import { Agent, hasPos } from "../types";
 import { getMovementSteps } from "../utils";
 

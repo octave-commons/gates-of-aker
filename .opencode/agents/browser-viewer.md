@@ -1,6 +1,7 @@
 ---
 description: Use this when you want to inspect a live web page with chrome dev tools. If you want to see browser console logs. If you want to investigate a screen shot of a select web page
 model: zai-coding-plan/glm-4.6v
+mode: subagent
 temperature: 1.0
 tools:
   chrome*: true

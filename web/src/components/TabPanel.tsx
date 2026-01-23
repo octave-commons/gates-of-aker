@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type CSSProperties } from "react";
+import React, { useState, type ReactNode, type CSSProperties } from "react";
 
 type Tab = {
   id: string;

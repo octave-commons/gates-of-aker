@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import React, { useState, type CSSProperties } from "react";
 import { Agent } from "../types";
 import { getMovementSteps } from "../utils";
 

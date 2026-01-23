@@ -1,4 +1,4 @@
-import { memo } from "react";
+import React, { memo } from "react";
 import { Trace } from "../types";
 import { fmt } from "../utils";
 

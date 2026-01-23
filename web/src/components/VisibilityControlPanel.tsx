@@ -1,3 +1,5 @@
+import React from "react";
+
 type VisibilityControlPanelProps = {
   agents: any[];
   selectedVisibilityAgentId: number | null;
