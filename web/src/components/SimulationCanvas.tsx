@@ -281,13 +281,14 @@ export function SimulationCanvas({
          const visibilityState = getTileVisibilityState(hex[0], hex[1]);
          const tile = visibilityState === "revealed" ? revealedTilesSnapshot[tileKey] : snapshot.tiles?.[tileKey];
 
-         if (window.location.hostname === "localhost" && hex[0] === 0 && hex[1] === 0) {
-           console.log("[CANVAS] Drawing hex [0,0]:");
-           console.log("  tileKey:", tileKey);
-           console.log("  visibilityState:", visibilityState);
-           console.log("  snapshot.tiles keys:", Object.keys(snapshot.tiles ?? {}).slice(0, 5));
-           console.log("  tile:", tile);
-         }
+if (window.location.hostname === "localhost" && hex[0] === 0 && hex[1] === 0) {
+            console.log("[CANVAS] Drawing hex [0,0]:");
+            console.log("  tileKey:", tileKey);
+            console.log("  visibilityState:", visibilityState);
+            console.log("  snapshot.tiles keys:", Object.keys(snapshot.tiles ?? {}).slice(0, 5));
+            console.log("  tile:", tile);
+            console.log("  tile data:", JSON.stringify(tile));
+          }
 
         const [px, py] = axialToPixel(hex, size);
         const isTileVisible = isVisible({ q: hex[0], r: hex[1] }, "tile");
@@ -324,7 +325,12 @@ export function SimulationCanvas({
             ctx.globalAlpha = isVisibilityFiltered ? 0.6 : 0.4;
             ctx.fill();
           } else {
-            console.log("[CANVAS] Visible tile has no biome:", tileKey, tile);
+            if (window.location.hostname === "localhost" && hex[0] === 0 && hex[1] === 0) {
+              console.log("[CANVAS] Visible tile [0,0] has no biome:", tileKey, tile);
+            }
+            ctx.fillStyle = "#777";
+            ctx.globalAlpha = 0.3;
+            ctx.fill();
           }
           ctx.strokeStyle = isVisibilityFiltered ? "#999" : "#777";
         }

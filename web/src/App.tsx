@@ -108,13 +108,9 @@ const toSequence = (notes: number[], octaveShift: number = 0) =>
   if (trimmed.includes(",") && !trimmed.includes("[")) {
     return trimmed.replace(/\s+/g, "");
   }
-  const match = trimmed.match(/^\[(-?\d+)\s+(-?\d+)\]$/);
+  const match = trimmed.match(/^\[(-?\d+)[,\s]+(-?\d+)\]$/);
   if (match) {
     return `${match[1]},${match[2]}`;
-  }
-  const bracketMatch = trimmed.match(/^\[(-?\d+),(-?\d+)\]$/);
-  if (bracketMatch) {
-    return `${bracketMatch[1]},${bracketMatch[2]}`;
   }
   return trimmed;
 };
@@ -126,6 +122,7 @@ const toSequence = (notes: number[], octaveShift: number = 0) =>
    if (keys.length > 0 && keys[0].includes("[") && window.location.hostname === "localhost") {
      console.log("[APP] normalizeKeyedMap sample raw keys:", keys.slice(0, 5));
      console.log("[APP] Input map keys count:", keys.length);
+     console.log("[APP] Sample value:", JSON.stringify(input[keys[0]]));
    }
    for (const [key, value] of Object.entries(input)) {
      const normalizedKey = normalizeTileKey(key);
@@ -426,9 +423,20 @@ export function App() {
     return new WSClient(
       wsUrl,
       (m: WSMessage) => {
-          if (m.op === "hello") {
+           if (m.op === "hello") {
+              const originalTileKeys = Object.keys(m.state?.tiles ?? {});
+              console.log("[APP] hello: ORIGINAL tile keys sample:", originalTileKeys.slice(0, 5));
+              console.log("[APP] hello: ORIGINAL tile count:", originalTileKeys.length);
+              if (originalTileKeys.length > 0) {
+                console.log("[APP] hello: Sample original tile value:", JSON.stringify(m.state.tiles[originalTileKeys[0]]));
+              }
               const state = normalizeSnapshot(m.state ?? {});
-              console.log("[APP] hello: tile keys sample:", Object.keys(state.tiles ?? {}).slice(0, 5));
+              console.log("[APP] hello: NORMALIZED tile keys sample:", Object.keys(state.tiles ?? {}).slice(0, 5));
+              console.log("[APP] hello: NORMALIZED tile count:", Object.keys(state.tiles ?? {}).length);
+              const normalizedTileKeys = Object.keys(state.tiles ?? {});
+              if (normalizedTileKeys.length > 0) {
+                console.log("[APP] hello: Sample normalized tile value:", JSON.stringify(state.tiles[normalizedTileKeys[0]]));
+              }
              console.log("[APP] hello: tile count:", Object.keys(state.tiles ?? {}).length);
              const tv = normalizeKeyedMap(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
              const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
@@ -771,7 +779,14 @@ export function App() {
   const selectedTile = useMemo(() => {
     try {
       if (!selectedCell || !snapshot?.tiles) return null;
-      return snapshot.tiles[`${selectedCell[0]},${selectedCell[1]}`] ?? null;
+      const tileKey = `${selectedCell[0]},${selectedCell[1]}`;
+      const tile = snapshot.tiles[tileKey] ?? null;
+      if (window.location.hostname === "localhost") {
+        console.log("[APP] selectedTile lookup:", tileKey, "->", tile);
+        console.log("[APP] Available tile keys (first 10):", Object.keys(snapshot.tiles).slice(0, 10));
+        console.log("[APP] Sample tile value:", JSON.stringify(tile));
+      }
+      return tile;
     } catch (error) {
       console.error("Error in selectedTile useMemo:", error);
       return null;

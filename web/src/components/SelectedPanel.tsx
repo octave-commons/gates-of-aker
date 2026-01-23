@@ -43,6 +43,7 @@ export function SelectedPanel({
     renderRow("Biome", normalizeValue(selectedTile?.biome)),
     renderRow("Terrain", normalizeValue(selectedTile?.terrain)),
     renderRow("Structure", normalizeValue(selectedTile?.structure)),
+    renderRow("Tile data", JSON.stringify(selectedTile)),
   ];
 
   const itemEntries = Object.entries(selectedTileItems ?? {}).sort(([a], [b]) => a.localeCompare(b));

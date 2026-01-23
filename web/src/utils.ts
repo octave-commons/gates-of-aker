@@ -136,12 +136,28 @@ const getMovementSteps = (stats?: Record<string, number>) => {
    return [...updatedAgents, ...toAdd];
  };
 
-  const applyDelta = (prev: any, delta: DeltaSnapshot): any => {
+   const applyDelta = (prev: any, delta: DeltaSnapshot): any => {
+    const normalizeTileKey = (key: string) => {
+      const trimmed = key.trim();
+      if (trimmed.includes(",") && !trimmed.includes("[")) {
+        return trimmed.replace(/\s+/g, "");
+      }
+      const match = trimmed.match(/^\[(-?\d+)[,\s]+(-?\d+)\]$/);
+      if (match) {
+        const result = `${match[1]},${match[2]}`;
+        if (window.location.hostname === "localhost") {
+          console.log("[applyDelta] normalizeTileKey:", key, "->", result);
+        }
+        return result;
+      }
+      return trimmed;
+    };
+
     console.log("[applyDelta] FULL delta:", JSON.stringify(delta, null, 2));
     console.log("[applyDelta] Delta keys:", Object.keys(delta || {}));
     console.log("[applyDelta] Changed agents:", delta?.changed_agents);
     console.log("[applyDelta] Changed agents count:", Object.keys(delta?.changed_agents || {}).length);
-    const updated = { ...(prev || {}) };
+     const updated = { ...(prev || {}) };
  
    if (delta.global_updates) {
      updated.tick = delta.global_updates.tick;
@@ -159,9 +175,7 @@ const getMovementSteps = (stats?: Record<string, number>) => {
     if (delta.changed_tiles) {
       const normalizedTiles: Record<string, any> = {};
       for (const [key, value] of Object.entries(delta.changed_tiles)) {
-        const normalizedKey = key.includes("[") 
-          ? key.replace(/^\[(-?\d+)[,\s]+(-?\d+)\]$/, (_, q, r) => `${q},${r}`)
-          : key;
+        const normalizedKey = normalizeTileKey(key);
         normalizedTiles[normalizedKey] = value;
       }
       updated.tiles = { ...(prev.tiles || {}), ...normalizedTiles };
@@ -170,9 +184,7 @@ const getMovementSteps = (stats?: Record<string, number>) => {
     if (delta.changed_items) {
       const normalizedItems: Record<string, any> = {};
       for (const [key, value] of Object.entries(delta.changed_items)) {
-        const normalizedKey = key.includes("[") 
-          ? key.replace(/^\[(-?\d+)[,\s]+(-?\d+)\]$/, (_, q, r) => `${q},${r}`)
-          : key;
+        const normalizedKey = normalizeTileKey(key);
         normalizedItems[normalizedKey] = value;
       }
       updated.items = { ...(prev.items || {}), ...normalizedItems };
@@ -181,9 +193,7 @@ const getMovementSteps = (stats?: Record<string, number>) => {
     if (delta.changed_stockpiles) {
       const normalizedStockpiles: Record<string, any> = {};
       for (const [key, value] of Object.entries(delta.changed_stockpiles)) {
-        const normalizedKey = key.includes("[") 
-          ? key.replace(/^\[(-?\d+)[,\s]+(-?\d+)\]$/, (_, q, r) => `${q},${r}`)
-          : key;
+        const normalizedKey = normalizeTileKey(key);
         normalizedStockpiles[normalizedKey] = value;
       }
       updated.stockpiles = { ...(prev.stockpiles || {}), ...normalizedStockpiles };

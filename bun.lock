@@ -1,0 +1,63 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "gates-of-aker",
+      "devDependencies": {
+        "typescript": "^5.7.0",
+      },
+    },
+    "web": {
+      "name": "fantasia-web",
+      "version": "0.0.1",
+      "dependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+      },
+      "devDependencies": {
+        "@testing-library/jest-dom": "^6.4.2",
+        "@testing-library/react": "^16.0.0",
+        "@testing-library/user-event": "^14.5.2",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "@vitest/coverage-v8": "^2.1.5",
+        "jsdom": "^24.1.0",
+        "typescript": "^5.7.0",
+        "vite": "^6.0.0",
+        "vitest": "^2.1.5",
+        "ws": "^8.19.0",
+      },
+    },
+  },
+  "packages": {
+    "fantasia-web": ["fantasia-web@workspace:web"],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "fantasia-web/@testing-library/jest-dom": ["@testing-library/jest-dom@file:web/node_modules/@testing-library/jest-dom", {}],
+
+    "fantasia-web/@testing-library/react": ["@testing-library/react@file:web/node_modules/@testing-library/react", {}],
+
+    "fantasia-web/@testing-library/user-event": ["@testing-library/user-event@file:web/node_modules/@testing-library/user-event", {}],
+
+    "fantasia-web/@types/react": ["@types/react@file:web/node_modules/@types/react", {}],
+
+    "fantasia-web/@types/react-dom": ["@types/react-dom@file:web/node_modules/@types/react-dom", {}],
+
+    "fantasia-web/@vitest/coverage-v8": ["@vitest/coverage-v8@file:web/node_modules/@vitest/coverage-v8", {}],
+
+    "fantasia-web/jsdom": ["jsdom@file:web/node_modules/jsdom", {}],
+
+    "fantasia-web/react": ["react@file:web/node_modules/react", {}],
+
+    "fantasia-web/react-dom": ["react-dom@file:web/node_modules/react-dom", {}],
+
+    "fantasia-web/typescript": ["typescript@file:web/node_modules/typescript", {}],
+
+    "fantasia-web/vite": ["vite@file:web/node_modules/vite", {}],
+
+    "fantasia-web/vitest": ["vitest@file:web/node_modules/vitest", {}],
+
+    "fantasia-web/ws": ["ws@file:web/node_modules/ws", {}],
+  }
+}
