@@ -266,7 +266,7 @@ export function SimulationCanvas({
       }
     }
 
-    const biomeColors: Record<string, string> = {
+     const biomeColors: Record<string, string> = {
       forest: CONFIG.colors.BIOME?.forest ?? "#2e7d32",
       field: CONFIG.colors.BIOME?.field ?? "#9e9e24",
       rocky: CONFIG.colors.BIOME?.rocky ?? "#616161"
@@ -275,6 +275,15 @@ export function SimulationCanvas({
       console.log("[CANVAS] CONFIG.colors:", CONFIG.colors);
       console.log("[CANVAS] BIOME colors:", CONFIG.colors.BIOME);
       console.log("[CANVAS] biomeColors:", biomeColors);
+      console.log("[CANVAS] snapshot.tiles type:", typeof snapshot?.tiles);
+      console.log("[CANVAS] snapshot.tiles keys (first 10):", snapshot?.tiles ? Object.keys(snapshot.tiles).slice(0, 10) : 'no tiles');
+      console.log("[CANVAS] snapshot.tiles is null?:", snapshot?.tiles === null);
+      console.log("[CANVAS] snapshot.tiles count:", snapshot?.tiles ? Object.keys(snapshot.tiles).length : 0);
+      if (snapshot?.tiles) {
+        const firstKey = Object.keys(snapshot.tiles)[0];
+        console.log("[CANVAS] First tile key:", firstKey);
+        console.log("[CANVAS] First tile value:", JSON.stringify(snapshot.tiles[firstKey]));
+      }
     }
 
      const isVisibilityFiltered = selectedVisibilityAgentId !== null && visibilityData !== null;

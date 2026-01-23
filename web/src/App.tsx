@@ -115,24 +115,26 @@ const toSequence = (notes: number[], octaveShift: number = 0) =>
   return trimmed;
 };
 
-  const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined) => {
-   if (!input || typeof input !== "object") return input;
-   const normalized: Record<string, T> = {};
-   const keys = Object.keys(input);
-   if (keys.length > 0 && keys[0].includes("[") && window.location.hostname === "localhost") {
-     console.log("[APP] normalizeKeyedMap sample raw keys:", keys.slice(0, 5));
-     console.log("[APP] Input map keys count:", keys.length);
-     console.log("[APP] Sample value:", JSON.stringify(input[keys[0]]));
-   }
-   for (const [key, value] of Object.entries(input)) {
-     const normalizedKey = normalizeTileKey(key);
-     if (normalizedKey !== key && window.location.hostname === "localhost") {
-       console.log("[APP] normalized key:", key, "->", normalizedKey);
-     }
-     normalized[normalizedKey] = value;
-   }
-   return normalized;
- };
+   const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined) => {
+    if (!input || typeof input !== "object") return input;
+    const normalized: Record<string, T> = {};
+    const keys = Object.keys(input);
+    if (keys.length > 0 && window.location.hostname === "localhost") {
+      console.log("[APP] normalizeKeyedMap sample raw keys:", keys.slice(0, 5));
+      console.log("[APP] Input map keys count:", keys.length);
+      console.log("[APP] First key type:", typeof keys[0], "First key:", keys[0]);
+      console.log("[APP] Sample value:", JSON.stringify(input[keys[0]]));
+    }
+    for (const [key, value] of Object.entries(input)) {
+      const normalizedKey = normalizeTileKey(key);
+      if (normalizedKey !== key && window.location.hostname === "localhost") {
+        console.log("[APP] normalized key:", key, "->", normalizedKey);
+      }
+      normalized[normalizedKey] = value;
+    }
+    console.log("[APP] normalizeKeyedMap output count:", Object.keys(normalized).length);
+    return normalized;
+  };
 
   const normalizeSnapshot = (state: any) => {
     if (!state || typeof state !== "object") return state;
