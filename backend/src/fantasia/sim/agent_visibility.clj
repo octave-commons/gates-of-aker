@@ -27,7 +27,7 @@
         vertices (vec (for [i (range num-points)]
                           (let [angle (to-radians (* i (/ 360 num-points)))
                                 q (int (+ center-q (* radius (Math/cos angle))))
-                                r (int (+ center-r (* radius (Math/sin angle)))))]
+                                 r (int (+ center-r (* radius (Math/sin angle))))]
                             [q r])))
         num-verts (count vertices)
         edges (vec (for [i (range num-verts)]
@@ -65,15 +65,17 @@
             tiles (:tiles world)]
         (->> tiles
              keys
-             (filter (fn [tile-key]
-                       (when (string? tile-key)
-                         (let [parts (clojure.string/split tile-key #",")]
-                               q (when (>= (count parts) 2)
-                                     (read-string (first parts)))
-                               r (when (>= (count parts) 2)
-                                     (read-string (second parts)))]
-                           (and q r (point-in-polygon? [q r] (:vertices polygon)))))
-             set)))))
+              (filter (fn [tile-key]
+                        (when (string? tile-key)
+                          (let [parts (clojure.string/split tile-key #",")
+                                q (when (>= (count parts) 2)
+                                      (read-string (first parts)))
+                                r (when (>= (count parts) 2)
+                                      (read-string (second parts)))]
+                            (and q r (point-in-polygon? [q r] (:vertices polygon)))))
+              set))))))
+
+  )
 
 (defn compute-all-agents-visibility
   "Compute visibility for all alive agents.

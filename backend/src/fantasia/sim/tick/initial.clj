@@ -322,5 +322,5 @@
                                                      (= i 1) :knight
                                                      :else :peasant))))))
                world-with-wildlife
-              (assoc world-with-wildlife :agent-visibility (agent-visibility/compute-all-agents-visibility world-with-wildlife))
+              (assoc world-with-agents :agent-visibility (agent-visibility/compute-all-agents-visibility world-with-agents))]
           (job-providers/seed-initial-jobs world-with-wildlife agent-count))))

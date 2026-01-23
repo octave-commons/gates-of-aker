@@ -51,7 +51,7 @@
           :changed-jobs (:jobs new-world)
           :changed-tile-visibility (:tile-visibility new-world)
           :changed-agent-visibility (map-delta (:agent-visibility old-world {}) (:agent-visibility new-world))
-          :changed-revealed-tiles-snapshot (:revealed-tiles-snapshot old-world {}) (:revealed-tiles-snapshot new-world))})
+          :changed-revealed-tiles-snapshot (map-delta (:revealed-tiles-snapshot old-world {}) (:revealed-tiles-snapshot new-world))})
      (let [changed-agents-result (->> (:agents new-world)
                             (map (fn [new-agent]
                                     (let [old-agent (first (filter #(= (:id %) (:id new-agent)) (:agents old-world)))
