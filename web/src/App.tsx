@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { WSClient, WSMessage } from "./ws";
 import { playDeathTone, playTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction, playBookCreatedTone, playHuntStartTone, playHuntAttackTone, playHuntKillTone } from "./audio";
 import { applyDelta } from "./utils";
@@ -29,7 +30,7 @@ import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Trace, hasPos, PathPoint } from "./types";
 import type { HexConfig, AxialCoords } from "./hex";
 
-type AppState = "splash" | "menu" | "simulation" | "ollama-test";
+
 
 type SpeechBubble = {
   agentId: number;
@@ -115,8 +116,8 @@ const toSequence = (notes: number[], octaveShift: number = 0) =>
   return trimmed;
 };
 
-   const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined) => {
-    if (!input || typeof input !== "object") return input;
+   const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined): Record<string, T> => {
+    if (!input || typeof input !== "object") return {} as Record<string, T>;
     const normalized: Record<string, T> = {};
     const keys = Object.keys(input);
     if (keys.length > 0 && window.location.hostname === "localhost") {
@@ -152,8 +153,8 @@ const toSequence = (notes: number[], octaveShift: number = 0) =>
   };
 
 export function App() {
-  const [appState, setAppState] = useState<AppState>("splash");
-   const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
+  const navigate = useNavigate();
+    const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
    const [tick, setTick] = useState(0);
     const [snapshot, setSnapshot] = useState<any>(null);
       const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
@@ -373,20 +374,20 @@ export function App() {
     const [isInitializing, setIsInitializing] = useState(false);
 
   const handleSplashComplete = useCallback(() => {
-    setAppState("menu");
-  }, []);
+    navigate("/menu");
+  }, [navigate]);
 
   const handleNewGame = useCallback(() => {
-    setAppState("simulation");
-  }, []);
+    navigate("/sim");
+  }, [navigate]);
 
   const handleOllamaTest = useCallback(() => {
-    setAppState("ollama-test");
-  }, []);
+    navigate("/ollama-test");
+  }, [navigate]);
 
   const handleBackToMenu = useCallback(() => {
-    setAppState("menu");
-  }, []);
+    navigate("/menu");
+  }, [navigate]);
    const [isRunning, setIsRunning] = useState(false);
    const [tickHealth, setTickHealth] = useState<{
      targetMs: number;
@@ -440,7 +441,7 @@ export function App() {
                 console.log("[APP] hello: Sample normalized tile value:", JSON.stringify(state.tiles[normalizedTileKeys[0]]));
               }
              console.log("[APP] hello: tile count:", Object.keys(state.tiles ?? {}).length);
-             const tv = normalizeKeyedMap(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+                 const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
              const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
              setTick(state.tick ?? 0);
              setSnapshot(state);
@@ -469,7 +470,7 @@ export function App() {
            }
                if (m.op === "tick_delta") {
                  const delta = m.data as any;
-                 const tv = normalizeKeyedMap(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
+                  const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
                  const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
                  setTick(delta?.tick ?? 0);
                  setSnapshot((prev: any) => applyDelta(prev, delta));
@@ -502,7 +503,7 @@ export function App() {
                  setTileVisibility({});
                  setRevealedTilesSnapshot({});
                 const state = normalizeSnapshot(m.state ?? {});
-                const tv = normalizeKeyedMap(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+                const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
                 const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
                 setSnapshot(state);
                 setTileVisibility(tv);
@@ -847,19 +848,12 @@ export function App() {
       reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
     };
 
-  if (appState === "splash") {
-    return <SplashScreen onComplete={handleSplashComplete} />;
-  }
-
-  if (appState === "menu") {
-    return <MainMenu onNewGame={handleNewGame} onOllamaTest={handleOllamaTest} />;
-  }
-
-  if (appState === "ollama-test") {
-    return <OllamaTestPage onBack={handleBackToMenu} />;
-  }
-
   return (
+    <Routes>
+      <Route path="/" element={<SplashScreen onComplete={handleSplashComplete} />} />
+      <Route path="/menu" element={<MainMenu onNewGame={handleNewGame} onOllamaTest={handleOllamaTest} />} />
+      <Route path="/ollama-test" element={<OllamaTestPage onBack={handleBackToMenu} />} />
+      <Route path="/sim" element={(
     <div
       onClick={() => markUserInteraction()}
       style={{ display: "grid", gridTemplateColumns: "1fr 320px 320px", overflow: "hidden", margin: 0 }}
@@ -1125,7 +1119,9 @@ export function App() {
            collapsed={thoughtsCollapsed}
            onToggleCollapse={() => setThoughtsCollapsed(!thoughtsCollapsed)}
          />
-       </div>
-     </div>
-   );
- }
+        </div>
+      </div>
+    )} />
+    </Routes>
+  );
+}

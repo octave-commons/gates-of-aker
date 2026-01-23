@@ -29,5 +29,8 @@
   },
   "workspaces": [
     "web"
-  ]
+  ],
+  "dependencies": {
+    "react-router-dom": "^7.12.0"
+  }
 }
