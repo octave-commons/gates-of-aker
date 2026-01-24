@@ -52,3 +52,38 @@
 (defrecord JobQueue [pending-jobs assigned-jobs])
 
 (defrecord WorldItem [resource qty pos created-at])
+
+;; Combat components
+(defrecord CombatStats [damage reduction range sight-range])
+(defrecord CombatTarget [target-id target-role])
+(defrecord CombatState [in-combat? last-attack-tick attack-cooldown])
+
+;; Social interaction components  
+(defrecord SocialStats [charisma influence])
+(defrecord SocialState [last-interaction-tick interaction-cooldown current-partner-id])
+(defrecord Relationships [relations]) ;; Map of agent-id -> {:affinity 0.5 :last-interaction 123}
+
+;; Mortality components
+(defrecord DeathState [alive? cause-of-death death-tick])
+(defrecord Stats [strength fortitude charisma intelligence]) ;; Agent base stats
+
+;; Reproduction components
+(defrecord ReproductionStats [fertility libido pregnancy-duration])
+(defrecord PregnancyState [pregnant? partner-id due-tick conception-tick])
+(defrecord GrowthState [age-stage growth-progress])
+
+;; Memory and event components
+(defrecord Memory [id type location created-at strength entity-id facets])
+(defrecord MemoryState [memory-capacity decay-rate last-memory-tick])
+
+;; Event components
+(defrecord EventWitness [event-id witness-score witness-tick])
+(defrecord EventTrace [trace-id tick listener speaker packet seeded spread event-recall claim-activation mention])
+
+;; Faction and institution components
+(defrecord Faction [name relations])
+(defrecord Institution [type influence-members broadcasting-range])
+
+;; Vision and awareness components
+(defrecord Vision [radius visibility-map last-visibility-update])
+(defrecord Awareness [known-agents known-structures last-awareness-update])

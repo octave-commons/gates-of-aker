@@ -26,8 +26,8 @@
           cold-snap (or (:cold-snap levers) 0.4)]
       (-> ecs-world
           (fantasia.sim.ecs.systems.needs-decay/process cold-snap)
-          (fantasia.sim.ecs.systems.movement/process)
-          ;; (fantasia.sim.ecs.systems.agent-interaction/process))))
+           (fantasia.sim.ecs.systems.movement/process)
+           ;; (fantasia.sim.ecs.systems.agent-interaction/process)))
 
 (defn tick-ecs-once [global-state]
   "Run one ECS tick with all systems."
@@ -93,16 +93,16 @@
          ;; Handle string keys (backward compatibility)
          (and tile-key' (string? tile-key') (clojure.string/includes? tile-key' ","))
          (try
-           (let [parts (clojure.string/split tile-key' #",")]
-                 q (Integer/parseInt (first parts))
-                 r (Integer/parseInt (second parts))
-                 terrain (or (:terrain tile-data) :ground)
-                 biome (or (:biome tile-data) :plains)
-                 structure (:structure tile-data)
-                 resource (:resource tile-data)]
+            (let [parts (clojure.string/split tile-key' #",")
+                  q (Integer/parseInt (first parts))
+                  r (Integer/parseInt (second parts))
+                  terrain (or (:terrain tile-data) :ground)
+                  biome (or (:biome tile-data) :plains)
+                  structure (:structure tile-data)
+                  resource (:resource tile-data)]
            [_ _ world'] (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource))
            (catch Exception e
              (println "[ECS] Warning: Failed to import tile at" tile-key ":" (.getMessage e))
              ecs-world))
          :else
-         ecs-world)))
+         ecs-world))))

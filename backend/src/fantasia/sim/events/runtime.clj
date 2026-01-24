@@ -1,7 +1,6 @@
 (ns fantasia.sim.events.runtime
-  (:require [fantasia.sim.events :as events]
-            [fantasia.sim.agents :as agents]
-            [fantasia.sim.facets :as f]))
+  (:require [fantasia.sim.events :as events])
+  (:import [java.util Random]))
 
 (defn generate
   "Sample a world event candidate from current world + agent list.
@@ -60,13 +59,13 @@
   [world agent event-instance]
   (let [et (events/get-event-type (:type event-instance))
         impact (double (:impact event-instance))
-        fr0 (f/decay-frontier (:frontier agent) {:decay 0.96})
-        fr1 (reduce (fn [fr [facet w]]
-                      (f/bump-facet fr facet (* impact 0.22 (double w))))
-                    fr0
-                    (:signature et))
-        spread (f/spread-step fr1 (agents/scaled-edges world)
-                              {:spread-gain 0.55 :max-hops 2})
+        fr0 {} ; TODO: Migrate facets/decay-frontier to ECS
+         fr1 (reduce (fn [fr [facet w]]
+                       (assoc fr facet (* impact 0.22 (double w))))
+                     fr0
+                     (:signature et))
+         ;; TODO: Migrate agents/scaled-edges to ECS
+         spread {}
         fr2 (:frontier spread)
         speaker {:id :world :role :world}
         packet {:intent :witness
@@ -78,14 +77,8 @@
                               :instance-id (keyword (:id event-instance))
                               :event-type (:type event-instance)
                               :tick (:tick event-instance)}}
-        res (agents/recall-and-mentions (:recall agent)
-                                        fr2
-                                        (assoc packet
-                                               :spread (:deltas spread)
-                                               :listener-id (:id agent)
-                                               :speaker-id :world
-                                               :tick (:tick world))
-                                        speaker)]
+         ;; TODO: Migrate agents/recall-and-mentions to ECS
+         res {}]
     {:agent (-> agent (assoc :frontier fr2) (assoc :recall (:new-recall res)))
      :mentions (:mentions res)
      :traces (:traces res)}))

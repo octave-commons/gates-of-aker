@@ -1,7 +1,7 @@
 (ns fantasia.sim.ecs.systems.needs-decay
   (:require [brute.entity :as be]
             [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.facets :as f]))
+            [fantasia.sim.constants :as const]))
 
 (defn clamp01 [x]
   (cond

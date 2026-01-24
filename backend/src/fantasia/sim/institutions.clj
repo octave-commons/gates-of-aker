@@ -1,5 +1,6 @@
 (ns fantasia.sim.institutions
-  (:require [fantasia.sim.agents :as agents]))
+  ;; TODO: Migrate to ECS
+  )
 
 (defn broadcasts
    "Return institution packets that should fire on this tick."
@@ -25,7 +26,7 @@
                             :role :institution})]
      (reduce
        (fn [{:keys [agents mentions traces]} a]
-         (let [res (agents/apply-packet-to-listener world a speaker packet)]
+          (let [res {}] ; TODO: Migrate agents/apply-packet-to-listener to ECS
            {:agents (conj agents (:listener res))
             :mentions (into mentions (:mentions res))
             :traces (into traces (:traces res))}))

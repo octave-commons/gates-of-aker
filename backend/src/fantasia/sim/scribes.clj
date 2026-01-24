@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [fantasia.dev.logging :as log]
-            [fantasia.sim.traces :as traces]
             [clj-http.client :as http]
             [clojure.java.io :as io]))
 
@@ -128,7 +127,7 @@
   "Make an async call to the Ollama API with retry logic."
   [prompt model]
   (future
-    (let [config (when-let [state-var (find-var 'fantasia.sim.tick.core/*state)]
+    (let [config (when-let [state-var (find-var 'fantasia.sim.ecs.tick/*global-state)]
                    (when state-var (get-ollama-config @state-var)))
           {:keys [success text]} (call-ollama-with-retry! prompt model (or config {}))]
       (when success text))))
@@ -136,7 +135,7 @@
 (defn call-ollama-sync!
   "Make a synchronous call to Ollama API for testing with configurable timeout."
   [prompt model]
-  (let [config (when-let [state-var (find-var 'fantasia.sim.tick.core/*state)]
+  (let [config (when-let [state-var (find-var 'fantasia.sim.ecs.tick/*global-state)]
                  (when state-var (get-ollama-config @state-var)))
         {:keys [timeout-ms]} (or config {})
         actual-timeout (or timeout-ms 60000)]
@@ -174,7 +173,7 @@
 (defn start-ollama-keep-alive!
   "Start Ollama keep-alive heartbeat to prevent model unloading."
   []
-  (let [config (when-let [state-var (find-var 'fantasia.sim.tick.core/*state)]
+  (let [config (when-let [state-var (find-var 'fantasia.sim.ecs.tick/*global-state)]
                  (when state-var (get-ollama-config @state-var)))]
     (when (and config (:keep-alive-enabled config))
       (reset! *ollama-keep-alive {:future nil :running? true})
@@ -298,7 +297,7 @@
     (let [book-text (generate-book-text selected-traces facets title)
           timestamp (System/currentTimeMillis)]
       (try
-        (when-let [state-var (find-var 'fantasia.sim.tick.core/*state)]
+        (when-let [state-var (find-var 'fantasia.sim.ecs.tick/*global-state)]
           (when state-var
             (let [current-world @state-var]
               (when (get-in current-world [:books book-id])
@@ -325,13 +324,8 @@
 (defn select-recent-traces
   "Select N recent traces relevant to given facets."
   [world culture-id facets n]
-  (let [all-traces (traces/get-traces-by-culture world culture-id)
-        facet-set (set facets)]
-    (->> all-traces
-         (filter (fn [trace]
-                   (some #(facet-set %) (:facets trace))))
-         (sort-by :created-at >)
-         (take n))))
+  ;; TODO: Migrate traces to ECS
+  [])
 
 (defn create-book
   "Create a new book record."
@@ -356,13 +350,13 @@
 (defn complete-scribe-job!
   "Complete a scribe job by creating a book, awarding favor, and starting async content generation."
   [world agent-id]
-  (let [agent (get-in world [:agents agent-id])
-        library-pos (:target (get-in world [:agents agent-id :current-job]))
+  (let [agent nil ; TODO: Get agent from ECS system
+        library-pos nil ; TODO: Get from ECS job system
         culture-id (get-in world [:levers :default-culture-id] "culture-1")
         recent-events (take 3 (:recent-events world []))
         event-facets (mapcat #(get % :facets []) recent-events)
-        selected-traces (select-recent-traces world culture-id event-facets 3)
-        culture (traces/get-culture world culture-id)
+         selected-traces (select-recent-traces world culture-id event-facets 3)
+         culture nil ; TODO: Migrate traces/get-culture to ECS
         facets (concat event-facets (when culture (:shared-facets culture [])))
         tick (:tick world)
         book-id (random-uuid)

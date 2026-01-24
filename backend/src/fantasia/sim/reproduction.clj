@@ -1,7 +1,7 @@
 (ns fantasia.sim.reproduction
     (:require [fantasia.sim.houses :as houses]
               [fantasia.sim.hex :as hex]
-              [fantasia.sim.tick.initial :as initial]
+              [fantasia.sim.ecs.core :as ecs]
               [fantasia.sim.constants :as const]
               [fantasia.sim.facets :as f]))
 

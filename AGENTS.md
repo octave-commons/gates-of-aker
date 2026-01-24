@@ -34,6 +34,7 @@
 - Logging: use `fantasia.dev.logging` on backend (log-error, log-warn, log-info, log-debug), controlled via `LOG_LEVEL` env var.
 - Frontend logging: console methods are automatically controlled during tests via `VITE_LOG_LEVEL` env var; no changes needed in application code.
 - Configuration: prefer env vars or CLI flags; do not hardcode secrets or ports beyond the documented 3000/5173 defaults.
+- Backend health check: use `/healthz` endpoint (returns `{"ok":true}`) to verify backend is running.
 - Data contracts: keep server + UI payloads in sync; document field names when adding new ops to `/docs/notes`.
 - Concurrency: guard shared atoms with `swap!`; avoid manual locking.
 - Serialization: always encode WS payloads via `cheshire` and decode them once before branching on `:op`/`op`.

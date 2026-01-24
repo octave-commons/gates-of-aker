@@ -6,7 +6,6 @@
   "Process jobs for testing - assign jobs to idle agents."
   [ecs-world]
   (let [role-type (be/get-component-type (c/->Role :priest))
-        role (be/get-component ecs-world role-type)
         status-type (be/get-component-type (c/->AgentStatus true false false nil))
         all-agents (be/get-all-entities-with-component ecs-world role-type)
         idle-agents (filter (fn [agent-id]

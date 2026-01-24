@@ -1,7 +1,8 @@
-(ns fantasia.sim.ecs.test.systems
+(ns fantasia.test.ecs.systems
   (:require [brute.entity :as be]
             [fantasia.sim.ecs.core]
-            [fantasia.sim.ecs.components :as c]))
+            [fantasia.sim.ecs.components :as c]
+            [fantasia.sim.hex :as hex]))
 
 (defn test-needs-decay
   []

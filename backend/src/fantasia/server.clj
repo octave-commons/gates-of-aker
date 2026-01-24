@@ -5,11 +5,8 @@
      [clojure.string :as str]
      [org.httpkit.server :as http]
      [reitit.ring :as ring]
-     [fantasia.sim.tick :as sim]
-     [fantasia.sim.world :as world]
-     [fantasia.sim.los :as los]
-     [fantasia.sim.jobs :as jobs]
-     [fantasia.sim.scribes :as scribes]
+      [fantasia.sim.ecs.tick :as sim]
+      [fantasia.sim.scribes :as scribes]
      [nrepl.server :as nrepl]
      [fantasia.dev.logging :as log]))
 
@@ -114,7 +111,7 @@
                 (try
                    (while (:running? @*runner)
                      (let [start-time (System/currentTimeMillis)
-                           o (last (sim/tick! 1))
+                            o (last (sim/tick-ecs! 1))
                            end-time (System/currentTimeMillis)
                            tick-ms (- end-time start-time)
                            target-ms (:ms @*runner)
@@ -146,7 +143,7 @@
 (defn handle-ollama-test []
   (let [start-time (System/currentTimeMillis)
         test-prompt "test"
-        ollama-model (get-in @sim/*state [:levers :ollama-model] scribes/ollama-model)
+         ollama-model (get-in (sim/get-state) [:levers :ollama-model] scribes/ollama-model)
         result (scribes/call-ollama! test-prompt ollama-model)
         end-time (System/currentTimeMillis)
         latency (- end-time start-time)]
@@ -172,16 +169,12 @@
     (http/with-channel req ch
       (swap! *clients conj ch)
       (let [initial-state (sim/get-state)
-            state-with-visibility (if (empty? (:tile-visibility initial-state))
-                                  (let [visibility (los/update-tile-visibility! initial-state)]
-                                    (println "[WS] Initializing visibility state for new client")
-                                    (merge initial-state visibility))
-                                  initial-state)
-            visible-tiles (get-visible-tiles state-with-visibility)]
-        (println "[WS] New client connected, sending hello with tile-visibility count:" (count (:tile-visibility state-with-visibility)))
+             visible-tiles (:tiles initial-state)]
+        (println "[WS] New client connected, sending hello")
         (ws-send! ch {:op "hello"
-                      :state (merge (select-keys state-with-visibility [:tick :shrine :levers :map :agents :tile-visibility :revealed-tiles-snapshot])
+                      :state (merge (select-keys initial-state [:tick :shrine :levers :map :agents])
                                             {:tiles visible-tiles})}))
+      (http/on-close ch (fn [_] (swap! *clients disj ch)))
       (http/on-close ch (fn [_] (swap! *clients disj ch)))
       (http/on-receive ch
         (fn [raw]
@@ -191,7 +184,7 @@
             (case op
                "tick"
                (let [n (int (or (:n msg) 1))
-                     outs (sim/tick! n)]
+                        outs (sim/tick-ecs! n)]
                  (doseq [o outs]
                      (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
                      (when-let [ds (:delta-snapshot o)]
@@ -214,59 +207,71 @@
               (sim/reset-world! opts)
               (broadcast! {:op "reset" :state (sim/get-state)}))
 
-            "set_levers"
-            (do (sim/set-levers! (:levers msg))
-                (broadcast! {:op "levers" :levers (:levers (sim/get-state))}))
+             "set_levers"
+             (do 
+               (sim/set-levers! (:levers msg))
+               (broadcast! {:op "levers" :levers (:levers (sim/get-state))}))
 
-            "place_shrine"
-            (do (sim/place-shrine! (:pos msg))
-                (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))
+             "place_shrine"
+             (do 
+               (sim/place-shrine! (:pos msg))
+               (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))
 
-            "place_wall_ghost"
-            (do (sim/place-wall-ghost! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
+             "place_wall_ghost"
+             (do 
+               (sim/place-wall-ghost! (:pos msg))
+               (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
-            "appoint_mouthpiece"
-            (do (sim/appoint-mouthpiece! (:agent_id msg))
-                (broadcast! {:op "mouthpiece"
-                             :mouthpiece (get-in (sim/get-state) [:levers :mouthpiece-agent-id])}))
+             "appoint_mouthpiece"
+             (do 
+               (sim/appoint-mouthpiece! (:agent_id msg))
+               (broadcast! {:op "mouthpiece"
+                              :mouthpiece (get-in (sim/get-state) [:levers :mouthpiece-agent-id])}))
 
             "get_agent_path"
             (if-let [path (sim/get-agent-path! (:agent_id msg))]
               (broadcast! {:op "agent_path" :agent-id (:agent_id msg) :path path})
               (broadcast! {:op "error" :message "Agent not found or has no path"}))
 
-            "place_stockpile"
-            (do (sim/place-stockpile! (:pos msg) (:resource msg) (:max_qty msg))
-                (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
+             "place_stockpile"
+             (do 
+               (sim/place-stockpile! (:pos msg) (:resource msg) (:max_qty msg))
+               (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
 
-            "place_warehouse"
-            (do (sim/place-warehouse! (:pos msg) (:resource msg) (:max_qty msg))
-                (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
+             "place_warehouse"
+             (do 
+               (sim/place-warehouse! (:pos msg) (:resource msg) (:max_qty msg))
+               (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
 
-            "place_campfire"
-            (do (sim/place-campfire! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
+             "place_campfire"
+             (do 
+               (sim/place-campfire! (:pos msg))
+               (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
-            "place_statue_dog"
-            (do (sim/place-statue-dog! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
+             "place_statue_dog"
+             (do 
+               (sim/place-statue-dog! (:pos msg))
+               (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
-            "place_tree"
-            (do (sim/place-tree! (:pos msg))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
+             "place_tree"
+             (do 
+               (sim/place-tree! (:pos msg))
+               (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
-            "place_deer"
-            (do (sim/place-deer! (:pos msg))
-                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
+             "place_deer"
+             (do 
+               (sim/place-deer! (:pos msg))
+               (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
 
-            "place_wolf"
-            (do (sim/place-wolf! (:pos msg))
-                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
+             "place_wolf"
+             (do 
+               (sim/place-wolf! (:pos msg))
+               (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
 
-            "place_bear"
-            (do (sim/place-bear! (:pos msg))
-                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
+             "place_bear"
+             (do 
+               (sim/place-bear! (:pos msg))
+               (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
 
             "queue_build"
             (let [structure (normalize-structure (:structure msg))
@@ -285,9 +290,9 @@
                    target-pos (:target_pos msg)]
                (when (and (get-in (sim/get-state) [:agents agent-id])
                           target-pos)
-                 (when-let [job (jobs/create-job job-type target-pos)]
-                   (swap! sim/*state jobs/assign-job! job agent-id)
-                   (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))}))))
+                 ;; TODO: Implement ECS job assignment
+                 (println "[ECS] Job assignment not yet implemented for agent" agent-id "type" job-type "target" target-pos)
+                 (broadcast! {:op "jobs" :jobs {}})))
 
             "start_run"
             (do
@@ -305,13 +310,15 @@
               (swap! *runner assoc :ms ms)
               (broadcast! {:op "runner_state" :running (:running? @*runner) :fps fps}))
 
-            "set_facet_limit"
-            (do (sim/set-facet-limit! (:limit msg))
-                (broadcast! {:op "facet_limit" :limit (:limit msg)}))
+             "set_facet_limit"
+             (do 
+               (sim/set-facet-limit! (:limit msg))
+               (broadcast! {:op "facet_limit" :limit (:limit msg)}))
 
-            "set_vision_radius"
-            (do (sim/set-vision-radius! (:radius msg))
-                (broadcast! {:op "vision_radius" :radius (:radius msg)}))
+             "set_vision_radius"
+             (do 
+               (sim/set-vision-radius! (:radius msg))
+               (broadcast! {:op "vision_radius" :radius (:radius msg)}))
 
              (ws-send! ch {:op "error" :message "unknown op"}))))))))
 
@@ -324,10 +331,10 @@
 
        ["/ws" {:get handle-ws}]
 
-        ["/sim/state"
-         {:get (fn [_] (let [state (sim/get-state)
-                              snapshot (world/snapshot state {})]
-                          (json-resp 200 snapshot)))
+         ["/sim/state"
+          {:get (fn [_] (let [state (sim/get-state)
+                               snapshot state] ; TODO: Use ECS adapter for snapshot
+                           (json-resp 200 snapshot)))
           :options (fn [_] (json-resp 200 {:ok true}))}]
 
          ["/sim/reset"
@@ -347,7 +354,7 @@
         {:post (fn [req]
                  (let [b (read-json-body req)
                        n (int (or (:n b) 1))
-                       outs (sim/tick! n)]
+                       outs (sim/tick-ecs! n)]
                    (json-resp 200 {:ok true :last (last outs)})))
          :options (fn [_] (json-resp 200 {:ok true}))}]
 

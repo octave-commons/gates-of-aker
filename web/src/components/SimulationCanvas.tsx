@@ -303,19 +303,19 @@ export function SimulationCanvas({
               ctx.fill();
             }
            ctx.strokeStyle = "#555";
-         } else {
-           const biomeKey = tile?.biome as string;
-           const biomeColor = biomeKey ? biomeColors[biomeKey] : null;
-            if (biomeColor) {
-              ctx.fillStyle = biomeColor;
-              ctx.globalAlpha = isVisibilityFiltered ? 0.6 : 0.4;
-              ctx.fill();
-            } else {
+          } else {
+            const biomeKey = tile?.biome as string;
+            const biomeColor = biomeKey ? biomeColors[biomeKey] : null;
+             if (biomeColor) {
+               ctx.fillStyle = biomeColor;
+              ctx.globalAlpha = 1.0;
+               ctx.fill();
+             } else {
                ctx.fillStyle = "#777";
                ctx.globalAlpha = 0.3;
                ctx.fill();
-             }
-          ctx.strokeStyle = isVisibilityFiltered ? "#999" : "#777";
+              }
+           ctx.strokeStyle = isVisibilityFiltered ? "#999" : "#777";
         }
         ctx.lineWidth = gridLineWidth;
         ctx.stroke();

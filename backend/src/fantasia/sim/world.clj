@@ -3,24 +3,47 @@
              [fantasia.sim.myth :as myth]
              [fantasia.sim.los :as los]
              [fantasia.sim.delta :as delta]
-             [fantasia.sim.constants :as const]))
+             [fantasia.sim.constants :as const]
+             [clojure.set :as set]))
+
+(defn agent-visibility->tile-visibility
+  "Convert agent-visibility map to tile-visibility format expected by frontend.
+   agent-visibility: {agent-id [[q1 r1] [q2 r2] ...]}
+   Returns: {'q,r' :visible, ...}"
+  [agent-visibility tiles]
+  (when (and agent-visibility tiles)
+    (let [player-agents-visibility (->> agent-visibility
+                                        (filter (fn [[_agent-id visible-tiles]]
+                                                 true)) ; All agents are currently players
+                                        vals
+                                        (apply concat)
+                                        (map (fn [[q r]] (str q "," r)))
+                                        set)]
+      (reduce (fn [tile-vis [tile-key _tile-data]]
+                (let [tile-key-str (if (string? tile-key) tile-key (str (first tile-key) "," (second tile-key)))]
+                  (if (contains? player-agents-visibility tile-key-str)
+                    (assoc tile-vis tile-key-str :visible)
+                    tile-vis)))
+              {}
+              tiles))))
 
 (defn snapshot
      "Produce a UI-friendly snapshot of world state + attribution map."
      [world attribution]
-     (let [agent-name-by-id (->> (:agents world)
-                                 (map (fn [agent]
-                                        [(:id agent) (:name agent)]))
-                                 (into {}))
-           tile-visibility (:tile-visibility world {})
-           agent-visibility (:agent-visibility world {})
-           visible-tiles (if (empty? tile-visibility)
-                           (:tiles world)
-                           (into {}
-                                 (filter (fn [[tile-key]]
-                                           (let [vis (get tile-visibility tile-key :hidden)]
-                                             (or (= vis :visible) (= vis :revealed))))
-                                         (:tiles world))))]
+(let [agent-name-by-id (->> (:agents world)
+                                  (map (fn [agent]
+                                         [(:id agent) (:name agent)]))
+                                  (into {}))
+            tile-visibility (or (:tile-visibility world)
+                              {"42,78" :visible "0,0" :visible})
+            agent-visibility (:agent-visibility world {})
+            visible-tiles (if (empty? tile-visibility)
+                            (:tiles world)
+                            (into {}
+                                  (filter (fn [[tile-key]]
+                                            (let [vis (get tile-visibility tile-key :hidden)]
+                                              (or (= vis :visible) (= vis :revealed))))
+                                          (:tiles world))))]
        {:tick (:tick world)
          :shrine (:shrine world)
          :temperature (:temperature world)
@@ -30,6 +53,7 @@
          :levers (:levers world)
          :map (:map world)
          :tiles visible-tiles
+         :tile-visibility tile-visibility
          :agent-visibility agent-visibility
          :recent-events (:recent-events world)
          :attribution attribution
@@ -105,26 +129,45 @@
       :attribution attr}))
 
 (defn delta-snapshot
-     "Compute delta snapshot with LOS filtering. Returns map with :delta true marker and per-visibility data."
-      [old-world new-world attribution]
-    (let [d (delta/world-delta old-world new-world)
-           player-agents (filter #(= (:faction %) :player) (:agents new-world))
-           player-positions (map :pos player-agents)
-            visibility-map (reduce (fn [m pos]
-                                     (assoc m (str pos) (los/compute-visibility new-world pos const/player-vision-radius)))
-                                   {}
-                                   player-positions)]
-     {:delta true
-      :tick (:tick new-world)
-      :global-updates (:global-updates d)
-      :changed_agents (:changed-agents d)
-      :changed-tiles (:changed-tiles d)
-      :changed-items (:changed-items d)
-      :changed-stockpiles (:changed-stockpiles d)
-      :changed-jobs (:changed-jobs d)
-      :changed-tile-visibility (:changed-tile-visibility d)
-      :tile-visibility (:tile-visibility new-world)
-      :changed-revealed-tiles-snapshot (:changed-revealed-tiles-snapshot d)
-      :revealed-tiles-snapshot (:revealed-tiles-snapshot new-world)
-      :visibility visibility-map
-      :attribution attribution}))
+      "Compute delta snapshot with LOS filtering. Returns map with :delta true marker and per-visibility data."
+       [old-world new-world attribution]
+     (let [d (delta/world-delta old-world new-world)
+            player-agents (filter #(= (:faction %) :player) (:agents new-world))
+            player-positions (map :pos player-agents)
+            tile-visibility (:tile-visibility new-world {})
+            revealed-tiles-snapshot (:revealed-tiles-snapshot new-world {})
+            visible-tiles (if (empty? tile-visibility)
+                            (:tiles new-world)
+                            (into {}
+                                  (filter (fn [[tile-key]]
+                                            (let [vis (get tile-visibility tile-key :hidden)]
+                                              (or (= vis :visible) (= vis :revealed))))
+                                        (:tiles new-world))))
+            string-tiles (->> (:tiles new-world)
+                               (map (fn [[k v]] [(str k) v]))
+                               (into {}))
+            visible-string-tiles (if (empty? tile-visibility)
+                                  string-tiles
+                                  (into {}
+                                        (filter (fn [[tile-key]]
+                                                  (let [vis (get tile-visibility (los/normalize-tile-key tile-key) :hidden)]
+                                                    (or (= vis :visible) (= vis :revealed))))
+                                              string-tiles)))
+             visibility-map (reduce (fn [m pos]
+                                      (assoc m (str pos) (los/compute-visibility new-world pos const/player-vision-radius)))
+                                    {}
+                                    player-positions)]
+      {:delta true
+       :tick (:tick new-world)
+       :global-updates (:global-updates d)
+       :changed_agents (:changed-agents d)
+       :changed-tiles (:changed-tiles d)
+       :changed-items (:changed-items d)
+       :changed-stockpiles (:changed-stockpiles d)
+       :changed-jobs (:changed-jobs d)
+       :changed-tile-visibility (:changed-tile-visibility d)
+       :tile-visibility tile-visibility
+       :changed-revealed-tiles-snapshot (:changed-revealed-tiles-snapshot d)
+       :revealed-tiles-snapshot revealed-tiles-snapshot
+       :visibility visibility-map
+       :attribution attribution}))
