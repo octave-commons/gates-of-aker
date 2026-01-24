@@ -10,9 +10,6 @@
 (def ^:dynamic *ecs-world (atom (fantasia.sim.ecs.core/create-ecs-world)))
 (def ^:dynamic *global-state (atom {}))
 
-(def ^:dynamic *ecs-world (atom (fantasia.sim.ecs.core/create-ecs-world)))
-(def ^:dynamic *global-state (atom {}))
-
 (defn get-ecs-world []
   @*ecs-world)
 
@@ -22,12 +19,13 @@
 (defn run-systems [ecs-world global-state]
   "Run all ECS systems in sequence.
    Returns updated ECS world."
-    (let [levers (:levers global-state {})
-          cold-snap (or (:cold-snap levers) 0.4)]
-      (-> ecs-world
-          (fantasia.sim.ecs.systems.needs-decay/process cold-snap)
-           (fantasia.sim.ecs.systems.movement/process)
-           ;; (fantasia.sim.ecs.systems.agent-interaction/process)))
+  (let [levers (:levers global-state {})
+        cold-snap (or (:cold-snap levers) 0.4)]
+    (-> ecs-world
+        (fantasia.sim.ecs.systems.needs-decay/process cold-snap)
+        (fantasia.sim.ecs.systems.movement/process)
+        ;; (fantasia.sim.ecs.systems.agent-interaction/process)
+        )))
 
 (defn tick-ecs-once [global-state]
   "Run one ECS tick with all systems."
@@ -48,7 +46,7 @@
       (reverse outs)
       (let [snapshot (tick-ecs-once @*global-state)
             outs' (conj outs snapshot)]
-        (recur (inc i) outs'))))
+        (recur (inc i) outs')))))
 
 (defn create-ecs-initial-world [opts]
   "Create initial ECS world from scratch."
@@ -72,37 +70,38 @@
     (println "[ECS] Created initial world")
     global-state))
 
-
 (defn import-tile [ecs-world tile-key tile-data]
   "Import old-style tile map into ECS."
   (let [tile-key' (if (keyword? tile-key) (name tile-key) tile-key)]
-        (cond
-         ;; Handle vector keys directly
-         (and tile-key' (sequential? tile-key') (= 2 (count tile-key')))
-         (try
-           (let [q (first tile-key')
-                 r (second tile-key')
-                 terrain (or (:terrain tile-data) :ground)
-                 biome (or (:biome tile-data) :plains)
-                 structure (:structure tile-data)
-                 resource (:resource tile-data)]
-             [_ _ world'] (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource))
-           (catch Exception e
-             (println "[ECS] Warning: Failed to import tile at" tile-key ":" (.getMessage e))
-             ecs-world))
-         ;; Handle string keys (backward compatibility)
-         (and tile-key' (string? tile-key') (clojure.string/includes? tile-key' ","))
-         (try
-            (let [parts (clojure.string/split tile-key' #",")
-                  q (Integer/parseInt (first parts))
-                  r (Integer/parseInt (second parts))
-                  terrain (or (:terrain tile-data) :ground)
-                  biome (or (:biome tile-data) :plains)
-                  structure (:structure tile-data)
-                  resource (:resource tile-data)]
-           [_ _ world'] (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource))
-           (catch Exception e
-             (println "[ECS] Warning: Failed to import tile at" tile-key ":" (.getMessage e))
-             ecs-world))
-         :else
-         ecs-world))))
+    (cond
+     ;; Handle vector keys directly
+     (and tile-key' (sequential? tile-key') (= 2 (count tile-key')))
+     (try
+       (let [q (first tile-key')
+             r (second tile-key')
+             terrain (or (:terrain tile-data) :ground)
+             biome (or (:biome tile-data) :plains)
+             structure (:structure tile-data)
+             resource (:resource tile-data)]
+         (let [[_ _ world'] (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource)]
+           world'))
+       (catch Exception e
+         (println "[ECS] Warning: Failed to import tile at" tile-key ":" (.getMessage e))
+         ecs-world))
+     ;; Handle string keys (backward compatibility)
+     (and tile-key' (string? tile-key') (clojure.string/includes? tile-key' ","))
+     (try
+       (let [parts (clojure.string/split tile-key' #",")
+             q (Integer/parseInt (first parts))
+             r (Integer/parseInt (second parts))
+             terrain (or (:terrain tile-data) :ground)
+             biome (or (:biome tile-data) :plains)
+             structure (:structure tile-data)
+             resource (:resource tile-data)]
+         (let [[_ _ world'] (fantasia.sim.ecs.core/create-tile ecs-world q r terrain biome structure resource)]
+           world'))
+       (catch Exception e
+         (println "[ECS] Warning: Failed to import tile at" tile-key ":" (.getMessage e))
+         ecs-world))
+     :else
+     ecs-world)))))
