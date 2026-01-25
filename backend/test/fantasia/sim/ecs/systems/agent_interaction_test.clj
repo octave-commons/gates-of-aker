@@ -23,6 +23,6 @@
 
 (deftest test-speech-packet
   (testing "Generates packet with correct intent based on facets"
-    (let [frontier {:facets {:warn 0.9}}]
+    (let [frontier {:facets {:warn 0.9}}
           packet (ai/choose-packet-for-speech frontier)]
       (is (= :warning (:intent packet))))))
