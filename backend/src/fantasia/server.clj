@@ -115,10 +115,10 @@
                     (while (:running? @*runner)
                       (let [start-time (System/currentTimeMillis)
                              o (last (sim-tick/tick-ecs! 1))
-                            end-time (System/currentTimeMillis)
-                            tick-ms (- end-time start-time)
-                            target-ms (:ms @*runner)
-                            health (compute-health-status tick-ms target-ms)]
+                             end-time (System/currentTimeMillis)
+                             tick-ms (- end-time start-time)
+                              target-ms (:ms @*runner)
+                             health (compute-health-status tick-ms target-ms)]
                          (swap! *runner assoc :tick-ms tick-ms)
                            (let [result (sim-tick/tick-ecs! 1)] 
                               (when result 
@@ -136,4 +136,36 @@
                                    (broadcast! {:op "social_interaction" :data si}))
                                 (doseq [ce (:combat-events result)]
                                    (broadcast! {:op "combat_event" :data ce}))))))
-                    (finally                      (swap! *runner assoc :running? false :future nil)))]                   (while (:running? @*runner)
+                     (finally (swap! *runner assoc :running? false :future nil))]))]
+
+(defn -main
+  "Start the simulation server."
+  [& args]
+  (log/log-info "Starting Fantasia simulation server...")
+  (start-nrepl!)
+  (let [port (or (some-> (System/getenv "PORT") Integer/parseInt) 3000)
+        app (ring/ring-handler
+              [["/healthz" {:get (fn [_] (json-resp {:ok true}))}]
+               ["/ws" {:get (fn [req]
+                            (http/with-channel req ch
+                              (http/on-receive ch (fn [data]
+                                                    (try
+                                                      (let [msg (json/parse-string data true)]
+                                                        (handle-message! ch msg))
+                                                      (catch Exception e
+                                                        (log/log-error "Error parsing WebSocket message:" e)
+                                                        (ws-send! ch {:op "error" :data {:message "Invalid JSON"}})))))
+                              (http/on-close ch (fn [_] (swap! *clients disj ch)))))]])
+        _ (http/run-server app {:port port})]
+    (log/log-info "Server started on port" port)
+
+(defn handle-message!
+  "Handle incoming WebSocket messages."
+  [ch msg]
+  (case (:op msg)
+    "tick" (broadcast! {:op "tick_response" :data {:status "received"}})
+    "start" (reset! *runner (assoc @*runner :running? true))
+    "stop" (reset! *runner (assoc @*runner :running? false))
+    (do (log/log-warn "Unknown WebSocket message:" msg)
+        (ws-send! ch {:op "error" :data {:message "Unknown operation"}}))
+    (start-runner!)))

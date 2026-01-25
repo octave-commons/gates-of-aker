@@ -49,9 +49,12 @@
             on-edge1 (or (<= py vy1) (> py vy2))
             on-edge2 (or (<= py vy2) (> py vy1))]
         (when (and on-edge1 on-edge2)
-          (let [intersect-x (+ (/ (* (- vx2 vx1) (- py vy1)) (- vy2 vy1)) vx1)]
-            (when (< px intersect-x)
-              (vreset! inside (not @inside)))))))
+           (let [denominator (- vy2 vy1)
+                  intersect-x (if (zero? denominator)
+                                px
+                                                                 (+ (/ (* (- vx2 vx1) (- py vy1)) denominator) vx1))]
+             (when (< px intersect-x)
+               (vreset! inside (not @inside)))))))
     @inside))
 
 (defn compute-agent-visibility

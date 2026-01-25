@@ -8,7 +8,7 @@
 
 (deftest test-job-queue-component
   (testing "JobQueue component has correct structure"
-    (let [job-queue (c/->JobQueue [] {})]
+    (let [job-queue (c/->JobQueue [] {} {})]
       (is (vector? (:pending-jobs job-queue)))
       (is (map? (:assigned-jobs job-queue))))))
 
@@ -16,7 +16,7 @@
   (testing "Creates gather-wood job when building has no jobs"
     (let [world (helpers/create-test-world)
           [building-id world] (helpers/create-test-building world [0 0] :house)
-          job-queue (c/->JobQueue [] {})
+          job-queue (c/->JobQueue [] {} {})
           world' (be/add-component world building-id job-queue)
           global-state {:tick 10}
           result (jc/generate-basic-jobs world' global-state)]
@@ -24,7 +24,7 @@
   (testing "Does not create job when building already has jobs"
     (let [world (helpers/create-test-world)
           [building-id world] (helpers/create-test-building world [0 0] :house)
-          job-queue (c/->JobQueue [] {"existing-job" {:id "existing-job"}})
+          job-queue (c/->JobQueue [] {} {"existing-job" {:id "existing-job"}})
           world' (be/add-component world building-id job-queue)
           global-state {:tick 10}
           result (jc/generate-basic-jobs world' global-state)]
@@ -35,7 +35,7 @@
   (testing "Sets correct priority for jobs"
     (let [world (helpers/create-test-world)
           [building-id world] (helpers/create-test-building world [0 0] :house)
-          job-queue (c/->JobQueue [] {})
+          job-queue (c/->JobQueue [] {} {})
           world' (be/add-component world building-id job-queue)
           global-state {:tick 10}
           result (jc/generate-basic-jobs world' global-state)]
@@ -43,7 +43,7 @@
   (testing "Sets target position to building position"
     (let [world (helpers/create-test-world)
           [building-id world] (helpers/create-test-building world [5 10] :house)
-          job-queue (c/->JobQueue [] {})
+          job-queue (c/->JobQueue [] {} {})
           world' (be/add-component world building-id job-queue)]
       (is (some? (be/get-component world' building-id (ecs/component-class (c/->Position 0 0))))))))
 
@@ -53,8 +53,8 @@
           [b1 world] (helpers/create-test-building world [0 0] :house)
           [b2 world] (helpers/create-test-building world [1 0] :campfire)
           world' (-> world
-                       (be/add-component b1 (c/->JobQueue [] {}))
-                       (be/add-component b2 (c/->JobQueue [] {})))
+                       (be/add-component b1 (c/->JobQueue [] {} {}))
+                       (be/add-component b2 (c/->JobQueue [] {} {})))
           global-state {:tick 10}
           result (jc/process world' global-state)]
       (is (some? result))))

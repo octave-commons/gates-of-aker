@@ -5,7 +5,7 @@
 (defn generate-basic-jobs
   "Generate basic jobs from buildings with JobQueue components."
   [ecs-world global-state]
-  (let [job-queue-type (be/get-component-type (c/->JobQueue [] {}))
+  (let [job-queue-type (be/get-component-type (c/->JobQueue [] {} {}))
         buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)
         tick (:tick global-state 0)]
     (reduce (fn [acc building-id]
@@ -17,15 +17,17 @@
                     r (:r position)]
                 ;; Add a basic gather job if building has no jobs
                 (if (empty? current-jobs)
-                  (let [job-id (str "job-" tick "-" building-id)
-                        new-job {:id job-id
-                                :type :job/gather-wood
-                                :priority 50
-                                :target-pos [q r]
-                                :created-at tick}]
-                    (be/add-component acc building-id 
-                                       (c/->JobQueue [] 
-                                       (assoc current-jobs job-id new-job))))
+                   (let [job-id (str "job-" tick "-" building-id)
+                         new-job {:id job-id
+                                 :type :job/gather-wood
+                                 :priority 50
+                                 :target-pos [q r]
+                                 :created-at tick}]
+                     (be/add-component acc building-id 
+                                        (c/->JobQueue 
+                                        (assoc current-jobs job-id new-job)  ; :jobs field
+                                        [job-id]                                   ; :pending-jobs field
+                                        {})))                                      ; :assigned-jobs field
                   acc)))
             ecs-world
             buildings-with-queues)))
