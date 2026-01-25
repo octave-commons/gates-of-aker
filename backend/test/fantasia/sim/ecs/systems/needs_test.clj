@@ -18,10 +18,10 @@
     (let [ecs-world (ecs/create-ecs-world)
           agent-id 1
           frontier (c/->Frontier {:fire {:a 0.9}
-                          :campfire {:a 0.8}
-                          :warmth {:a 0.85}})]
-      (be/add-component ecs-world agent-id frontier)
-      (let [result (needs/query-need-axis! ecs-world agent-id
+                                  :campfire {:a 0.8}
+                                  :warmth {:a 0.85}})
+          ecs-world-with-component (be/add-component ecs-world agent-id frontier)]
+      (let [result (needs/query-need-axis! ecs-world-with-component agent-id
                                             :warmth
                                             [:fire :campfire :warm])]
         (is (> (:score result) 0.7))
@@ -37,11 +37,11 @@
   (testing "correctly identifies activated axes"
     (let [ecs-world (ecs/create-ecs-world)
           agent-id 1
-          frontier (c/->Frontier {:fire {:a 0.9}})]
-      (be/add-component ecs-world agent-id frontier)
-      (is (true? (needs/axis-activated? ecs-world agent-id
+          frontier (c/->Frontier {:fire {:a 0.9}})
+          ecs-world-with-component (be/add-component ecs-world agent-id frontier)]
+      (is (true? (needs/axis-activated? ecs-world-with-component agent-id
                                          :warmth
                                          [:fire :campfire])))
       (is (false? (needs/axis-activated? ecs-world agent-id
-                                          :food
-                                          [:hunger]))))))
+                                           :food
+                                           [:hunger]))))))

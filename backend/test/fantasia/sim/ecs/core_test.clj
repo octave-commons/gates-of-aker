@@ -33,20 +33,20 @@
 (deftest test-create-agent
   (testing "Create agent with minimal parameters"
     (let [world (ecs/create-ecs-world)
-          [eid _ world'] (ecs/create-agent world nil 5 10 :priest)]
+          [eid world'] (ecs/create-agent world nil 5 10 :priest)]
       (is (some? eid))
       (is (some? world'))))
 
   (testing "Create agent with custom ID"
     (let [world (ecs/create-ecs-world)
           custom-id (java.util.UUID/randomUUID)
-          [eid _ world'] (ecs/create-agent world custom-id 5 10 :knight)]
+          [eid world'] (ecs/create-agent world custom-id 5 10 :knight)]
       (is (= custom-id eid))))
 
   (testing "Create agent with options"
 (let [world (ecs/create-ecs-world)
           options {:warmth 0.9 :food 0.8 :sleep 0.7}
-          [eid _ world'] (ecs/create-agent world nil 5 10 :peasant options)]
+          [eid world'] (ecs/create-agent world nil 5 10 :peasant options)]
       (is (some? eid)))))
 
 (deftest test-create-tile
@@ -85,8 +85,8 @@
 
   (testing "Get all agents from world with agents"
     (let [world (ecs/create-ecs-world)
-          [_ _ world1] (ecs/create-agent world nil 5 10 :priest)
-          [_ _ world2] (ecs/create-agent world1 nil 6 11 :knight)
+          [_ world1] (ecs/create-agent world nil 5 10 :priest)
+          [_ world2] (ecs/create-agent world1 nil 6 11 :knight)
           agents (ecs/get-all-agents world2)]
       (is (= 2 (count agents))))))
 
@@ -129,14 +129,14 @@
 (deftest test-assign-job-to-agent
   (testing "Assign job to agent"
     (let [world (ecs/create-ecs-world)
-          [eid _ world1] (ecs/create-agent world nil 5 10 :peasant)
+          [eid world1] (ecs/create-agent world nil 5 10 :peasant)
           world2 (ecs/assign-job-to-agent world1 eid "job-123")]
       (is (some? world2)))))
 
 (deftest test-set-agent-path
   (testing "Set agent path"
     (let [world (ecs/create-ecs-world)
-          [eid _ world1] (ecs/create-agent world nil 5 10 :peasant)
+          [eid world1] (ecs/create-agent world nil 5 10 :peasant)
           waypoints [[5 10] [6 11] [7 12]]
           world2 (ecs/set-agent-path world1 eid waypoints)]
       (is (some? world2)))))
@@ -144,21 +144,21 @@
 (deftest test-update-agent-needs
   (testing "Update agent needs"
     (let [world (ecs/create-ecs-world)
-          [eid _ world1] (ecs/create-agent world nil 5 10 :peasant)
+          [eid world1] (ecs/create-agent world nil 5 10 :peasant)
           world2 (ecs/update-agent-needs world1 eid 0.5 0.8 0.9)]
       (is (some? world2)))))
 
 (deftest test-update-agent-inventory
   (testing "Update agent inventory"
     (let [world (ecs/create-ecs-world)
-          [eid _ world1] (ecs/create-agent world nil 5 10 :peasant)
+          [eid world1] (ecs/create-agent world nil 5 10 :peasant)
           world2 (ecs/update-agent-inventory world1 eid 15 25)]
       (is (some? world2)))))
 
 (deftest test-remove-component
   (testing "Remove component from entity"
     (let [world (ecs/create-ecs-world)
-          [eid _ world1] (ecs/create-agent world nil 5 10 :peasant)
+          [eid world1] (ecs/create-agent world nil 5 10 :peasant)
           position-type (ecs/component-class (c/->Position 5 10))
           world2 (ecs/remove-component world1 eid position-type)]
       (is (some? world2)))))
@@ -166,7 +166,7 @@
 (deftest test-has-component
   (testing "Check if entity has component"
     (let [world (ecs/create-ecs-world)
-          [eid _ world1] (ecs/create-agent world nil 5 10 :peasant)
+          [eid world1] (ecs/create-agent world nil 5 10 :peasant)
           position-type (ecs/component-class (c/->Position 5 10))
           tile-type (ecs/component-class (c/->Tile :ground :plains nil nil))]
       (is (true? (ecs/has-component? world1 eid position-type)))

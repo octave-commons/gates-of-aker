@@ -13,9 +13,9 @@
   "Create a test ECS world with agents."
   []
   (let [world (ecs/create-ecs-world)
-        [agent-id1 _ world] (ecs/create-agent world nil 0 0 :priest)
-        [agent-id2 _ world] (ecs/create-agent world nil 1 0 :knight)
-        [agent-id3 _ world] (ecs/create-agent world nil 0 1 :peasant)
+        [agent-id1 world] (ecs/create-agent world nil 0 0 :priest)
+        [agent-id2 world] (ecs/create-agent world nil 1 0 :knight)
+        [agent-id3 world] (ecs/create-agent world nil 0 1 :peasant)
         [_ tile-id1 world] (ecs/create-tile world 0 0 :ground :plains nil nil)
         [_ tile-id2 world] (ecs/create-tile world 1 0 :ground :plains nil nil)
         [_ tile-id3 world] (ecs/create-tile world 0 1 :ground :plains nil nil)]

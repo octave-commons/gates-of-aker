@@ -19,7 +19,8 @@
    ([system id q r role]
     (create-agent system id q r role {}))
    ([system id q r role opts]
-       (let [entity-id (or id (java.util.UUID/randomUUID))
+       (let [system (or system (create-ecs-world))  ; Guard against nil system
+             entity-id (or id (java.util.UUID/randomUUID))
              {:keys [warmth food sleep wood needs status inventory frontier recall path job-id]} opts
              needs' (or needs (c/->Needs (or warmth 0.8) (or food 0.7) (or sleep 0.6) 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
              status' (or status (c/->AgentStatus true false false nil))
@@ -39,7 +40,7 @@
         (let [system' (cond-> base-system
                        job-id (be/add-component entity-id (c/->JobAssignment job-id 0.0))
                        path (be/add-component entity-id (c/->Path path 0)))]
-          [entity-id nil system']))))
+          [entity-id system']))))
 
 (defn get-all-agents
   "Get all agent entities from the ECS world."
@@ -73,30 +74,31 @@
 (defn remove-component
   "Remove a component from an entity."
   [system entity-id component-instance]
-  (be/remove-component system entity-id component-instance))
+  (be/remove-component (or system (create-ecs-world)) entity-id component-instance))
 
 (defn assign-job-to-agent [system entity-id job-id]
   "Assign a job to an agent entity."
-  (be/add-component system entity-id (c/->JobAssignment job-id 0.0)))
+  (be/add-component (or system (create-ecs-world)) entity-id (c/->JobAssignment job-id 0.0)))
 
 (defn set-agent-path [system entity-id waypoints]
   "Set path for agent movement."
-  (be/add-component system entity-id (c/->Path waypoints 0)))
+  (be/add-component (or system (create-ecs-world)) entity-id (c/->Path waypoints 0)))
 
 (defn update-agent-needs [system entity-id warmth food sleep]
   "Update needs component for an agent."
-  (be/add-component system entity-id (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)))
+  (be/add-component (or system (create-ecs-world)) entity-id (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)))
 
 (defn update-agent-inventory [system entity-id wood food]
   "Update inventory component for an agent."
-  (be/add-component system entity-id (c/->PersonalInventory wood food {})))
+  (be/add-component (or system (create-ecs-world)) entity-id (c/->PersonalInventory wood food {})))
 
 (defn create-tile
    "Create a tile entity with optional components."
    ([system q r terrain biome structure resource]
-    (create-tile system q r terrain biome structure resource {}))
+     (create-tile system q r terrain biome structure resource {}))
    ([system q r terrain biome structure resource opts]
-     (let [entity-id (java.util.UUID/randomUUID)
+      (let [system (or system (create-ecs-world))  ; Guard against nil system
+            entity-id (java.util.UUID/randomUUID)
            {:keys [tile-resources structure-state campfire-state shrine-state]} opts
            base-system (-> system
                           (be/add-entity entity-id)
@@ -147,7 +149,8 @@
    ([system [q r] structure-type]
      (create-building system [q r] structure-type {}))
    ([system [q r] structure-type opts]
-     (let [entity-id (java.util.UUID/randomUUID)
+      (let [system (or system (create-ecs-world))  ; Guard against nil system
+            entity-id (java.util.UUID/randomUUID)
            {:keys [level health owner-id stockpile-config]} opts
            structure-state (c/->StructureState
                             (or level 1)

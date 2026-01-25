@@ -129,7 +129,7 @@
                     :institutions {:temple {:id :temple
                                           :broadcast-every 6
                                           :canonical {:facets [:fire :judgment :winter]}}}}]
-    (clojure.core/reset! *ecs-world ecs-world-with-agents)
+    (clojure.core/reset! *ecs-world ecs-world-with-buildings)
     (clojure.core/reset! *global-state global-state)
     (println "[ECS] Created initial world with bounds:" bounds "tree-density:" tree-density)
     global-state))

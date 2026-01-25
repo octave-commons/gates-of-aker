@@ -1,8 +1,8 @@
 (ns fantasia.sim.agent-visibility
   "Per-agent polygon-based visibility system.
    Each agent has a visibility shape defined by vertices and edges.
-   Everything inside the shape is visible to that agent.")
-
+   Everything inside the shape is visible to that agent."
+  (:require [fantasia.sim.constants :as const]))
 (defn get-vision-radius
   "Return vision radius for an agent based on role."
   [agent]

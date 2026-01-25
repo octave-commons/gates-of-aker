@@ -46,13 +46,15 @@
 (defn- get-agent-facets [ecs-world agent-id]
   "Get agent's facet components from ECS world."
   (let [frontier-type (be/get-component-type (c/->Frontier {}))
-        recall-type (be/get-component-type (c/->Recall {}))]
-    {:frontier (or (be/get-component ecs-world agent-id frontier-type) {})
-     :recall (or (be/get-component ecs-world agent-id recall-type) {})}))
+        recall-type (be/get-component-type (c/->Recall {}))
+        frontier (or (be/get-component ecs-world agent-id frontier-type) {})
+        recall (or (be/get-component ecs-world agent-id recall-type) {})]
+    {:frontier frontier
+     :recall recall}))
 
 (defn- query-concept-score [frontier recall concept]
   "Score a single concept based on frontier and recall."
-  (let [facet-activation (get-in frontier [:facets concept :a] 0.0)
+  (let [facet-activation (or (get-in frontier [:facets concept :a]) 0.0)
         recall-events (:events recall {})
         recall-strength (get recall-events concept 0.0)
         recall-score (* recall-strength 0.5)]
