@@ -1,15 +1,16 @@
  (ns fantasia.sim.jobs
-   (:require [clojure.set :as set]
-              [clojure.string :as str]
-              [fantasia.dev.logging :as log]
-              [fantasia.sim.biomes :as biomes]
-              [fantasia.sim.constants :as const]
-              [fantasia.sim.hex :as hex]
-              [fantasia.sim.scribes :as scribes]))
+    (:require [clojure.set :as set]
+               [clojure.string :as str]
+               [fantasia.dev.logging :as log]
+               [fantasia.sim.biomes :as biomes]
+               [fantasia.sim.constants :as const]
+               [fantasia.sim.hex :as hex]
+               [fantasia.sim.scribes :as scribes]
+               [fantasia.sim.needs :as needs]))
 
-(declare total-item-qty)
+ (declare total-item-qty adjust-job-priorities-for-agent)
 
- (defn tile-key [q r] [q r])
+  (defn tile-key [q r] [q r])
 (defn parse-tile-key [[q r]] [q r])
 (defn parse-key-pos [[q r]] [q r])
 
@@ -167,15 +168,63 @@
 (defn claim-next-job! [world agent-id]
   (let [agent (get-in world [:agents agent-id])
         pending (filter #(= (:state %) :pending) (:jobs world))
+        adjusted-jobs (adjust-job-priorities-for-agent world agent-id pending)
         sorted (sort-by (fn [j]
                           [(- (:priority j 0))
                            (hex/distance (:pos agent) (:target j))])
-                        pending)
+                        adjusted-jobs)
         job (first sorted)]
     (if job
       (let [job' (assoc job :state :claimed)]
         (assign-job! world job' agent-id))
       world)))
+
+(defn adjust-job-priorities-for-agent
+  "Adjust job priorities based on agent's facet activations.
+
+  This enables facet-driven behavior where agents prefer jobs
+  relevant to their current needs and perceptions.
+
+  Arguments:
+  world: Current world state
+  agent-id: Agent entity ID
+  jobs: Collection of available jobs (maps with :type, :target, :priority, etc.)
+
+  Returns:
+  Adjusted job list sorted by facet-aware priority"
+  [world agent-id jobs]
+  (let [agent (get-in world [:agents agent-id])]
+    (map (fn [job]
+            (let [job-type (:type job)
+                  base-prio (:priority job 0)
+                  adjusted-prio (cond
+                    (contains? #{:job/eat :job/warm-up :job/build-fire} job-type)
+                    (let [food-activation (needs/axis-activated? world agent :food [:hunger :starving] 0.6)
+                          warmth-activation (needs/axis-activated? world agent :warmth [:cold :freezing] 0.7)]
+                      (+ base-prio
+                         (if food-activation 20 0)
+                         (if warmth-activation 15 0)))
+
+                    (= :job/sleep job-type)
+                    (let [sleep-activation (needs/axis-activated? world agent :sleep [:tired :exhausted] 0.65)]
+                      (+ base-prio
+                         (if sleep-activation 15 0)))
+
+                    (contains? #{:job/chop-tree :job/harvest-wood :job/harvest-fruit :job/harvest-grain} job-type)
+                    (let [food-activation (needs/axis-activated? world agent :food [:hunger :starving] 0.6)]
+                      (+ base-prio
+                         (if food-activation 10 0)))
+
+                    (contains? #{:job/build-house :job/build-structure :job/build-wall} job-type)
+                    (let [warmth-activation (needs/axis-activated? world agent :warmth [:cold :freezing] 0.7)
+                          security-activation (needs/axis-activated? world agent :security [:danger :unsafe] 0.5)]
+                      (+ base-prio
+                         (if warmth-activation 12 0)
+                         (if security-activation 8 0)))
+
+                    :else base-prio)]
+              (assoc job :priority adjusted-prio)))
+          jobs)))
 
 (defn auto-assign-jobs! [world]
   (loop [w world

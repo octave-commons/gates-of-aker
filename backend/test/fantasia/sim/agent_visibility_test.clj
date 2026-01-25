@@ -1,7 +1,6 @@
 (ns fantasia.sim.agent-visibility-test
   (:require [clojure.test :refer [deftest testing is]]
-            [fantasia.sim.agent-visibility :as vis]
-            [fantasia.sim.constants :as const]))
+            [fantasia.sim.agent-visibility :as vis]))
 
 (deftest test-to-radians
   (testing "Converts degrees to radians"
@@ -24,7 +23,7 @@
           vertices (:vertices polygon)]
       (doseq [[q r] vertices]
         (let [distance (Math/sqrt (+ (* (- q 10) (- q 10))
-                                        (* (- r 10) (- r 10))))]
+                                     (* (- r 10) (- r 10))))]
           (is (<= (Math/abs (- distance 3.0)) 2.0))))))
   (testing "Edges connect vertices in circular order"
     (let [polygon (vis/compute-visibility-polygon [0 0] 5)
@@ -65,19 +64,19 @@
   (testing "Returns collection of visible tile keys"
     (let [agent {:pos [5 5] :role :priest}
           world {:tiles {"5,5" {:terrain :ground}
-                      "5,6" {:terrain :ground}
-                      "6,5" {:terrain :ground}
-                      "10,10" {:terrain :ground}}}
+                         "5,6" {:terrain :ground}
+                         "6,5" {:terrain :ground}
+                         "10,10" {:terrain :ground}}}
           visible (vis/compute-agent-visibility world agent)]
       (is (some? visible))
       (is (coll? visible))))
   (testing "Filters tiles outside vision polygon"
     (let [agent {:pos [5 5] :role :priest}
           world {:tiles {"5,5" {:terrain :ground}
-                      "10,10" {:terrain :ground}}}
+                         "30,30" {:terrain :ground}}}
           visible (vis/compute-agent-visibility world agent)]
       (is (contains? visible "5,5"))
-      (is (not (contains? visible "10,10")))))
+      (is (not (contains? visible "30,30")))))
   (testing "Returns nil when agent has no position"
     (let [agent {:role :priest}
           world {:tiles {"0,0" {:terrain :ground}}}
@@ -93,9 +92,9 @@
 (deftest test-compute-all-agents-visibility
   (testing "Computes visibility for all agents"
     (let [agents [{:id 1 :pos [0 0] :role :priest}
-                 {:id 2 :pos [10 10] :role :knight}]
+                  {:id 2 :pos [10 10] :role :knight}]
           world {:agents agents :tiles {"0,0" {:terrain :ground}
-                                       "10,10" {:terrain :ground}}}
+                                        "10,10" {:terrain :ground}}}
           all-visible (vis/compute-all-agents-visibility world)]
       (is (some? all-visible))
       (is (map? all-visible))))

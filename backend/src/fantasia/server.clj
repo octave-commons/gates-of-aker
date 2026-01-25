@@ -73,6 +73,8 @@
 
 (defonce *clients (atom #{}))
 (defonce *runner (atom {:running? false :future nil :ms 66 :tick-ms 0}))
+
+(require '[fantasia.sim.ecs.tick :as sim-tick])
 (defonce *nrepl-server (atom nil))
 
 (defn- start-nrepl!
@@ -108,289 +110,30 @@
 (defn start-runner! []
   (when-not (:running? @*runner)
     (let [fut (future
-                (swap! *runner assoc :running? true)
-                (try
-                   (while (:running? @*runner)
-                     (let [start-time (System/currentTimeMillis)
-                            o (last (sim/tick-ecs! 1))
-                           end-time (System/currentTimeMillis)
-                           tick-ms (- end-time start-time)
-                           target-ms (:ms @*runner)
-                           health (compute-health-status tick-ms target-ms)]
-                        (swap! *runner assoc :tick-ms tick-ms)
-                          (let [tick-data (select-keys o [:tick :snapshot :attribution])]
-                            (println "[Server] Broadcasting tick with keys:" (keys tick-data))
-                            (println "[Server] Snapshot agents count:" (get-in tick-data [:snapshot :agents] "NO SNAPSHOT"))
-                            (broadcast! {:op "tick" :data tick-data}))
-                         (when-let [ds (:delta-snapshot o)]
-                           (broadcast! {:op "tick_delta" :data ds}))
-                       (broadcast! {:op "tick_health" :data {:target-ms target-ms :tick-ms tick-ms :health health}})
-                       (when-let [ev (:event o)]
-                         (broadcast! {:op "event" :data ev}))
-                        (doseq [tr (:traces o)]
-                           (broadcast! {:op "trace" :data tr}))
-                        (when-let [bs (:books o)]
-                           (broadcast! {:op "books" :data {:books bs}}))
-                       (doseq [si (:social-interactions o)]
-                          (broadcast! {:op "social_interaction" :data si}))
-                       (doseq [ce (:combat-events o)]
-                          (broadcast! {:op "combat_event" :data ce}))
-                       (Thread/sleep (long (:ms @*runner)))))
-                  (finally
-                    (swap! *runner assoc :running? false :future nil))))]
-      (swap! *runner assoc :future fut))))
-
-(defn stop-runner! []
-  (swap! *runner assoc :running? false)
-  true)
-
-(defn handle-ollama-test []
-  (let [start-time (System/currentTimeMillis)
-        test-prompt "test"
-         ollama-model (get-in (sim/get-state) [:levers :ollama-model] scribes/ollama-model)
-        result (scribes/call-ollama! test-prompt ollama-model)
-        end-time (System/currentTimeMillis)
-        latency (- end-time start-time)]
-    (if (:success result)
-      (json-resp 200 {:connected true :latency_ms latency :model ollama-model})
-      (json-resp 200 {:connected false :latency_ms latency :model ollama-model :error (:error result)}))))
-
-(defn get-visible-tiles
-   "Return only visible or revealed tiles from state.
-   Tiles without a visibility marker are treated as visible."
-   [state]
-   (let [tile-visibility (:tile-visibility state {})]
-     (if (empty? tile-visibility)
-       (:tiles state)
-       (into {}
-             (filter (fn [[tile-key]]
-                       (let [vis (get tile-visibility tile-key)]
-                         (or (nil? vis) (= vis :visible) (= vis :revealed))))
-                   (:tiles state))))))
-
-(defn handle-ws [req]
-   (try
-     (http/with-channel req ch
-       (swap! *clients conj ch)
-       (let [initial-state (sim/get-state)
-              ecs-world (sim/get-ecs-world)
-              snapshot (adapter/ecs->snapshot ecs-world initial-state)
-              visible-tiles (:tiles snapshot)]
-         (println "[WS] New client connected, sending hello")
-         (ws-send! ch {:op "hello"
-                       :state (merge (select-keys snapshot [:tick :shrine :levers :map :agents :calendar :temperature :daylight :cold-snap])
-                                             {:tiles visible-tiles})}))
-       (http/on-close ch (fn [_] (swap! *clients disj ch)))
-      (http/on-receive ch
-        (fn [raw]
-          (let [msg (try (-> (json/parse-string raw true) keywordize-deep)
-                         (catch Exception _ nil))
-                op (:op msg)]
-            (case op
-               "tick"
-               (let [n (int (or (:n msg) 1))
-                        outs (sim/tick-ecs! n)]
-                 (doseq [o outs]
-                     (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                     (when-let [ds (:delta-snapshot o)]
-                       (broadcast! {:op "tick_delta" :data ds}))
-                     (when-let [ev (:event o)]
-                       (broadcast! {:op "event" :data ev}))
-                     (doseq [tr (:traces o)]
-                       (broadcast! {:op "trace" :data tr}))
-                      (doseq [si (:social-interactions o)]
-                        (broadcast! {:op "social_interaction" :data si}))
-                      (doseq [ce (:combat-events o)]
-                        (broadcast! {:op "combat_event" :data ce}))))
-
-"reset"
-  (let [seed (long (or (:seed msg) 1))
-        tree-density (or (:tree_density msg) 0.05)
-        bounds (when (:bounds msg)
-                 (:bounds msg))]
-    (sim/reset-world! {:seed seed :tree_density tree-density :bounds bounds})
-    (let [state (sim/get-state)
-          ecs-world (sim/get-ecs-world)
-          snapshot (adapter/ecs->snapshot ecs-world state)]
-      (broadcast! {:op "reset" :state snapshot})))
-
-             "set_levers"
-             (do 
-               (sim/set-levers! (:levers msg))
-               (broadcast! {:op "levers" :levers (:levers (sim/get-state))}))
-
-"place_shrine"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-shrine! q r))
-                (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))
-
-"place_wall_ghost"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-wall-ghost! q r))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
-
-              "appoint_mouthpiece"
-              (do 
-                (sim/appoint-mouthpiece! (:agent_id msg))
-                (broadcast! {:op "mouthpiece"
-                               :mouthpiece (get-in (sim/get-state) [:levers :mouthpiece-agent-id])}))
-
-             "get_agent_path"
-             (if-let [path (sim/get-agent-path! (:agent_id msg))]
-               (broadcast! {:op "agent_path" :agent-id (:agent_id msg) :path path})
-               (broadcast! {:op "error" :message "Agent not found or has no path"}))
-
-              "place_stockpile"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-stockpile! q r))
-                (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
-
-              "place_warehouse"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-warehouse! q r))
-                (broadcast! {:op "stockpiles" :stockpiles (:stockpiles (sim/get-state))}))
-
-"place_campfire"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-campfire! q r))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
-
-              "place_statue_dog"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-statue-dog! q r))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
-
-              "place_tree"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-tree! q r))
-                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
-
-              "place_deer"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-deer! q r))
-                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
-
-              "place_wolf"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-wolf! q r))
-                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
-
-              "place_bear"
-              (do 
-                (let [[q r] (:pos msg)]
-                  (sim/place-bear! q r))
-                (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
-
-"queue_build"
-             (let [structure (normalize-structure (:structure msg))
-                   stockpile (normalize-stockpile (:stockpile msg))]
-               (when (and structure (:pos msg))
-                 (sim/queue-build-job! structure)
-                 (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))})
-               (when (= structure :wall)
-                    (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
-                 (when (= structure :shrine)
-                   (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))))
-
-             "assign_job"
-             (let [agent-id (:agent_id msg)
-                   job-type (:job_type msg)
-                   target-pos (:target_pos msg)]
-               (when (and (get-in (sim/get-state) [:agents agent-id])
-                          target-pos)
-                 ;; TODO: Implement ECS job assignment
-                 (println "[ECS] Job assignment not yet implemented for agent" agent-id "type" job-type "target" target-pos)
-                 (broadcast! {:op "jobs" :jobs {}})))
-
-            "start_run"
-            (do
-              (start-runner!)
-              (broadcast! {:op "runner_state" :running true :fps (int (/ 1000 (:ms @*runner)))}))
-
-            "stop_run"
-            (do
-              (stop-runner!)
-              (broadcast! {:op "runner_state" :running false :fps (int (/ 1000 (:ms @*runner)))}))
-
-            "set_fps"
-            (let [fps (int (or (:fps msg) 15))
-                  ms (if (pos? fps) (/ 1000.0 fps) 66)]
-              (swap! *runner assoc :ms ms)
-              (broadcast! {:op "runner_state" :running (:running? @*runner) :fps fps}))
-
-             "set_facet_limit"
-             (do 
-               (sim/set-facet-limit! (:limit msg))
-               (broadcast! {:op "facet_limit" :limit (:limit msg)}))
-
-             "set_vision_radius"
-             (do 
-               (sim/set-vision-radius! (:radius msg))
-               (broadcast! {:op "vision_radius" :radius (:radius msg)}))
-
-             (ws-send! ch {:op "error" :message "unknown op"}))))))))
-
-(def app
-  (ring/ring-handler
-    (ring/router
-      [["/healthz"
-        {:get (fn [_] (json-resp {:ok true}))
-         :options (fn [_] (json-resp 200 {:ok true}))}]
-
-       ["/ws" {:get handle-ws}]
-
-          ["/sim/state"
-           {:get (fn [_] (let [state (sim/get-state)
-                                ecs-world (sim/get-ecs-world)
-                                snapshot (adapter/ecs->snapshot ecs-world state)]
-                            (json-resp 200 snapshot)))
-           :options (fn [_] (json-resp 200 {:ok true}))}]
-
-         ["/sim/reset"
-          {:post (fn [req]
-(let [b (read-json-body req)
-                          seed (long (or (:seed b) 1))
-                          tree-density (or (:tree_density b) 0.08)]
-                      (sim/reset-world!)
-                      (json-resp 200 {:ok true :seed seed :tree_density tree-density})))
-           :options (fn [_] (json-resp 200 {:ok true}))}]
-
-       ["/sim/tick"
-        {:post (fn [req]
-                 (let [b (read-json-body req)
-                       n (int (or (:n b) 1))
-                       outs (sim/tick-ecs! n)]
-                   (json-resp 200 {:ok true :last (last outs)})))
-         :options (fn [_] (json-resp 200 {:ok true}))}]
-
-        ["/sim/run"
-         {:post (fn [_] (start-runner!) (json-resp 200 {:ok true :running true}))
-          :options (fn [_] (json-resp 200 {:ok true}))}]
-
-        ["/sim/pause"
-         {:post (fn [_] (stop-runner!) (json-resp 200 {:ok true :running false}))
-          :options (fn [_] (json-resp 200 {:ok true}))}]
-
-        ["/api/ollama/test"
-         {:get (fn [_] (handle-ollama-test))
-          :post (fn [_] (handle-ollama-test))
-          :options (fn [_] (json-resp 200 {:ok true}))}]])))
-
-(defn -main [& _]
-  (let [port 3000]
-    (println (str "Fantasia backend listening on http://localhost:" port))
-    (start-nrepl!)
-    (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable stop-nrepl!))
-    (sim/create-ecs-initial-world {}) ; Initialize ECS world on startup
-    (scribes/start-ollama-keep-alive!)
-    (http/run-server app {:port port})
-    @(promise)))
+                 (swap! *runner assoc :running? true)
+                 (try
+                    (while (:running? @*runner)
+                      (let [start-time (System/currentTimeMillis)
+                             o (last (sim-tick/tick-ecs! 1))
+                            end-time (System/currentTimeMillis)
+                            tick-ms (- end-time start-time)
+                            target-ms (:ms @*runner)
+                            health (compute-health-status tick-ms target-ms)]
+                         (swap! *runner assoc :tick-ms tick-ms)
+                           (let [result (sim-tick/tick-ecs! 1)] 
+                              (when result 
+                                (broadcast! {:op "tick" :data (select-keys result [:tick :snapshot :attribution])})
+                                (when-let [ds (:delta-snapshot result)] 
+                                  (broadcast! {:op "tick_delta" :data ds}))
+                                (broadcast! {:op "tick_health" :data {:target-ms target-ms :tick-ms tick-ms :health health}})
+                                (when-let [ev (:event result)] 
+                                  (broadcast! {:op "event" :data ev}))
+                                (doseq [tr (:traces result)]
+                                   (broadcast! {:op "trace" :data tr}))
+                                (when-let [bs (:books result)] 
+                                  (broadcast! {:op "books" :data {:books bs}}))
+                                (doseq [si (:social-interactions result)]
+                                   (broadcast! {:op "social_interaction" :data si}))
+                                (doseq [ce (:combat-events result)]
+                                   (broadcast! {:op "combat_event" :data ce}))))))
+                    (finally                      (swap! *runner assoc :running? false :future nil)))]                   (while (:running? @*runner)
