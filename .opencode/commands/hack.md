@@ -7,6 +7,9 @@ review @spec/ and @docs/planning
 # Clojure coverage report backend
 !`cd backend/ && clojure -X:coverage`
 
+# clj-kondo lint backend
+!`cd backend && clojure -X:lint`
+
 
 # Vite checks
 

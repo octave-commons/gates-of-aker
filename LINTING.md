@@ -1,5 +1,6 @@
 ## Linting & Static Analysis
-- Backend linting: use `clj-kondo --lint src` (install globally or via npx-like `clojure -M:clj-kondo` once alias is added).
+- Backend linting: use `clojure -X:lint` from backend directory (uses clj-kondo with type checking enabled).
+- clj-kondo configuration in `.clj-kondo/config.edn` includes type inference, unresolved symbol checks, unused binding warnings, and redundant expression detection.
 - Static type checks rely on runtime invariants; prefer `clojure.spec`, `malli`, or custom predicate helpers in new code.
 - Frontend linting currently manual; align with ESLint defaults if introduced later.
 - For now, rely on TypeScript strict mode plus Vite build errors; fix `tsc` issues before committing.

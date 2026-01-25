@@ -9,9 +9,13 @@
   [ecs-world pos radius]
   (let [position-type (be/get-component-type (c/->Position 0 0))
         all-agents (be/get-all-entities-with-component ecs-world position-type)
-        agent-positions (mapv #(be/get-component ecs-world % position-type) all-agents)
-        filter-fn (fn [[q r]] (<= (hex/distance [q r] pos) radius))]
-    (filter filter-fn agent-positions)))
+        filter-fn (fn [agent-id]
+                      (let [position (be/get-component ecs-world agent-id position-type)
+                            q (:q position)
+                            r (:r position)]
+                        (when (and q r)
+                          (<= (hex/distance [q r] pos) radius))))]
+    (filter filter-fn all-agents)))
 
 (defn choose-packet-for-speech
   "Generate a communication packet for an agent based on frontier state."
