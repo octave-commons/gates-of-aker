@@ -4,17 +4,23 @@ description:"Hack"
 read @HACK.md
 review @spec/ and @docs/planning
 
-# Clojure coverage report backend
-!`cd backend/ && clojure -X:coverage`
+# Clojure backend status
 
-# clj-kondo lint backend
+## Recent logs
+!`pm2 logs gates-backend --nostream --lines 50`
+
+## test results
+!`cd backend/ && clojure -X:test`
+
+## clj-kondo lint backend
 !`cd backend && clojure -X:lint`
 
 
-# Vite checks
-
+# Vite frontend status
+## type checks
 !`cd web/ && npm run typecheck`
-!`cd web/ && npm run test:coverage`
+## Test results
+!`cd web/ && npm run test`
 
 # Open Isseus
 !`gh issues list`

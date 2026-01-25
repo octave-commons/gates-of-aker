@@ -134,7 +134,7 @@
 (defn get-buildings-with-job-queue
   "Get all building entities with JobQueue component."
   [system]
-  (let [job-queue-instance (c/->JobQueue [] {} {})
+  (let [job-queue-instance (c/->JobQueue {} [] {})
         job-queue-type (component-class job-queue-instance)]
         (be/get-all-entities-with-component system job-queue-type)))
 
@@ -163,7 +163,7 @@
                        (be/add-component entity-id (c/->TileIndex q r))
                        (be/add-component entity-id (c/->Tile :ground :plains structure-type nil))
                        (be/add-component entity-id structure-state)
-                        (be/add-component entity-id (c/->JobQueue [] {} {})))
+                        (be/add-component entity-id (c/->JobQueue {} [] {})))
            system'' (cond-> system'
                       stockpile-config (be/add-component entity-id
                                                          (c/->Stockpile {(:resource stockpile-config) 0})))]

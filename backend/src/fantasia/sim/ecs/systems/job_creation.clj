@@ -5,14 +5,14 @@
 (defn generate-basic-jobs
   "Generate basic jobs from buildings with JobQueue components."
   [ecs-world global-state]
-  (let [job-queue-type (be/get-component-type (c/->JobQueue [] {} {}))
+  (let [job-queue-type (be/get-component-type (c/->JobQueue {} [] {}))
         buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)
         tick (:tick global-state 0)]
     (reduce (fn [acc building-id]
-              (let [job-queue (be/get-component acc building-id job-queue-type)
+              (let [job-queue (be/get-component ecs-world building-id job-queue-type)
                     current-jobs (:jobs job-queue {})
                     position-type (be/get-component-type (c/->Position 0 0))
-                    position (be/get-component acc building-id position-type)
+                    position (be/get-component ecs-world building-id position-type)
                     q (:q position)
                     r (:r position)]
                 ;; Add a basic gather job if building has no jobs
@@ -25,12 +25,12 @@
                                  :created-at tick}]
                      (be/add-component acc building-id 
                                         (c/->JobQueue 
-                                        (assoc current-jobs job-id new-job)  ; :jobs field
-                                        [job-id]                                   ; :pending-jobs field
-                                        {})))                                      ; :assigned-jobs field
-                  acc)))
-            ecs-world
-            buildings-with-queues)))
+                                        (assoc current-jobs job-id new-job)  ; :jobs field (map)
+                                        (conj (:pending-jobs job-queue []) job-id)  ; :pending-jobs field (vector)
+                                        (:assigned-jobs job-queue {}))))          ; :assigned-jobs field (map)
+                   acc)))
+             ecs-world
+             buildings-with-queues)))
 
 (defn process
   "Process job creation system."

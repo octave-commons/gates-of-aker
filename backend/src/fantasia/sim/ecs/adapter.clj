@@ -91,7 +91,7 @@
 (defn ecs->jobs-map
    "Extract jobs from ECS JobQueue components."
    [ecs-world]
-   (let [job-queue-type (be/get-component-type (c/->JobQueue [] {}))
+   (let [job-queue-type (be/get-component-type (c/->JobQueue {} [] {}))
          buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)]
      (reduce (fn [acc building-id]
                (let [job-queue (be/get-component ecs-world building-id job-queue-type)

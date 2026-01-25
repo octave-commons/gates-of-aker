@@ -1,4 +1,4 @@
-(ns fantasia.sim.ecs.systems.job-assignment
+(ns fantasia.sim.ecs.systems.job_assignment
    (:require [brute.entity :as be]
              [fantasia.sim.ecs.components :as c]))
 
@@ -9,16 +9,12 @@
 
 (defn find-best-job
   "Find the best available job for an agent."
-  [ecs-world agent-id job-queue-type pending-jobs]
-  (let [position-type (be/get-component-type (c/->Position 0 0))
-        position (be/get-component ecs-world agent-id position-type)
-        role-type (be/get-component-type (c/->Role :priest))
-        role (be/get-component ecs-world agent-id role-type)
-        status-type (be/get-component-type (c/->AgentStatus true false false nil))
-        status (be/get-component ecs-world agent-id status-type)]
+  [ecs-world agent-id pending-jobs]
+  (let [role-type (be/get-component-type (c/->Role :priest))
+        role (be/get-component ecs-world agent-id role-type)]
     (first (sort-by :priority
                    (filter #(= (:role %) role)
-                           (filter #(not (:blocked %)) pending-jobs)))))
+                           (filter #(not (:blocked %)) pending-jobs))))))
 
 (defn claim-job!
   "Claim a job for an agent."
@@ -57,11 +53,11 @@
                                                         (some #(= % agent-id) (:assigned-jobs job-queue)))))
                                                   buildings-with-queues))
                      best-job (when building-id
-                                  (let [position (be/get-component ecs-world agent-id (be/get-component-type (c/->Position 0 0)))
-                                        jobs (:jobs job-queue [])]
-                                    (find-best-job acc agent-id job-queue-type jobs position)))]
+                                   (let [job-queue (be/get-component ecs-world building-id job-queue-type)
+                                         jobs (:jobs job-queue [])]
+                                     (find-best-job acc agent-id jobs)))]
                  (if best-job
                    (claim-job! acc agent-id (:job-id best-job) (:job-type best-job) job-queue-type)
-                   (mark-agent-idle! acc agent-id)))))
+                   (mark-agent-idle! acc agent-id))))
             ecs-world
             idle-agents)))

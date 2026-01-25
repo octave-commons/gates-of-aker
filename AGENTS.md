@@ -48,6 +48,19 @@
 - Backend health check: use `/healthz` endpoint (returns `{"ok":true}`) to verify backend is running.
 - Data contracts: keep server + UI payloads in sync; document field names when adding new ops to `/docs/notes`.
 - Concurrency: guard shared atoms with `swap!`; avoid manual locking.
+
+## Development Server Management
+
+**🚨 IMPORTANT: Both backend and frontend run automatically via PM2 and restart on code changes!**
+
+- **NEVER manually restart the backend or frontend** while developing
+- PM2 automatically detects file changes and restarts the services
+- Backend runs as `gates-backend` process, frontend as `gates-frontend`
+- If services are unresponsive, check logs instead of restarting:
+  - Backend: `pm2 logs gates-backend --nostream --lines 50`
+  - Frontend: `pm2 logs gates-frontend --nostream --lines 50` (usually less useful)
+- PM2 handles all process management, including crash recovery
+- Focus on writing code - PM2 handles the rest
 - Serialization: always encode WS payloads via `cheshire` and decode them once before branching on `:op`/`op`.
 - Comments: short, high-signal, describing "why" rather than "what"; remove stale comments promptly.
 - Status reporting: Use conservative, factual language. Avoid declaring work "complete" or "final" when any dependencies, TODOs, or integration work remains. State exactly what was accomplished and emphasize what work remains next.
