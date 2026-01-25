@@ -104,16 +104,24 @@ const SOCIAL_TONE_SEQUENCES: Record<string, number[]> = {
    const toSequence = (notes: number[], octaveShift: number = 0) =>
    notes.map((note) => getScaleFrequency(note, octaveShift));
 
-    const normalizeSnapshot = (state: any) => {
-      if (!state || typeof state !== "object") return state;
-      const normalizedTiles = normalizeKeyedMap(state.tiles);
-      return {
-        ...state,
-        tiles: normalizedTiles,
-        items: normalizeKeyedMap(state.items),
-        stockpiles: normalizeKeyedMap(state.stockpiles),
-      };
-    };
+     const normalizeSnapshot = (state: any) => {
+       if (!state || typeof state !== "object") return state;
+       console.log("[App] normalizeSnapshot - input agents:", state.agents?.length ?? 0, "tiles:", Object.keys(state.tiles ?? {}).length);
+       
+       const normalizedTiles = normalizeKeyedMap(state.tiles);
+       const normalizedItems = normalizeKeyedMap(state.items);
+       const normalizedStockpiles = normalizeKeyedMap(state.stockpiles);
+       
+       const normalized = {
+         ...state,
+         tiles: normalizedTiles,
+         items: normalizedItems,
+         stockpiles: normalizedStockpiles,
+       };
+       
+       console.log("[App] normalizeSnapshot - output agents:", normalized.agents?.length ?? 0, "tiles:", Object.keys(normalized.tiles ?? {}).length);
+       return normalized;
+     };
 
 export type AgentVisibility = {
   id: number;
@@ -304,7 +312,7 @@ export function App() {
   const focusOnAgent = useCallback((agent: Agent) => {
     if (!hasPos(agent)) return;
     const [q, r] = agent.pos as AxialCoords;
-    setSelectedAgentId(agent.id);
+    setSelectedAgentId(typeof agent.id === 'number' ? agent.id : Number(agent.id));
     setSelectedCell([q, r]);
     setFocusPos([q, r]);
     setFocusTrigger((prev) => prev + 1);
@@ -395,17 +403,19 @@ export function App() {
     return new WSClient(
       wsUrl,
       (m: WSMessage) => {
-             if (m.op === "hello") {
-                const state = normalizeSnapshot(m.state ?? {});
-                   const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
-               const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
-               const avm = state?.agent_visibility ?? {};
-               setTick(state.tick ?? 0);
-               setSnapshot(state);
-               setTileVisibility(tv);
-               setRevealedTilesSnapshot(rts);
-               setAgentVisibilityMaps(avm);
-             prevSnapshotRef.current = state;
+              if (m.op === "hello") {
+                console.log("[App] Processing hello message");
+                 const state = normalizeSnapshot(m.state ?? {});
+                    const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
+                const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
+                const avm = state?.agent_visibility ?? {};
+                console.log("[App] Setting initial state - agents:", state.agents?.length ?? 0);
+                setTick(state.tick ?? 0);
+                setSnapshot(state);
+                setTileVisibility(tv);
+                setRevealedTilesSnapshot(rts);
+                setAgentVisibilityMaps(avm);
+              prevSnapshotRef.current = state;
            if (state.map) {
              setMapConfig(state.map as HexConfig);
            }
@@ -415,40 +425,57 @@ export function App() {
              initialFocusRef.current = true;
            }
          }
-          if (m.op === "tick") {
-              setTick(m.data?.tick ?? 0);
-              const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
-              setSnapshot(nextSnapshot);
-              setMemories(nextSnapshot?.memories ?? []);
-              playTone(440, 0.08);
-              handleDeathTone(nextSnapshot);
-              handleTickAudio(nextSnapshot);
-            }
-                 if (m.op === "tick_delta") {
-                   const delta = m.data as any;
-                    const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
-                   const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
-                   const avm = delta?.agent_visibility;
-                   if (delta && Object.keys(tv).length > 0 && Object.keys(tv).length < 5) {
-                     console.log("[App] tick_delta received, tileVisibility sample:", Object.entries(tv).slice(0, 3));
-                   }
-                   setTick(delta?.tick ?? 0);
-                   setSnapshot((prev: any) => applyDelta(prev, delta));
-                   setVisibilityData(delta?.visibility ?? null);
-                   setTileVisibility(tv);
-                   setRevealedTilesSnapshot(rts);
-                   if (avm && typeof avm === "object") {
-                     setAgentVisibilityMaps((prev: Record<number, Set<string>>) => ({
-                       ...prev,
-                       ...Object.entries(avm).reduce((acc, [agentId, tiles]) => {
-                         const numId = parseInt(String(agentId), 10);
-                         const tilesArray = Array.isArray(tiles) ? tiles : [];
-                         return { ...acc, [numId]: new Set(tilesArray) };
-                       }, {})
-                     }));
-                   }
-                   handleDeltaAudio(delta);
-                 }
+           if (m.op === "tick") {
+               console.log("[App] Processing tick message");
+               console.log("[App] Full tick data:", m.data);
+               setTick(m.data?.tick ?? 0);
+               
+               // DEBUG: Check if snapshot exists in tick message
+               if (!m.data?.snapshot) {
+                 console.log("[App] WARNING: Tick message has no snapshot data, keeping current state");
+                 playTone(440, 0.08);
+                 return; // Don't clear current snapshot
+               }
+               
+               const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
+               console.log("[App] Tick update - agents:", nextSnapshot.agents?.length ?? 0);
+               console.log("[App] First agent:", nextSnapshot.agents?.[0]);
+               setSnapshot(nextSnapshot);
+               setMemories(nextSnapshot?.memories ?? []);
+               playTone(440, 0.08);
+               handleDeathTone(nextSnapshot);
+               handleTickAudio(nextSnapshot);
+             }
+           if (m.op === "tick_delta") {
+                    console.log("[App] Processing tick_delta message");
+                    const delta = m.data as any;
+                     const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
+                    const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
+                    const avm = delta?.agent_visibility;
+                    if (delta && Object.keys(tv).length > 0 && Object.keys(tv).length < 5) {
+                      console.log("[App] tick_delta received, tileVisibility sample:", Object.entries(tv).slice(0, 3));
+                    }
+                    setTick(delta?.tick ?? 0);
+                    setSnapshot((prev: any) => {
+                      const result = applyDelta(prev, delta);
+                      console.log("[App] Delta applied - agents before:", prev?.agents?.length ?? 0, "after:", result?.agents?.length ?? 0);
+                      return result;
+                    });
+                    setVisibilityData(delta?.visibility ?? null);
+                    setTileVisibility(tv);
+                    setRevealedTilesSnapshot(rts);
+                    if (avm && typeof avm === "object") {
+                      setAgentVisibilityMaps((prev: Record<number, Set<string>>) => ({
+                        ...prev,
+                        ...Object.entries(avm).reduce((acc, [agentId, tiles]) => {
+                          const numId = parseInt(String(agentId), 10);
+                          const tilesArray = Array.isArray(tiles) ? tiles : [];
+                          return { ...acc, [numId]: new Set(tilesArray) };
+                        }, {})
+                      }));
+                    }
+                    handleDeltaAudio(delta);
+                  }
         if (m.op === "trace") {
             const incoming = m.data as Trace;
             setTraces((prev) => {

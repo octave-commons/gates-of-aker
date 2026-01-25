@@ -54,7 +54,7 @@ export function AgentList({ agents, jobs = [], collapsible = false, onFocusAgent
             marginTop: 8
           }}>
             {agents.map((agent) => (
-              <AgentCard key={agent.id} agent={agent} compact currentJob={getAgentJob(agent.id)} onSelect={onFocusAgent} />
+              <AgentCard key={String(agent.id)} agent={agent} compact currentJob={getAgentJob(typeof agent.id === 'number' ? agent.id : Number(agent.id))} onSelect={onFocusAgent} />
             ))}
           </div>
         )}
@@ -68,7 +68,7 @@ export function AgentList({ agents, jobs = [], collapsible = false, onFocusAgent
       <strong>Agents ({agents.length})</strong>
       <div style={{ maxHeight: 220, overflowY: "auto", border: "1px solid #ccc", borderRadius: 8, padding: 8 }}>
         {agents.map((agent) => (
-          <AgentCard key={agent.id} agent={agent} compact currentJob={getAgentJob(agent.id)} onSelect={onFocusAgent} />
+          <AgentCard key={String(agent.id)} agent={agent} compact currentJob={getAgentJob(typeof agent.id === 'number' ? agent.id : Number(agent.id))} onSelect={onFocusAgent} />
         ))}
       </div>
     </div>

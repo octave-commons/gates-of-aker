@@ -1,31 +1,42 @@
 
 ## Docs & Knowledge Base
 
-- `HACK.md` captures the creative vision; skim it before implementing new features to preserve thematic intent.
-- `docs/notes` should read like a changelog of facts; include API contracts, schemas, and non-obvious algorithms there.
- - When adding future AGENTS files in subdirectories, explicitly reference this file to clarify inheritance.
- 
-- [[ESTIMATION]]
-- [[BUILD]]
-- [[BACKEND]]
-- [[FRONTEND]]
-- [[OBSIDIAN]]  -> `OBSIDIAN.md` - Obsidian Specific Instructions for knowledge graphing and plugins
-- [[README]] -> `README.md`- Project overview, basic setup and testing commands, explains how to use it and what it is for.
-- [[HACK.md]] - High-level vision and inspirations
-- [[HOME]] - Obsidian home page, day to day thinking and note taking. Obsidian data views welcome.
-- [[MISSION]]
-- [[DIRECTORIES]]
-- [[TOOLCHAINS]]
-- [[LINTING]]
-- [[LOGGING]]
-- [[TESTING]]
+**🚨 AGENT INSTRUCTIONS: Always read linked documents before implementing features!**
 
-- [[orphaned files output]]
-- [[2026-01-15-roadmap]] - Most current roadmap
+- `HACK.md` captures the creative vision; **skim this first** before implementing new features to preserve thematic intent.
+- `docs/notes` should read like a changelog of facts; include API contracts, schemas, and non-obvious algorithms there.
+- When adding future AGENTS files in subdirectories, **explicitly reference this file** to clarify inheritance.
+
+### Core Documentation (Read These First)
+- [[README]] -> `README.md` - Project overview, basic setup and testing commands
+- [[HACK.md]] - High-level vision and inspirations  
+- [[MISSION]] - Scope and governance principles
+- [[ROADMAP.md]] -> `ROADMAP.md` - Current milestones and priorities
+
+### Development Workflow
+- [[ESTIMATION]] -> `ESTIMATION.md` - Story points and estimation guidelines
+- [[BUILD]] -> `BUILD.md` - Build/run/watch commands for both frontend and backend
+- [[TESTING]] -> `TESTING.md` - Testing procedures and framework usage
+- [[LINTING]] -> `LINTING.md` - Code style and static analysis rules
+- [[LOGGING]] -> `LOGGING.md` - Backend logging configuration and best practices
+
+### Technical Architecture  
+- [[BACKEND]] -> `BACKEND.md` - Clojure backend patterns and conventions
+- [[FRONTEND]] -> `FRONTEND.md` - TypeScript/React frontend style guide
+- [[DIRECTORIES]] -> `DIRECTORIES.md` - Project structure and organization
+- [[TOOLCHAINS]] -> `TOOLCHAINS.md` - Development tools and environment setup
+
+### Knowledge Management
+- [[OBSIDIAN]] -> `OBSIDIAN.md` - Obsidian specific instructions for knowledge graphing
+- [[HOME]] -> `HOME.md` - Obsidian home page for daily notes and thinking
+- [[orphaned files output]] -> `ORPHANED-FILES.md` - Generated files and cleanup procedures
+
+### Specifications (Critical for Implementation)
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
-- [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress
+- [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress  
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
-- [[spec/2026-01-15-myth-engine.md]] - Myth engine
+- [[spec/2026-01-15-myth-engine.md]] - Myth engine specification
+- [[spec/labeling-system.md]] - GitHub issue and spec labeling system
 
 ## Shared Conventions & Error Handling
 - Naming: kebab-case for files (Clojure namespaces), camelCase for TS variables, SCREAMING_SNAKE_CASE reserved for constants.
@@ -39,12 +50,14 @@
 - Concurrency: guard shared atoms with `swap!`; avoid manual locking.
 - Serialization: always encode WS payloads via `cheshire` and decode them once before branching on `:op`/`op`.
 - Comments: short, high-signal, describing "why" rather than "what"; remove stale comments promptly.
+- Status reporting: Use conservative, factual language. Avoid declaring work "complete" or "final" when any dependencies, TODOs, or integration work remains. State exactly what was accomplished and emphasize what work remains next.
 - Git hygiene: no generated assets in commits (`web/dist`, `web/node_modules`), no direct pushes to `main` without review.
 - Dependency changes: update lockfiles (`package-lock.json`) and mention new libs in PR bodies.
 - Documentation updates: whenever behavior changes, add a line to `/docs/notes` summarizing the impact.
 - Security: treat WS inputs as user-controlled; never trust UI-sent numbers without validation.
 - Performance: profile long-running `sim/tick!` operations before optimizing; measure first.
 - Internationalization: not required yet; keep strings central for future extraction.
+- **Testing**: Run backend tests with `cd backend && clojure -X:test` and frontend tests with `cd web && npm test`. Use `-X:test` for coverage reports.
 
 
 ## GitHub Issue and Spec Labeling

@@ -69,7 +69,7 @@ function FactionSection({
   const getAgentJob = (agentId: number) => {
     const agent = agents.find((a: Agent) => a.id === agentId);
     const jobId = agent?.current_job;
-    return jobs?.find((j: any) => j.id === jobId);
+    return Array.isArray(jobs) ? jobs.find((j: any) => j.id === jobId) : undefined;
   };
 
   return (
@@ -122,10 +122,10 @@ function FactionSection({
           ) : (
             agents.map((agent) => (
               <AgentCard
-                key={agent.id}
+                key={String(agent.id)}
                 agent={agent}
                 compact
-                currentJob={getAgentJob(agent.id)}
+                currentJob={getAgentJob(typeof agent.id === 'number' ? agent.id : Number(agent.id))}
                 onSelect={onFocusAgent}
               />
             ))

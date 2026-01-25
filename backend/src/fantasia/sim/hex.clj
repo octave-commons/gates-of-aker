@@ -19,7 +19,7 @@
   [pos]
   (mapv #(add pos %) pointy-dirs))
 
-(defn- coerce-axial
+(defn coerce-axial
   "Coerce various position shapes into an axial [q r] pair.
    Accepts sequential [q r], string \"q,r\", map with :q/:r, numbers (treated as [n 0]) or nil.
    Falls back to [0 0] for unknown inputs to keep callers resilient." 
@@ -51,7 +51,7 @@
         ds (Math/abs (long (- as bs)))]
     (max dq dr ds)))
 
-(defn- ensure-origin
+(defn ensure-origin
   "Ensure bounds maps carry an :origin (default [0 0])."
   [bounds]
   (if (contains? bounds :origin)

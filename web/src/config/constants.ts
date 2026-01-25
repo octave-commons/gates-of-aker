@@ -5,7 +5,7 @@ export const CONFIG = {
     ZOOM_MIN: 0.1,
     ZOOM_MAX: 5.0,
     ZOOM_STEP: 0.2,
-    PAN_SPEED: 10,
+    PAN_SPEED: 15,
   },
   data: {
     MAX_TRACES: 250,

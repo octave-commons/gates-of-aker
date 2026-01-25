@@ -5,7 +5,7 @@ export type Trace = Record<string, any>;
 export type AxialCoords = [number, number];
 
 export type Agent = {
-  id: number;
+  id: number | string;  // TODO: Backend sends UUID strings, frontend expects numbers
   name?: string;
   pos: [number, number] | null;
   role: string;

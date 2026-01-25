@@ -6,7 +6,7 @@
 (def ->agent identity) ; Legacy compatibility - not used in ECS
 (def initial-world ecs/create-ecs-initial-world)
 (def tick-once ecs/tick-ecs-once)
-(def *state ecs/*state)
+(def *state ecs/*global-state)
 (def get-state ecs/get-state)
 (def reset-world! ecs/reset-world!)
 (def set-levers! ecs/set-levers!)
@@ -26,3 +26,6 @@
 (def queue-build-job! ecs/queue-build-job!)
 (def get-agent-path! ecs/get-agent-path!)
 (def tick! ecs/tick!)
+
+;; Needs system  
+(def query-need-axis! (requiring-resolve 'fantasia.sim.ecs.systems.needs/query-need-axis!))

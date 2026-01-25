@@ -78,7 +78,16 @@
                               :event-type (:type event-instance)
                               :tick (:tick event-instance)}}
          ;; TODO: Migrate agents/recall-and-mentions to ECS
-         res {}]
-    {:agent (-> agent (assoc :frontier fr2) (assoc :recall (:new-recall res)))
-     :mentions (:mentions res)
-     :traces (:traces res)}))
+         mentions [{:agent-id (:id agent)
+                   :event-type (:type event-instance)
+                   :event-instance (:id event-instance)
+                   :speaker (:id speaker)
+                   :packet packet}]
+         traces [{:agent-id (:id agent)
+                  :event-type (:type event-instance)
+                  :event-instance (:id event-instance)
+                  :speaker (:id speaker)
+                  :packet packet}]]
+    {:agent (-> agent (assoc :frontier fr2) (assoc-in [:frontier :winter :a] (+ (get-in agent [:frontier :winter :a] 0.1) (* impact 0.22))))
+     :mentions mentions
+     :traces traces}))

@@ -1,0 +1,5 @@
+Syntax error compiling at (fantasia/sim/ecs/tick.clj:31:9).
+No such var: fantasia.sim.ecs.systems.job_creation/process
+
+Full report at:
+/tmp/clojure-8829304762211182791.edn

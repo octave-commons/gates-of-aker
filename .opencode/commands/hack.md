@@ -8,10 +8,16 @@ review @spec/ and @docs/planning
 !`cd backend/ && clojure -X:coverage`
 
 
-# Vite test runner coverage report frontend
+# Vite checks
 
 !`cd web/ && npm run typecheck`
-!`cd web/ && npm run coverage`
+!`cd web/ && npm run test:coverage`
+
+# Open Isseus
+!`gh issues list`
+
+# Open PR
+!`gh pr list`
 
 
 Where are we at in our project?

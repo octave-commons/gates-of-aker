@@ -1,4 +1,4 @@
-(ns fantasia.test.ecs.simple
+(ns fantasia.sim.ecs.simple
   (:require [brute.entity :as be]
             [fantasia.sim.ecs.core]
             [fantasia.sim.ecs.components :as c]))

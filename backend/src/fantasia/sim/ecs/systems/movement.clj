@@ -1,7 +1,8 @@
 (ns fantasia.sim.ecs.systems.movement
   (:require [brute.entity :as be]
             [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.hex :as hex]))
+            [fantasia.sim.hex :as hex]
+            [fantasia.dev.logging :as log]))
 
 (defn move-agent-along-path
   "Move agent one step along its path waypoints."
@@ -15,9 +16,10 @@
         current-index (:current-index path-component)
         waypoints (:waypoints path-component)]
     (when (< current-index (count waypoints))
-      (let [[q r] (nth waypoints current-index)
-            ecs-world' (be/add-component ecs-world agent-id (c/->Position q r))
+      (let [target-pos (nth waypoints current-index)
+            ecs-world' (be/add-component ecs-world agent-id target-pos)
             new-index (inc current-index)]
+        (log/log-debug "[MOVE:AGENT]" {:agent-id agent-id :from (:q position) (:r position) :to (:q target-pos) (:r target-pos) :method "job-path"})
         (if (= new-index (count waypoints))
           (let [path-inst (c/->Path [] 0)
                 path-type (be/get-component-type path-inst)]

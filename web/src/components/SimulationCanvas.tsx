@@ -73,11 +73,11 @@ export function SimulationCanvas({
   const keysPressed = useRef<Set<string>>(new Set());
 
   const getTileVisibilityState = (q: number, r: number): "hidden" | "revealed" | "visible" => {
-    const hasVisibilityData = tileVisibility && Object.keys(tileVisibility).length > 0;
     const tileKey = `${q},${r}`;
     const vis = tileVisibility[tileKey];
+    const tileInSnapshot = snapshot?.tiles?.[tileKey];
 
-    if (!hasVisibilityData) {
+    if (tileInSnapshot && vis === undefined) {
       return "visible";
     }
 
@@ -122,15 +122,49 @@ export function SimulationCanvas({
   };
 
   useEffect(() => {
+    let animationFrameId: number | null = null;
+
+    const handleCameraMovement = () => {
+      const keys = Array.from(keysPressed.current);
+      if (keys.length > 0) {
+        setCamera(prevCamera => {
+          let newOffsetX = prevCamera.offsetX;
+          let newOffsetY = prevCamera.offsetY;
+          const moveAmount = CONFIG.canvas.PAN_SPEED / prevCamera.zoom;
+
+          if (keys.includes("KeyW")) newOffsetY += moveAmount;
+          if (keys.includes("KeyS")) newOffsetY -= moveAmount;
+          if (keys.includes("KeyA")) newOffsetX += moveAmount;
+          if (keys.includes("KeyD")) newOffsetX -= moveAmount;
+
+          if (newOffsetX !== prevCamera.offsetX || newOffsetY !== prevCamera.offsetY) {
+            return { ...prevCamera, offsetX: newOffsetX, offsetY: newOffsetY };
+          }
+          return prevCamera;
+        });
+      }
+      animationFrameId = requestAnimationFrame(handleCameraMovement);
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
+        e.preventDefault();
+        const wasEmpty = keysPressed.current.size === 0;
         keysPressed.current.add(e.code);
+        if (wasEmpty) {
+          animationFrameId = requestAnimationFrame(handleCameraMovement);
+        }
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
+        e.preventDefault();
         keysPressed.current.delete(e.code);
+        if (keysPressed.current.size === 0 && animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = null;
+        }
       }
     };
 
@@ -141,39 +175,14 @@ export function SimulationCanvas({
 
     window.addEventListener("keydown", handleKeyDown, { passive: false });
     window.addEventListener("keyup", handleKeyUp, { passive: false });
+    
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
-
-  useEffect(() => {
-    let animationFrameId: number;
-
-    const handleCameraMovement = () => {
-      const keys = Array.from(keysPressed.current);
-      if (keys.length > 0) {
-        setCamera((prev) => {
-          let newOffsetX = prev.offsetX;
-          let newOffsetY = prev.offsetY;
-          const moveAmount = CONFIG.canvas.PAN_SPEED / prev.zoom;
-
-          if (keys.includes("KeyW")) newOffsetY += moveAmount;
-          if (keys.includes("KeyS")) newOffsetY -= moveAmount;
-          if (keys.includes("KeyA")) newOffsetX += moveAmount;
-          if (keys.includes("KeyD")) newOffsetX -= moveAmount;
-
-          if (newOffsetX !== prev.offsetX || newOffsetY !== prev.offsetY) {
-            return { ...prev, offsetX: newOffsetX, offsetY: newOffsetY };
-          }
-          return prev;
-        });
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
-      animationFrameId = requestAnimationFrame(handleCameraMovement);
     };
-
-    animationFrameId = requestAnimationFrame(handleCameraMovement);
-    return () => cancelAnimationFrame(animationFrameId);
   }, []);
 
   useEffect(() => {
@@ -261,11 +270,12 @@ export function SimulationCanvas({
       }
     }
 
-    const biomeColors: Record<string, string> = {
-       forest: CONFIG.colors.BIOME?.forest ?? "#2e7d32",
-       field: CONFIG.colors.BIOME?.field ?? "#9e9e24",
-       rocky: CONFIG.colors.BIOME?.rocky ?? "#616161"
-    };
+     const biomeColors: Record<string, string> = {
+        forest: CONFIG.colors.BIOME?.forest ?? "#2e7d32",
+        field: CONFIG.colors.BIOME?.field ?? "#9e9e24",
+        rocky: CONFIG.colors.BIOME?.rocky ?? "#616161",
+        plains: "#a8d5a2"
+     };
 
      const isVisibilityFiltered = selectedVisibilityAgentId !== null && visibilityData !== null;
      ctx.globalAlpha = isVisibilityFiltered ? 0.2 : 0.4;
@@ -849,7 +859,7 @@ export function SimulationCanvas({
       if (!showRelationships) return;
       const agents = snapshot.agents ?? [];
       const agentById = new Map<number, Agent>();
-      agents.forEach((agent: Agent) => agentById.set(agent.id, agent));
+      agents.forEach((agent: Agent) => agentById.set(typeof agent.id === 'number' ? agent.id : Number(agent.id), agent));
 
       ctx.save();
       ctx.lineWidth = Math.max(1, 1 / camera.zoom);
@@ -858,7 +868,7 @@ export function SimulationCanvas({
         if (!hasPos(agent) || !Array.isArray(rels)) continue;
         for (const rel of rels) {
           const targetId = rel.agentId ?? rel["agent-id"];
-          if (typeof targetId !== "number" || agent.id > targetId) continue;
+          if (typeof targetId !== "number" || (typeof agent.id === 'number' ? agent.id : Number(agent.id)) > targetId) continue;
           const target = agentById.get(targetId);
           if (!target || !hasPos(target)) continue;
           const affinity = Number(rel.affinity ?? 0.5);
@@ -883,17 +893,43 @@ export function SimulationCanvas({
 
     drawRelationshipLinks();
 
-    for (const agent of snapshot.agents ?? []) {
-      if (!hasPos(agent) || !isVisible(agent, "agent")) continue;
-      const [aq, ar] = agent.pos as AxialCoords;
-      const tileVisibilityState = getTileVisibilityState(aq, ar);
-      if (tileVisibilityState === "hidden") continue;
-      const [ax, ay] = axialToPixel([aq, ar], size);
-      const agentId = agent.id;
-      const path = agentPaths[agentId] ?? [];
-      const status = agent.status as any;
-      const alive = status?.["alive?"] ?? status?.alive ?? true;
-      const isColonist = ["peasant", "priest", "knight", "champion"].includes(String(agent.role));
+     console.log("[SimulationCanvas] Starting entity rendering - total agents:", snapshot.agents?.length ?? 0);
+     let renderedAgents = 0;
+     let filteredByVisibility = 0;
+     let filteredByPosition = 0;
+     let filteredByTileVisibility = 0;
+     
+     // DEBUG: Temporarily bypass all visibility checks to test entity rendering
+     const DEBUG_BYPASS_VISIBILITY = true;
+     
+     for (const agent of snapshot.agents ?? []) {
+       if (!hasPos(agent)) {
+         filteredByPosition++;
+         continue;
+       }
+       
+       const [aq, ar] = agent.pos as AxialCoords;
+       
+       // DEBUG: Skip visibility checks if enabled
+       if (!DEBUG_BYPASS_VISIBILITY) {
+         if (!isVisible(agent, "agent")) {
+           filteredByVisibility++;
+           continue;
+         }
+         const tileVisibilityState = getTileVisibilityState(aq, ar);
+         if (tileVisibilityState === "hidden") {
+           filteredByTileVisibility++;
+           continue;
+         }
+       }
+       renderedAgents++;
+       
+       const [ax, ay] = axialToPixel([aq, ar], size);
+const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
+        const path = agentPaths[agentId] ?? [];
+       const status = agent.status as any;
+       const alive = status?.["alive?"] ?? status?.alive ?? true;
+       const isColonist = ["peasant", "priest", "knight", "champion"].includes(String(agent.role));
 
       if (alive && isColonist) {
         drawColonist(ax, ay, String(agent.role), (agent as any).stats);
@@ -960,8 +996,10 @@ export function SimulationCanvas({
          if (bubbleAge < 3000) {
            drawSpeechBubble(ax, ay, bubble.text, bubbleAge);
          }
-       }
-     }
+        }
+      }
+     
+     console.log("[SimulationCanvas] Entity rendering summary - rendered:", renderedAgents, "filtered by visibility:", filteredByVisibility, "filtered by position:", filteredByPosition, "filtered by tile visibility:", filteredByTileVisibility);
 
     ctx.restore();
 
@@ -992,11 +1030,16 @@ export function SimulationCanvas({
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    // Get canvas display size (not internal pixel size)
+    const dpr = window.devicePixelRatio || 1;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
 
+    // Convert to world coordinates accounting for camera transforms
     const worldX = (x - centerX) / camera.zoom - camera.offsetX;
     const worldY = (y - centerY) / camera.zoom - camera.offsetY;
+
+
 
     const [q, r] = pixelToAxial(worldX, worldY, CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING);
     const cell: AxialCoords = [q, r];

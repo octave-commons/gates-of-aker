@@ -25,39 +25,38 @@
           (<= health 0.0) :health-critical
           :else nil)))))
 
-(defn- create-death-memory
-  "Create a memory entity for agent death."
-  [ecs-world agent-pos cause killer-role agent-id memory-strength]
-  (let [memory-id (java.util.UUID/randomUUID)
-        
-        ;; Build facet list for memory
-        base-facets ["death" "tragedy" "loss" "warning" "fear" "blood" "corpse"]
-        
-        ;; Killer facets based on cause
-        killer-facets (cond
-                       killer-role [ (name killer-role)]
-                       (= cause :starvation) ["wolf" "hunger"]
-                       (= cause :health-critical) ["bear" "danger"]
-                       :else [])
-        
-        ;; Agent-specific facets
-        agent-facets ["agent" "person"]
-        
-        memory-facets (distinct (concat base-facets agent-facets killer-facets))
-        
-        memory-instance (c/->Memory memory-id :memory/danger agent-pos (:tick ecs-world) memory-strength agent-id memory-facets)
-        memory-type (get-component-type-instance memory-instance)]
-    
-    (log/log-info "[MORTALITY:DEATH]"
-                  {:agent-id agent-id
-                   :pos agent-pos
-                   :cause cause
-                   :killer-role killer-role
-                   :strength memory-strength})
-    
-    (-> ecs-world
-        (be/add-entity memory-id)
-        (be/add-component memory-id memory-instance))))
+  (defn- create-death-memory
+    "Create a memory entity for agent death."
+    [ecs-world agent-pos cause killer-role agent-id memory-strength]
+    (let [memory-id (java.util.UUID/randomUUID)
+
+          ;; Build facet list for memory
+          base-facets ["death" "tragedy" "loss" "warning" "fear" "blood" "corpse"]
+
+          ;; Killer facets based on cause
+          killer-facets (cond
+                          killer-role [ (name killer-role)]
+                          (= cause :starvation) ["wolf" "hunger"]
+                          (= cause :health-critical) ["bear" "danger"]
+                          :else [])
+
+          ;; Agent-specific facets
+          agent-facets ["agent" "person"]
+
+          memory-facets (distinct (concat base-facets agent-facets killer-facets))
+
+          memory-instance (c/->Memory memory-id :memory/danger agent-pos (:tick ecs-world) memory-strength agent-id memory-facets)
+          memory-type (get-component-type-instance memory-instance)]
+
+      (log/log-info "[MORTALITY:DEATH]"
+                    {:agent-id agent-id
+                     :pos agent-pos
+                     :cause cause
+                     :killer-role killer-role
+                     :strength memory-strength})
+
+      (-> ecs-world
+          (be/add-entity {memory-id memory-instance}))))
 
 (defn- handle-entity-death
   "Handle entity death by creating memory and marking as dead."
@@ -70,19 +69,19 @@
         needs-type (get-component-type-instance needs-instance)
         death-instance (c/->DeathState true nil nil)
         death-type (get-component-type-instance death-instance)
-        
+
         entity-pos (be/get-component ecs-world entity-id pos-type)
         agent-stats (be/get-component ecs-world entity-id stats-type)
-        
+
         ;; Calculate memory strength based on agent stats
         strength (min 2.0 (+ 0.5 (* 0.01 (or (:strength agent-stats) 0.4))))
-        
+
         ;; Mark as dead
         new-death-state (c/->DeathState false cause (:tick ecs-world))
-        
+
         ;; Create memory at death location
         world-with-memory (create-death-memory ecs-world entity-pos cause killer-role entity-id strength)]
-    
+
     (-> world-with-memory
         (be/add-component entity-id new-death-state))))
 
@@ -103,7 +102,7 @@
   (let [death-instance (c/->DeathState true nil nil)
         death-type (get-component-type-instance death-instance)
         all-entities (be/get-all-entities-with-component ecs-world death-type)]
-    
+
     (reduce
      (fn [world entity-id]
        (let [death-state (be/get-component world entity-id death-type)

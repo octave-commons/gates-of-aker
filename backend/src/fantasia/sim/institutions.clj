@@ -22,15 +22,15 @@
    (let [mouth-id (get-in world [:levers :mouthpiece-agent-id])
          mouth (when (some? mouth-id)
                  (first (filter #(= (:id %) mouth-id) agents)))
-         speaker (or mouth {:id (keyword (name institution))
+         speaker (or mouth {:id (if (nil? institution) :unknown (keyword (name institution)))
                             :role :institution})]
      (reduce
        (fn [{:keys [agents mentions traces]} a]
           (let [res {}] ; TODO: Migrate agents/apply-packet-to-listener to ECS
-           {:agents (conj agents (:listener res))
-            :mentions (into mentions (:mentions res))
-            :traces (into traces (:traces res))}))
-       {:agents [] :mentions [] :traces []}
+            {:agents (conj agents (:listener res))
+             :mentions (into mentions (:mentions res))
+             :traces (into traces (:traces res))}))
+       {:agents agents :mentions [] :traces []}
        agents)))
 
 (defn process-broadcasts!

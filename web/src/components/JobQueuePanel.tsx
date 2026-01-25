@@ -1,7 +1,7 @@
 import React from "react";
 
 type JobQueuePanelProps = {
-  jobs: any[];
+  jobs: any[] | null | undefined;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 };
@@ -51,7 +51,8 @@ const jobTypeNames: Record<string, string> = {
 };
 
 export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: JobQueuePanelProps) {
-  const activeJobs = jobs.filter((j: any) => j.state !== ":completed");
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const activeJobs = safeJobs.filter((j: any) => j.state !== ":completed");
   const getField = (job: any, key: string) => job?.[key] ?? job?.[key.replace(/-/g, "_")] ?? job?.[key.replace(/-(\w)/g, (_, c) => c.toUpperCase())];
   const getAgentId = (job: any) => getField(job, "worker-id") ?? getField(job, "worker");
   const getPos = (value: any) => {

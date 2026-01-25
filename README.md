@@ -7,15 +7,12 @@ Fantasia is a hybrid colony simulator and myth debugger that pairs a Clojure bac
 - `web/`: React 19 + Vite UI for viewing ticks, levers, and trace logs.
 - `docs/`: Design notes, inbox sketches, and longer references (`HACK.md`, `docs/notes`).
 
-See `AGENTS.md` for the authoritative coding standards, naming conventions, and test expectations.
+See `AGENTS.md` for the authoritative coding standards, naming conventions, and test expectations. `AGENTS.md` includes comprehensive documentation links and instructions for all contributors.
 
 ## Prerequisites
 - Java 17+ (set `JAVA_HOME` accordingly) for the Clojure tools.
 - Clojure CLI (`clojure` command) with access to Maven Central.
-- Bun for the frontend (https://bun.sh). Install via:
-  ```bash
-  curl -fsSL https://bun.sh/install | bash
-  ```
+- Node.js 18+ and npm for the frontend (Vite build system).
 
 ## Getting Started
 1. **Clone** the repo and open a shell at the repo root.
@@ -24,9 +21,9 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
    (cd backend && clojure -P)
    ```
 3. **Install frontend deps:**
-    ```bash
-    bun install --prefix web
-    ```
+     ```bash
+     npm install --prefix web
+     ```
 
 ## Running the Stacks
 ### Backend
@@ -81,9 +78,9 @@ clojure -R:nrepl
 ```
 
 ### Frontend
-- Dev server: `bun run dev` (from `web/` directory, Vite on port 5173, expected to talk to backend on 3000).
-- Build: `bun run build` (runs `tsc -b` then `vite build`).
-- Preview: `bun run preview` to serve the production bundle locally.
+- Dev server: `npm run dev --prefix web` (Vite on port 5173, expected to talk to backend on 3000).
+- Build: `npm run build --prefix web` (runs `tsc -b` then `vite build`).
+- Preview: `npm run preview --prefix web` to serve the production bundle locally.
 
 ## Docker Compose
 - Prereq: Docker Engine/Desktop 20.10+ with Compose v2.
@@ -93,7 +90,7 @@ clojure -R:nrepl
   docker compose up --build
   ```
   - Backend container (`backend`) runs `clojure -M:server` and binds `localhost:3000`.
-  - Frontend container (`web`) runs `bun run dev -- --host 0.0.0.0 --port 5173` and binds `http://localhost:5173`.
+  - Frontend container (`web`) runs `npm run dev -- --host 0.0.0.0 --port 5173` and binds `http://localhost:5173`.
 - Stop with `Ctrl+C`; add `-d` to detach. Compose mounts the repo plus caches (`~/.m2`, `web/node_modules`) so edits on the host refresh inside containers.
 - Override the UI’s API origin (default `http://localhost:3000`) by setting `VITE_BACKEND_ORIGIN` before `docker compose up`; the value propagates into the Vite dev server.
 
@@ -108,11 +105,13 @@ clojure -R:nrepl
 - `docs/notes` acts as the changelog of facts (API contracts, seeds, payload examples). Append rather than rewrite when possible.
 
 ### Key Design Documents
+- [[ROADMAP.md]] - Current project roadmap and milestones  
 - [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
 - [[docs/notes/planning/2025-01-15-mvp.md]] - MVP definition
 - [[docs/notes/design/2026-01-15-world-schema.md]] - World schema (MVP authoritative shape)
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle and champion mechanics
 - [[spec/2026-01-15-myth-engine.md]] - Myth engine and miracle pipeline
+- [[spec/labeling-system.md]] - GitHub issue and spec labeling system
 - [[docs/notes/design/2026-01-15-aker-boundry-control-flow.md]] - Card system and Aker boundary
 
 ### Milestone Specifications
@@ -153,6 +152,6 @@ clojure -R:nrepl
 1. Branch from `main` and keep changes focused and reviewable.
 2. Follow the build/run/test commands above before opening a PR.
 3. Record any WS payload captures or manual verification steps in `docs/notes` or the PR body.
-4. Update `AGENTS.md` or this README when workflows or conventions change.
+4. Update `AGENTS.md` or this README when workflows or conventions change. See `spec/labeling-system.md` for proper issue labeling and cross-referencing guidelines.
 
 Questions or ideas? Capture them in `docs/inbox` or open a discussion in your PR description so future agents can follow the breadcrumbs.

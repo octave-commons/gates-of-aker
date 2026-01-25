@@ -1,6 +1,7 @@
 (ns fantasia.sim.ecs.systems.job_processing
   (:require [brute.entity :as be]
-            [fantasia.sim.ecs.components :as c]))
+            [fantasia.sim.ecs.components :as c]
+            [fantasia.sim.hex :as hex]))
 
 (defn process-job-for-agent
   "Process a single job for an agent adjacent to target."
@@ -25,8 +26,8 @@
         agents-with-jobs (be/get-all-entities-with-component ecs-world job-assignment-type)]
     (reduce (fn [acc agent-id]
               (let [job-assignment (be/get-component acc agent-id job-assignment-type)]
-                (when job-assignment
-                  (process-job-for-agent acc agent-id (:job-id job-assignment))))
-              acc)
+                (if job-assignment
+                  (process-job-for-agent acc agent-id (:job-id job-assignment))
+                  acc)))
             ecs-world
-            agents-with-jobs)))
+            agents-with-jobs))))

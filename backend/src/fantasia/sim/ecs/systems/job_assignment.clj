@@ -60,13 +60,13 @@
         status (be/get-component ecs-world agent-id status-type)
         idle? (and (:idle? status) (alive-agent? status))
         player? (player-agent? role)]
-          (when (and idle? player?)
-        (let [available-jobs (filter (fn [j] (and (= (:state j) :pending)
-                                                       (or (nil? (:type-limit j))
-                                                           (< (:claimed-count j) (:type-limit j))))
-                                    pending-jobs)
-              best-job (first (sort-jobs-by-priority available-jobs position))]
-          best-job))))
+    (when (and idle? player?)
+      (let [available-jobs (filter (fn [j] (and (= (:state j) :pending)
+                                                      (or (nil? (:type-limit j))
+                                                          (< (:claimed-count j) (:type-limit j)))))
+                                   pending-jobs)
+            best-job (first (sort-jobs-by-priority available-jobs position))]
+        best-job))))
 
 (defn claim-job!
   "Assign a job to an agent."
@@ -80,10 +80,10 @@
                        (let [queue-type (be/get-component-type job-type)
                              queue (be/get-component ecs-world job-id queue-type)]
                          (-> ecs-world'
-                             (be/add-component job-id (assoc queue :pending-jobs (conj (:pending-jobs queue) agent-id))
-                             (be/add-component job-id (assoc queue :claimed-count (inc (or (:claimed-count queue) 0)))
-                             (be/add-component job-id (assoc queue :state :claimed)))
-                       ecs-world'))
+                             (be/add-component job-id (assoc queue :pending-jobs (conj (:pending-jobs queue) agent-id)))
+                             (be/add-component job-id (assoc queue :claimed-count (inc (or (:claimed-count queue) 0))))
+                             (be/add-component job-id (assoc queue :state :claimed))))
+                       ecs-world')
         ecs-world''' (be/add-component ecs-world'' agent-id status-type)]
     (-> ecs-world'''
         (be/add-component agent-id (assoc (be/get-component ecs-world''' agent-id status-type) :idle? false))
@@ -113,14 +113,14 @@
               (let [building-id (first (filter (fn [bid]
                                                  (let [job-queue (be/get-component ecs-world bid job-queue-type)]
                                                    (or (some #(= % agent-id) (:pending-jobs job-queue))
-                                                       (some #(= % agent-id) (:assigned-jobs job-queue))))
+                                                       (some #(= % agent-id) (:assigned-jobs job-queue)))))
                                                  buildings-with-queues))
                     best-job (when building-id
                                  (let [job-queue (be/get-component ecs-world building-id job-queue-type)
                                        jobs (:jobs job-queue [])]
                                    (find-best-job acc agent-id job-queue-type jobs)))]
                 (if best-job
-                  (claim-job! acc agent-id (:job-id best-job) (:job-type best-job) job-queue)
-                  (mark-agent-idle! acc agent-id))))
+                  (claim-job! acc agent-id (:job-id best-job) (:job-type best-job) job-queue-type)
+                  (mark-agent-idle! acc agent-id)))))
             ecs-world
-            idle-agents)))
+            idle-agents))

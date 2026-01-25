@@ -5,7 +5,8 @@
 
 (deftest broadcasts-fire-on-cadence
   (let [world (core/initial-world 1)
-        due (inst/broadcasts (assoc world :tick 6))
+        world-with-tick (assoc world :tick 6)
+        due (inst/broadcasts world-with-tick)
         not-due (inst/broadcasts (assoc world :tick 5))
         broadcast (first due)]
     (is (= 1 (count due)))
