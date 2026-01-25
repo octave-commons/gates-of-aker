@@ -464,6 +464,25 @@ For external dependencies:
 - **Target 80% overall coverage** after completion
 - **Document gaps** in `/docs/notes` when coverage targets aren't met
 
+## Phase 1 Status (2026-01-24)
+
+**Completed Files:**
+1. ✓ `backend/test/fantasia/sim/test_helpers.clj` - Test utilities and fixtures
+2. ✓ `backend/test/fantasia/sim/los_test.clj` - Vision radius, hex positions, visibility
+3. ✓ `backend/test/fantasia/sim/agent_visibility_test.clj` - Polygon visibility
+4. ✓ `backend/test/fantasia/sim/delta_test.clj` - Delta tracking (public functions)
+5. ✓ `backend/test/fantasia/sim/ecs/systems/job_processing_test.clj` - Job execution
+6. ✓ `backend/test/fantasia/sim/ecs/systems/job_creation_test.clj` - Job generation
+
+**Fixed Issues:**
+- Added missing require for `fantasia.sim.constants` in `agent_visibility.clj`
+- Fixed namespace references (job-creation, job_processing with underscores)
+
+**Notes:**
+- Some tests had to be simplified to work with existing API
+- `delta/deep-equal?` is private, not tested directly
+- `los/visible-buildings` and `vis/merge-visibility-maps` functions don't exist in source
+
 ## Success Metrics
 
 ### Quantitative Goals
@@ -504,15 +523,15 @@ For external dependencies:
 
 ## Implementation Timeline
 
-**Week 1:**
-- Create test helpers library
-- Implement `los_test.clj`
-- Implement `agent_visibility_test.clj`
+**Week 1 (2026-01-24):**
+- ✓ Create test helpers library
+- ✓ Implement `los_test.clj`
+- ✓ Implement `agent_visibility_test.clj`
 
-**Week 2:**
-- Implement `delta_test.clj`
-- Implement `job_processing_test.clj`
-- Implement `job_creation_test.clj`
+**Week 2 (2026-01-24):**
+- ✓ Implement `delta_test.clj`
+- ✓ Implement `job_processing_test.clj`
+- ✓ Implement `job_creation_test.clj`
 - Run coverage report, verify Phase 1 targets
 
 **Week 3-4:**
