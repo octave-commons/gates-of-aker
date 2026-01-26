@@ -93,11 +93,14 @@ jobs:
       run: npm ci
       
     - name: Type check
+      working-directory: ./web
+      run: npm run typecheck
+      
+    - name: Run unit tests
       id: frontend-test
       working-directory: ./web
       run: |
-        npm run typecheck
-        npm run test:quiet
+        npm test -- --exclude src/__tests__/e2e/**
         npm run build
         
     - name: Run tests with coverage

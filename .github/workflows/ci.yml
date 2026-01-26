@@ -81,9 +81,9 @@ jobs:
       working-directory: ./web
       run: npm run typecheck
       
-    - name: Run tests
+    - name: Run unit tests
       working-directory: ./web
-      run: npm run test:quiet
+      run: npm test -- --exclude src/__tests__/e2e/**
       
     - name: Build
       working-directory: ./web

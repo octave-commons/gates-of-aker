@@ -6,8 +6,7 @@
 (defn get-free-port
   "Get a free port for testing."
   []
-  (let [server (java.net.ServerSocket.)]
-    (.bind server nil 0)
+  (let [server (java.net.ServerSocket. 0)]
     (let [port (.getLocalPort server)]
       (.close server)
       port)))
