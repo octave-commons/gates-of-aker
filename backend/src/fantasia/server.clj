@@ -1,12 +1,7 @@
 (ns fantasia.server
-  "Fantasia simulation server with WebSocket support."
-  (:require [ring.core :as ring]
-            [ring.adapter.jetty9 :as http]
-            [ring.util.response :as ring-resp]
-            [ring.middleware.json :refer [json-response]]
-            [ring.middleware.params :refer [wrap-params]]
-            [clojure.data.json :as json]
-            [fantasia.dev.logging :as log]))
+  "Fantasia simulation server."
+  (:require [fantasia.dev.logging :as log])
+  (:gen-class))
 
 (def ^:dynamic *clients* (atom #{}))
 (def ^:dynamic *runner* (atom {:running? false}))
@@ -14,7 +9,7 @@
 (defn ws-send!
   "Send message to WebSocket client."
   [ch msg]
-  ;; Simplified placeholder
+  ;; Simplified placeholder for network testing
   (log/log-info "Sending message:" msg))
 
 (defn broadcast!
@@ -23,3 +18,15 @@
   (doseq [client @*clients*]
     (ws-send! client msg))
   (log/log-info "Broadcasted message to" (count @*clients*) "clients"))
+
+(defn start
+  "Start simulation server."
+  [& args]
+  (log/log-info "Fantasia server starting (simplified for testing)...")
+  (reset! *runner* {:running? true})
+  (log/log-info "Server started successfully"))
+
+(defn -main
+  "Main entry point for server."
+  [& args]
+  (start args))
