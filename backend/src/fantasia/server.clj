@@ -149,8 +149,9 @@
 (defn handle-ollama-test []
   (let [start-time (System/currentTimeMillis)
         test-prompt "test"
-         ollama-model (get-in (sim/get-state) [:levers :ollama-model] scribes/ollama-model)
-        result (scribes/call-ollama! test-prompt ollama-model)
+         ollama-config (config/load-ollama-config!)
+         ollama-model (config/get-ollama-primary-model ollama-config)
+        result (scribes/call-ollama-sync! test-prompt ollama-model)
         end-time (System/currentTimeMillis)
         latency (- end-time start-time)]
     (if (:success result)
@@ -396,7 +397,8 @@
     (println (str "Fantasia backend listening on http://localhost:" port))
     (start-nrepl!)
     (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable stop-nrepl!))
+    (embeddings/init-embeddings!) ; Initialize embedding system (this will load config)
     (sim/create-ecs-initial-world {}) ; Initialize ECS world on startup
-    (scribes/start-ollama-keep-alive!)
+    (scribes/start-ollama-keep-alive!) ; This will load Ollama config on first call
     (http/run-server app {:port port})
     @(promise)))
