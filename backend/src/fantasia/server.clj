@@ -1,15 +1,17 @@
 (ns fantasia.server
    (:gen-class)
    (:require
-     [cheshire.core :as json]
-     [clojure.string :as str]
-     [org.httpkit.server :as http]
-     [reitit.ring :as ring]
-      [fantasia.sim.ecs.tick :as sim]
-      [fantasia.sim.ecs.adapter :as adapter]
-      [fantasia.sim.scribes :as scribes]
-     [nrepl.server :as nrepl]
-     [fantasia.dev.logging :as log]))
+      [cheshire.core :as json]
+      [clojure.string :as str]
+      [org.httpkit.server :as http]
+      [reitit.ring :as ring]
+       [fantasia.sim.ecs.tick :as sim]
+       [fantasia.sim.ecs.adapter :as adapter]
+       [fantasia.sim.scribes :as scribes]
+       [fantasia.sim.embeddings :as embeddings]
+      [nrepl.server :as nrepl]
+      [fantasia.dev.logging :as log]
+      [fantasia.config :as config]))
 
 (defn json-resp
   ([m] (json-resp 200 m))

@@ -1,17 +1,19 @@
 (ns fantasia.sim.embeddings
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
-            [fantasia.dev.logging :as log]))
+            [fantasia.dev.logging :as log]
+            [fantasia.config :as config]))
 
 (defonce ^:private nomic-cache (atom {}))
 (defonce ^:private max-cache-size 1000)
 
 (defn get-ollama-config
-  "Get Ollama configuration from world levers."
-  [world]
-  {:url (get-in world [:levers :ollama-embed-url] "http://localhost:11434/api/embed")
-   :model (get-in world [:levers :ollama-embed-model] "nomic-embed-text")
-   :timeout-ms (get-in world [:levers :ollama-embed-timeout-ms] 10000)})
+  "Get Ollama embedding configuration from loaded config."
+  []
+  (let [cfg (config/load-ollama-config!)]
+    {:url (get-in cfg [:ollama-embed :url] "http://localhost:11434/api/embed")
+     :model (get-in cfg [:ollama-embed :model] "nomic-embed-text")
+     :timeout-ms (get-in cfg [:ollama-embed :timeout-ms] 10000)}))
 
 (defn call-nomic-embed!
   "Call Ollama nomic-embed-text API to get embedding vector."
@@ -67,5 +69,6 @@
 (defn init-embeddings!
   "Initialize embedding system (cache is empty at start)."
   []
-  (log/log-info "[NOMIC] Embedding system initialized with nomic-embed-text")
-  {:loaded? true})
+  (let [cfg (get-ollama-config)]
+    (log/log-info "[NOMIC] Embedding system initialized with model:" (:model cfg))
+    {:loaded? true}))
