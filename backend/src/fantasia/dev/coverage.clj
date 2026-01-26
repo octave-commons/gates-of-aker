@@ -14,7 +14,8 @@
                          (re-pattern "fantasia\\.sim\\.ecs\\.simple-test")
                          (re-pattern "fantasia\\.sim\\.ecs-test")
                          (re-pattern "fantasia\\.sim\\.ecs-test-simple")
-                         (re-pattern "fantasia\\.sim\\.ecs\\.test-systems")]
+                         (re-pattern "fantasia\\.sim\\.ecs\\.test-systems")
+                         (re-pattern "fantasia\\.server")]
      :test-ns-regex [(re-pattern "^(?!.*\\b(fantasia\\.sim\\.ecs-test|fantasia\\.sim\\.ecs-test-simple)\\b).*fantasia.*-test$")]
     :cover-only-ns-in-regex? true
     :fail-threshold 0

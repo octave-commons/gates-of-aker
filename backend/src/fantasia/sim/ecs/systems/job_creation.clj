@@ -5,15 +5,15 @@
 (defn generate-basic-jobs
   "Generate basic jobs from buildings with JobQueue components."
   [ecs-world global-state]
-  (let [job-queue-type (be/get-component-type (c/->JobQueue [] {}))
+  (let [job-queue-type (be/get-component-type (c/->JobQueue {} [] {}))
         buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)
         tile-type (be/get-component-type (c/->Tile :ground :plains nil nil))
         tick (:tick global-state 0)]
     (reduce (fn [acc building-id]
-              (let [job-queue (be/get-component acc building-id job-queue-type)
+              (let [job-queue (be/get-component ecs-world building-id job-queue-type)
                     current-jobs (:jobs job-queue {})
                     position-type (be/get-component-type (c/->Position 0 0))
-                    position (be/get-component acc building-id position-type)
+                    position (be/get-component ecs-world building-id position-type)
                     q (:q position)
                     r (:r position)
                     tile (be/get-component acc building-id tile-type)

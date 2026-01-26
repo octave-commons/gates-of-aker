@@ -83,6 +83,8 @@ Every  telling of it is going to be different,
 There is usually a "right now" "correct" though, as the myths evolve.
 ### Facet associations
 What do they govern? fire? wind? war? winter?
+They are just adjectives that have been embedded in a semantic vector that we can then compare to other vectors generated from any other word, to get a general idea of semantic similarity between the two concepts
+-
 ### Influence
 ### Active Powers
 ### Passive Powers

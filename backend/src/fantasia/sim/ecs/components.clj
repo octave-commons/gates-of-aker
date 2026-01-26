@@ -49,7 +49,7 @@
 
 (defrecord ShrineState [mouthpiece-agent-id])
 
-(defrecord JobQueue [pending-jobs assigned-jobs])
+(defrecord JobQueue [jobs pending-jobs assigned-jobs])
 
 (defrecord WorldItem [resource qty pos created-at])
 

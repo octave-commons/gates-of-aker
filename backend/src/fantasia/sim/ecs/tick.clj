@@ -34,7 +34,6 @@
         (fantasia.sim.ecs.systems.job_assignment/process global-state)
         (fantasia.sim.ecs.systems.job_processing/process global-state)
         (fantasia.sim.ecs.systems.movement/process)
-        ;; (fantasia.sim.ecs.systems.agent-interaction/process)
         )))
 
 (defn tick-ecs-once [global-state]
@@ -87,11 +86,12 @@
        ecs-world5)))
 
 (defn spawn-initial-buildings! [ecs-world bounds]
-  "Spawn initial buildings with job queues near map center."
+  "Spawn initial buildings with job queues near map center.
+   Includes workshop for builder jobs, campfire for warmth, and stockpile for storage."
   (let [center-q (if (= (:shape bounds) :rect)
                    (+ (:origin-q bounds 0) (quot (:w bounds) 2))
                    (:origin-q bounds 0))
-        center-r (if (= (:shape bounds) :rect)
+         center-r (if (= (:shape bounds) :rect)
                    (+ (:origin-r bounds 0) (quot (:h bounds) 2))
                    (:origin-r bounds 0))
         ;; Place buildings in a circle around center

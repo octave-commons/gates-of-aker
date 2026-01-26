@@ -11,13 +11,15 @@
         position-type (be/get-component-type (c/->Position 0 0))
         position (be/get-component ecs-world agent-id position-type)
         target-pos (:target job-assignment)
-        job-type (:type job-assignment)
         current-progress (:progress job-assignment)]
-    (when (and target-pos (not (= 1.0 current-progress)))
-      (if (hex/neighbors target-pos (position))
-        (let [new-progress (min 1.0 (+ current-progress 0.1))]
-          (be/add-component ecs-world agent-id (c/->JobAssignment job-id new-progress)))
-        (be/remove-component ecs-world agent-id job-assignment-type))))
+    (when (and target-pos position (not (= 1.0 current-progress)))
+      (let [agent-pos [(:q position) (:r position)]
+            neighbor-list (hex/neighbors agent-pos)
+            is-adjacent (some #(= target-pos %) neighbor-list)]
+        (if is-adjacent
+          (let [new-progress (min 1.0 (+ current-progress 0.1))]
+            (be/add-component ecs-world agent-id (c/->JobAssignment job-id new-progress)))
+          (be/remove-component ecs-world agent-id job-assignment-type))))))
 
 (defn process
   "Process job progress for all agents with jobs."
@@ -30,4 +32,4 @@
                   (process-job-for-agent acc agent-id (:job-id job-assignment))
                   acc)))
             ecs-world
-            agents-with-jobs))))
+            agents-with-jobs)))
