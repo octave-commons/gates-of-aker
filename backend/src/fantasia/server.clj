@@ -169,17 +169,21 @@
                    (:tiles state))))))
 
 (defn handle-ws [req]
-   (try
-     (http/with-channel req ch
-       (swap! *clients conj ch)
-       (let [initial-state (sim/get-state)
-              ecs-world (sim/get-ecs-world)
-              snapshot (adapter/ecs->snapshot ecs-world initial-state)
-              visible-tiles (:tiles snapshot)]
-         (println "[WS] New client connected, sending hello")
-         (ws-send! ch {:op "hello"
-                       :state (merge (select-keys snapshot [:tick :shrine :levers :map :agents :calendar :temperature :daylight :cold-snap])
-                                             {:tiles visible-tiles})}))
+    (try
+      (http/with-channel req ch
+        (swap! *clients conj ch)
+        ;; Auto-create world if state is empty (e.g., on server startup)
+        (when (empty? (:tiles (sim/get-state)))
+          (println "[WS] State is empty, creating initial world")
+          (sim/reset-world! {:seed 1 :tree_density 0.05}))
+        (let [initial-state (sim/get-state)
+               ecs-world (sim/get-ecs-world)
+               snapshot (adapter/ecs->snapshot ecs-world initial-state)
+               visible-tiles (:tiles snapshot)]
+          (println "[WS] New client connected, sending hello with" (count visible-tiles) "tiles")
+          (ws-send! ch {:op "hello"
+                        :state (merge (select-keys snapshot [:tick :shrine :levers :map :agents :calendar :temperature :daylight :cold-snap :tile-visibility :revealed-tiles-snapshot])
+                                              {:tiles visible-tiles})}))
        (http/on-close ch (fn [_] (swap! *clients disj ch)))
       (http/on-receive ch
         (fn [raw]

@@ -25,6 +25,7 @@
 - [[FRONTEND]] -> `FRONTEND.md` - TypeScript/React frontend style guide
 - [[DIRECTORIES]] -> `DIRECTORIES.md` - Project structure and organization
 - [[TOOLCHAINS]] -> `TOOLCHAINS.md` - Development tools and environment setup
+- [[ecosystem.config.js]] -> `ecosystem.config.js` - PM2 process management configuration
 
 ### Knowledge Management
 - [[OBSIDIAN]] -> `OBSIDIAN.md` - Obsidian specific instructions for knowledge graphing

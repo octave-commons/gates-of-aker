@@ -1,16 +1,17 @@
 (ns fantasia.sim.ecs.tick
-(:require [brute.entity :as be]
-              [fantasia.sim.ecs.core]
-              [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.ecs.systems.needs-decay]
-              ;; [fantasia.sim.ecs.systems.job-creation]
-              [fantasia.sim.ecs.systems.movement]
-              [fantasia.sim.ecs.systems.job-assignment]
-              [fantasia.sim.ecs.systems.job-processing]
-              [fantasia.sim.ecs.systems.agent-interaction]
-             [fantasia.sim.ecs.adapter]
-             [fantasia.sim.time :as time]
-             [fantasia.sim.biomes :as biomes]))
+  (:require [brute.entity :as be]
+               [fantasia.sim.ecs.core]
+               [fantasia.sim.ecs.components :as c]
+             [fantasia.sim.ecs.systems.needs-decay]
+               [fantasia.sim.ecs.systems.job-creation]
+               [fantasia.sim.ecs.systems.movement]
+               [fantasia.sim.ecs.systems.job-assignment]
+               [fantasia.sim.ecs.systems.job-processing]
+               [fantasia.sim.ecs.systems.agent-interaction]
+              [fantasia.sim.ecs.adapter]
+               [fantasia.sim.time :as time]
+               [fantasia.sim.biomes :as biomes]
+               [fantasia.sim.world :as world]))
 
 (def ^:dynamic *ecs-world (atom (fantasia.sim.ecs.core/create-ecs-world)))
 (def ^:dynamic *global-state (atom {}))
@@ -29,28 +30,32 @@
     (-> ecs-world
         (fantasia.sim.ecs.systems.needs-decay/process cold-snap)
         ;; (fantasia.sim.ecs.systems.needs/process global-state)
-        ;; (fantasia.sim.ecs.systems.job-creation/process global-state)
-        ;; Temporarily disable assignment/processing until stable
-        ;; (fantasia.sim.ecs.systems.job_assignment/process global-state)
-        ;; (fantasia.sim.ecs.systems.job_processing/process global-state)
+        (fantasia.sim.ecs.systems.job_creation/process global-state)
+        (fantasia.sim.ecs.systems.job_assignment/process global-state)
+        (fantasia.sim.ecs.systems.job_processing/process global-state)
         (fantasia.sim.ecs.systems.movement/process)
         ;; (fantasia.sim.ecs.systems.agent-interaction/process)
         )))
 
 (defn tick-ecs-once [global-state]
-  "Run one ECS tick with all systems."
-  (let [ecs-world (get-ecs-world)
-        ecs-world' (run-systems ecs-world global-state)
-        new-tick (inc (:tick global-state))
-        seed (:seed global-state)
-        global-state' (-> global-state
-                           (assoc :tick new-tick)
-                           (assoc :temperature (time/temperature-at seed new-tick))
-                           (assoc :daylight (time/daylight-at seed new-tick)))
-        snapshot (fantasia.sim.ecs.adapter/ecs->snapshot ecs-world' global-state')]
-    (clojure.core/reset! *ecs-world ecs-world')
-    (clojure.core/reset! *global-state global-state')
-    snapshot))
+   "Run one ECS tick with all systems."
+   (let [ecs-world (get-ecs-world)
+         ecs-world' (run-systems ecs-world global-state)
+         new-tick (inc (:tick global-state))
+         seed (:seed global-state)
+         old-global-state @*global-state
+         global-state' (-> global-state
+                            (assoc :tick new-tick)
+                            (assoc :temperature (time/temperature-at seed new-tick))
+                            (assoc :daylight (time/daylight-at seed new-tick)))
+         snapshot (fantasia.sim.ecs.adapter/ecs->snapshot ecs-world' global-state')
+         delta-snapshot (world/delta-snapshot old-global-state global-state' nil)]
+     (clojure.core/reset! *ecs-world ecs-world')
+     (clojure.core/reset! *global-state global-state')
+     {:snapshot snapshot
+      :tick new-tick
+      :attribution nil
+      :delta-snapshot delta-snapshot}))
 
 (defn tick-ecs! [n]
   "Run N ECS ticks."
@@ -89,14 +94,23 @@
         center-r (if (= (:shape bounds) :rect)
                    (+ (:origin-r bounds 0) (quot (:h bounds) 2))
                    (:origin-r bounds 0))
-        ;; Place buildings slightly offset from center
+        ;; Place buildings in a circle around center
         campfire-pos [(- center-q 2) center-r]
-        stockpile-pos [(+ center-q 2) center-r]]
+        stockpile-pos [(+ center-q 2) center-r]
+        farm-pos [center-q (- center-r 3)]
+        orchard-pos [(- center-q 3) (- center-r 2)]
+        house-pos [(+ center-q 3) (- center-r 2)]
+        warehouse-pos [(+ center-q 1) (+ center-r 3)]]
     (println "[ECS] Spawning initial buildings")
     (let [[_ ecs-world1] (fantasia.sim.ecs.core/create-building ecs-world campfire-pos :campfire)
-          [_ ecs-world2] (fantasia.sim.ecs.core/create-building ecs-world1 stockpile-pos :stockpile)]
-      (println "[ECS] Spawned 2 initial buildings")
-      ecs-world2)))
+          [_ ecs-world2] (fantasia.sim.ecs.core/create-building ecs-world1 stockpile-pos :stockpile)
+          [_ ecs-world3] (fantasia.sim.ecs.core/create-building ecs-world2 farm-pos :farm)
+          [_ ecs-world4] (fantasia.sim.ecs.core/create-building ecs-world3 orchard-pos :orchard)
+          [_ ecs-world5] (fantasia.sim.ecs.core/create-building ecs-world4 house-pos :house)
+          [_ ecs-world6] (fantasia.sim.ecs.core/create-building ecs-world5 warehouse-pos :warehouse
+                                                           {:stockpile-config {:resource :log}})]
+      (println "[ECS] Spawned 6 initial buildings")
+      ecs-world6)))
 
 (defn create-ecs-initial-world [opts]
   "Create initial ECS world from scratch."

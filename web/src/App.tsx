@@ -212,18 +212,20 @@ export function App() {
 
      const sequences: number[][] = [];
 
-     const prevJobs = new Map<string, any>();
-     (prevSnapshot.jobs ?? []).forEach((job: any) => {
-       if (job?.id) {
-         prevJobs.set(String(job.id), job);
-       }
-     });
-     const nextJobIds = new Set<string>();
-     (nextSnapshot.jobs ?? []).forEach((job: any) => {
-       if (job?.id) {
-         nextJobIds.add(String(job.id));
-       }
-     });
+      const prevJobs = new Map<string, any>();
+      const prevJobsArray = Array.isArray(prevSnapshot.jobs) ? prevSnapshot.jobs : Object.values(prevSnapshot.jobs ?? {});
+      prevJobsArray.forEach((job: any) => {
+        if (job?.id) {
+          prevJobs.set(String(job.id), job);
+        }
+      });
+      const nextJobIds = new Set<string>();
+      const nextJobsArray = Array.isArray(nextSnapshot.jobs) ? nextSnapshot.jobs : Object.values(nextSnapshot.jobs ?? {});
+      nextJobsArray.forEach((job: any) => {
+        if (job?.id) {
+          nextJobIds.add(String(job.id));
+        }
+      });
       prevJobs.forEach((job, jobId) => {
         if (!nextJobIds.has(jobId)) {
           const jobType = String(job?.type ?? ":job/unknown");
@@ -748,9 +750,9 @@ export function App() {
     return snapshot.agents as Agent[];
   }, [snapshot?.agents]);
    const jobs = useMemo(() => {
-     if (!snapshot?.jobs) return [];
-     return snapshot.jobs as any[];
-   }, [snapshot?.jobs]);
+      if (!snapshot?.jobs) return [];
+      return Array.isArray(snapshot.jobs) ? snapshot.jobs : Object.values(snapshot.jobs);
+    }, [snapshot?.jobs]);
   const calendar = useMemo(() => {
      if (!snapshot?.calendar) return null;
      return snapshot.calendar;
