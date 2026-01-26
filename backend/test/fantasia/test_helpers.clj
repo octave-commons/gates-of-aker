@@ -17,6 +17,6 @@
   []
   (let [ecs-world (ecs/create-ecs-world)]
     ;; Add some basic components for testing
-    (let [[agent-id world1] (ecs/create-agent ecs-world nil [0 0] :priest)]
-          [agent-id2 world2] (ecs/create-agent ecs-world1 nil [1 0] :knight)]]
-      (assoc ecs-world :agents {agent-id agent-id2}))))
+    (let [[agent-id world1] (ecs/create-agent ecs-world nil 0 0 :priest)
+          [agent-id2 world2] (ecs/create-agent world1 nil 1 0 :knight)]
+      (assoc world2 :agents {agent-id agent-id2}))))

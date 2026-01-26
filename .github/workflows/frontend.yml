@@ -1,0 +1,56 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'web/**' ]
+  pull_request:
+    branches: [ main, develop ]
+    paths: [ 'web/**' ]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: web/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: ./web
+      run: npm ci
+      
+    - name: Type check
+      working-directory: ./web
+      run: npm run typecheck
+      
+    - name: Run tests
+      working-directory: ./web
+      run: npm run test:quiet
+      
+    - name: Run tests with coverage
+      working-directory: ./web
+      run: npm run test:coverage
+      
+    - name: Build
+      working-directory: ./web
+      run: npm run build
+      
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./web/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        fail_ci_if_error: false

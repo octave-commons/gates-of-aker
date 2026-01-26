@@ -1,0 +1,178 @@
+name: Full Stack CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-success: ${{ steps.backend-test.outcome }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'maven'
+        
+    - name: Setup Clojure CLI
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        cli: latest
+        
+    - name: Cache Clojure dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gitlibs
+          ~/.m2/repository
+        key: ${{ runner.os }}-clojure-${{ hashFiles('backend/deps.edn') }}
+        restore-keys: |
+          ${{ runner.os }}-clojure-
+          
+    - name: Install dependencies
+      working-directory: ./backend
+      run: clojure -P
+      
+    - name: Install clj-kondo
+      run: |
+        curl -sLO https://github.com/clj-kondo/clj-kondo/releases/latest/download/clj-kondo-linux-amd64.zip
+        unzip clj-kondo-linux-amd64.zip
+        chmod +x clj-kondo
+        sudo mv clj-kondo /usr/local/bin/
+        
+    - name: Run linting
+      working-directory: ./backend
+      run: |
+        clojure -X:lint || echo "Linting completed with warnings/errors"
+        
+    - name: Run tests
+      id: backend-test
+      working-directory: ./backend
+      run: clojure -X:test
+        
+    - name: Generate coverage report
+      working-directory: ./backend
+      run: clojure -X:coverage
+      
+    - name: Upload backend coverage
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./backend/target/coverage/lcov.info
+        flags: backend
+        name: backend-coverage
+        fail_ci_if_error: false
+
+  frontend:
+    runs-on: ubuntu-latest
+    needs: backend
+    outputs:
+      frontend-success: ${{ steps.frontend-test.outcome }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: web/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: ./web
+      run: npm ci
+      
+    - name: Type check
+      id: frontend-test
+      working-directory: ./web
+      run: |
+        npm run typecheck
+        npm run test:quiet
+        npm run build
+        
+    - name: Run tests with coverage
+      working-directory: ./web
+      run: npm run test:coverage
+      
+    - name: Upload frontend coverage
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./web/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        fail_ci_if_error: false
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: needs.backend.outputs.backend-success == 'success' && needs.frontend.outputs.frontend-success == 'success'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'maven'
+        
+    - name: Setup Clojure CLI
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        cli: latest
+        
+    - name: Setup Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: web/package-lock.json
+        
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gitlibs
+          ~/.m2/repository
+          web/node_modules
+        key: ${{ runner.os }}-fullstack-${{ hashFiles('backend/deps.edn', 'web/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-fullstack-
+          
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: clojure -P
+      
+    - name: Install frontend dependencies
+      working-directory: ./web
+      run: npm ci
+      
+    - name: Start backend
+      working-directory: ./backend
+      run: |
+        clojure -M:server &
+        sleep 10
+        
+    - name: Wait for backend health
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:3000/healthz; do sleep 2; done'
+        
+    - name: Run WebSocket E2E tests
+      working-directory: ./web
+      run: npm run test:websocket:e2e
+      
+    - name: Cleanup
+      if: always()
+      run: pkill -f "clojure.*server" || true

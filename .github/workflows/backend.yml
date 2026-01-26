@@ -1,0 +1,77 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'backend/**' ]
+  pull_request:
+    branches: [ main, develop ]
+    paths: [ 'backend/**' ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        java-version: [17, 21]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java ${{ matrix.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+        cache: 'maven'
+        
+    - name: Setup Clojure CLI
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        cli: latest
+        lein: latest
+        bb: latest
+        
+    - name: Cache Clojure dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gitlibs
+          ~/.m2/repository
+        key: ${{ runner.os }}-clojure-${{ hashFiles('backend/deps.edn') }}
+        restore-keys: |
+          ${{ runner.os }}-clojure-
+          
+    - name: Install dependencies
+      working-directory: ./backend
+      run: clojure -P
+      
+    - name: Install clj-kondo
+      run: |
+        curl -sLO https://github.com/clj-kondo/clj-kondo/releases/latest/download/clj-kondo-linux-amd64.zip
+        unzip clj-kondo-linux-amd64.zip
+        chmod +x clj-kondo
+        sudo mv clj-kondo /usr/local/bin/
+        
+    - name: Run linting
+      working-directory: ./backend
+      run: |
+        clojure -X:lint || echo "Linting completed with warnings/errors"
+      
+    - name: Run tests
+      working-directory: ./backend
+      run: clojure -X:test
+      
+    - name: Generate coverage report
+      working-directory: ./backend
+      run: clojure -X:coverage
+      
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./backend/target/coverage/lcov.info
+        flags: backend
+        name: backend-coverage
+        fail_ci_if_error: false

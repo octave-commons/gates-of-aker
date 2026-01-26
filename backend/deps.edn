@@ -25,4 +25,6 @@
   {:extra-paths ["test"]
     :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
                 ring/ring-mock {:mvn/version "0.4.0"}}
-   :exec-fn fantasia.dev.coverage/run}}}
+   :exec-fn fantasia.dev.coverage/run}
+  :lint
+  {:exec-fn fantasia.dev.lint/run}}}
