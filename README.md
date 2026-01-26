@@ -82,6 +82,24 @@ clojure -R:nrepl
 - Build: `npm run build --prefix web` (runs `tsc -b` then `vite build`).
 - Preview: `npm run preview --prefix web` to serve the production bundle locally.
 
+## Testing
+### Backend Tests
+- Full test suite: `cd backend && clojure -X:test`
+- Run specific test: `clojure -X:test :only 'fantasia.sim.core-test/tick-advances-world'`
+- Coverage report: `clojure -X:coverage`
+
+### Frontend Tests
+- Unit tests: `cd web && npm test`
+- Watch mode: `npm run test:watch`
+- Coverage: `npm run test:coverage`
+
+### WebSocket E2E Tests
+The project includes comprehensive end-to-end tests that validate game fundamentals against a real backend instance via WebSocket:
+- Run E2E tests: `cd web && npm run test:websocket:e2e`
+- Prerequisites: Backend must be running on `http://localhost:3000`
+- See `web/src/__tests__/e2e/README.md` for detailed documentation
+- Test coverage includes: connection/protocol, snapshot validation, game mechanics, reset operations, structure placement, performance, error handling, and integration scenarios
+
 ## Docker Compose
 - Prereq: Docker Engine/Desktop 20.10+ with Compose v2.
 - Validate syntax via `docker compose config` in the repo root.

@@ -17,6 +17,7 @@
 - [[ESTIMATION]] -> `ESTIMATION.md` - Story points and estimation guidelines
 - [[BUILD]] -> `BUILD.md` - Build/run/watch commands for both frontend and backend
 - [[TESTING]] -> `TESTING.md` - Testing procedures and framework usage
+- [[web/src/__tests__/e2e/README.md]] -> `web/src/__tests__/e2e/README.md` - WebSocket E2E testing guide
 - [[LINTING]] -> `LINTING.md` - Code style and static analysis rules
 - [[LOGGING]] -> `LOGGING.md` - Backend logging configuration and best practices
 
@@ -71,7 +72,7 @@
 - Security: treat WS inputs as user-controlled; never trust UI-sent numbers without validation.
 - Performance: profile long-running `sim/tick!` operations before optimizing; measure first.
 - Internationalization: not required yet; keep strings central for future extraction.
-- **Testing**: Run backend tests with `cd backend && clojure -X:test` and frontend tests with `cd web && npm test`. Use `-X:test` for coverage reports.
+- **Testing**: Run backend tests with `cd backend && clojure -X:test` and frontend tests with `cd web && npm test`. Use `-X:test` for coverage reports. Run WebSocket E2E tests with `cd web && npm run test:websocket:e2e` to validate game fundamentals against a real backend instance.
 
 
 ## GitHub Issue and Spec Labeling
