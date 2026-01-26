@@ -58,7 +58,7 @@
                              (let [status (be/get-component ecs-world agent-id status-type)]
                                (and (:idle? status) (alive-agent? status))))
                            all-agents)
-        job-queue-type (be/get-component-type (c/->JobQueue [] {} {}))
+        job-queue-type (be/get-component-type (c/->JobQueue {} [] {}))
         buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)]
     (reduce (fn [acc agent-id]
               (let [building-id (first (filter (fn [bid]

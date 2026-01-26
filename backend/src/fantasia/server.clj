@@ -16,6 +16,26 @@
 (def ^:dynamic *clients* (atom #{}))
 (def ^:dynamic *runner* (atom {:running? false}))
 
+(defn json-resp
+  "Create a JSON HTTP response."
+  ([body]
+   {:status 200
+    :headers {"Content-Type" "application/json"}
+    :body (json/generate-string body)})
+  ([status body]
+   {:status status
+    :headers {"Content-Type" "application/json"}
+    :body (json/generate-string body)}))
+
+(defn read-json-body
+  "Read and parse JSON from request body."
+  [req]
+  (when-let [body (:body req)]
+    (let [body-str (if (string? body) 
+                     body 
+                     (slurp body))]
+      (json/parse-string body-str true))))
+
 (defn ws-send!
   "Send message to WebSocket client."
   [ch msg]
@@ -177,8 +197,8 @@
        (http/on-close ch (fn [_] (swap! *clients disj ch)))
       (http/on-receive ch
         (fn [raw]
-          (let [msg (try (-> (json/parse-string raw true) keywordize-deep)
-                         (catch Exception _ nil))
+(let [msg (try (json/parse-string raw true)
+                          (catch Exception _ nil))
                 op (:op msg)]
             (case op
                "tick"

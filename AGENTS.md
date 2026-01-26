@@ -58,9 +58,10 @@
 - **NEVER manually restart the backend or frontend** while developing
 - PM2 automatically detects file changes and restarts the services
 - Backend runs as `gates-backend` process, frontend as `gates-frontend`
-- If services are unresponsive, check logs instead of restarting:
-  - Backend: `pm2 logs gates-backend --nostream --lines 50`
-  - Frontend: `pm2 logs gates-frontend --nostream --lines 50` (usually less useful)
+- If services are unresponsive, check log files instead of restarting:
+  - Backend logs: `backend/logs/backend.log`, `backend/logs/backend-error.log`
+  - Frontend logs: `backend/logs/frontend.log`, `backend/logs/frontend-error.log`
+  - For recent logs: `tail -50 backend/logs/backend-error.log`
 - PM2 handles all process management, including crash recovery
 - Focus on writing code - PM2 handles the rest
 - Serialization: always encode WS payloads via `cheshire` and decode them once before branching on `:op`/`op`.
@@ -73,6 +74,7 @@
 - Performance: profile long-running `sim/tick!` operations before optimizing; measure first.
 - Internationalization: not required yet; keep strings central for future extraction.
 - **Testing**: Run backend tests with `cd backend && clojure -X:test` and frontend tests with `cd web && npm test`. Use `-X:test` for coverage reports. Run WebSocket E2E tests with `cd web && npm run test:websocket:e2e` to validate game fundamentals against a real backend instance.
+- **linting** Backend tests are ran with `cd backend && clojure -X:lint`
 
 
 ## GitHub Issue and Spec Labeling
