@@ -1,4 +1,5 @@
- (ns gates-of-aker.ecosystem)
+(ns gates-of-aker.ecosystem
+  (:require [clobber.macro :refer [defapp ecosystem-output]]))
 
  ;; Backend processes
  (defapp "gates-backend"
