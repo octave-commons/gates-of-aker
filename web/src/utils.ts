@@ -106,13 +106,21 @@ const getMovementSteps = (stats?: Record<string, number>): { base: number; road:
   };
 };
 
+const coerceAgentId = (id: string): string | number => {
+  const numericId = Number(id);
+  if (Number.isFinite(numericId) && String(numericId) === id) {
+    return numericId;
+  }
+  return id;
+};
+
 const applyAgentDeltas = (agents: UnknownRecord[], agentDeltas: Record<string, UnknownRecord>): UnknownRecord[] => {
   const deltaIds = new Set<string>(Object.keys(agentDeltas));
-  const removedIds = new Set<number>();
+  const removedIds = new Set<string>();
 
   for (const [id, delta] of Object.entries(agentDeltas)) {
     if (delta.removed === true) {
-      removedIds.add(Number(id));
+      removedIds.add(id);
     }
   }
 
@@ -120,7 +128,7 @@ const applyAgentDeltas = (agents: UnknownRecord[], agentDeltas: Record<string, U
     .map(agent => {
       const agentId = String(agent.id);
       const delta = agentDeltas[agentId];
-      if (delta && delta.removed !== true) {
+          if (delta && delta.removed !== true) {
             const updated = { ...agent, ...delta };
             if (delta.relationships && typeof delta.relationships === 'object' && !Array.isArray(delta.relationships)) {
               const relMap = delta.relationships as Record<string, UnknownRecord>;
@@ -137,17 +145,17 @@ const applyAgentDeltas = (agents: UnknownRecord[], agentDeltas: Record<string, U
             }
             return updated;
           }
-          if (typeof agent.id === "number" && !removedIds.has(agent.id) && !deltaIds.has(String(agent.id))) {
+          if (!removedIds.has(agentId) && !deltaIds.has(agentId)) {
             return agent;
           }
           return null;
         })
         .filter((a): a is UnknownRecord => a !== null);
 
-  const updatedIds = new Set(updatedAgents.map(a => a.id));
+  const updatedIdKeys = new Set(updatedAgents.map((a) => String(a.id)));
   const toAdd = Object.entries(agentDeltas)
-      .filter(([id, delta]) => !updatedIds.has(Number(id)) && delta.removed !== true)
-      .map(([id, delta]) => ({ id: Number(id), ...delta }));
+      .filter(([id, delta]) => !updatedIdKeys.has(id) && delta.removed !== true)
+      .map(([id, delta]) => ({ id: coerceAgentId(id), ...delta }));
 
   return [...updatedAgents, ...toAdd];
 };

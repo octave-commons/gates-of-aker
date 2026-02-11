@@ -5,7 +5,10 @@ import {
   safeStringify, 
   colorForRole, 
   getAgentIcon,
-  getMovementSteps
+  getMovementSteps,
+  appendBounded,
+  appendManyBounded,
+  applyDelta
 } from "../utils";
 
 describe("utils", () => {
@@ -120,6 +123,112 @@ describe("utils", () => {
       const maxDexMovement = getMovementSteps({ dexterity: 1 });
       expect(maxDexMovement.base).toBe(3);
       expect(maxDexMovement.road).toBe(7);
+    });
+  });
+
+  describe("appendBounded", () => {
+    it("appends while under limit", () => {
+      expect(appendBounded([1, 2], 3, 5)).toEqual([1, 2, 3]);
+    });
+
+    it("drops oldest item at limit", () => {
+      expect(appendBounded([1, 2, 3], 4, 3)).toEqual([2, 3, 4]);
+    });
+
+    it("returns empty array when limit is zero", () => {
+      expect(appendBounded([1, 2], 3, 0)).toEqual([]);
+    });
+  });
+
+  describe("appendManyBounded", () => {
+    it("appends incoming items when under limit", () => {
+      expect(appendManyBounded([1, 2], [3, 4], 10)).toEqual([1, 2, 3, 4]);
+    });
+
+    it("keeps only newest items when overflowing", () => {
+      expect(appendManyBounded([1, 2, 3], [4, 5], 4)).toEqual([2, 3, 4, 5]);
+    });
+
+    it("keeps tail of incoming when incoming exceeds limit", () => {
+      expect(appendManyBounded([1, 2], [3, 4, 5, 6], 3)).toEqual([4, 5, 6]);
+    });
+  });
+
+  describe("applyDelta agent ID handling", () => {
+    it("keeps unchanged string-id agents when only a subset receives deltas", () => {
+      const prev = {
+        tick: 1,
+        agents: [
+          { id: "agent-a", role: "priest", pos: [0, 0] },
+          { id: "agent-b", role: "knight", pos: [1, 0] },
+        ],
+      };
+      const delta: any = {
+        global_updates: { tick: 2, temperature: 0, daylight: 1 },
+        changed_agents: {
+          "agent-a": { pos: [0, 1] },
+        },
+      };
+
+      const next = applyDelta(prev, delta) as any;
+      expect(next.agents).toHaveLength(2);
+      expect(next.agents.map((a: any) => a.id)).toEqual(["agent-a", "agent-b"]);
+      expect(next.agents.find((a: any) => a.id === "agent-a")?.pos).toEqual([0, 1]);
+      expect(next.agents.find((a: any) => a.id === "agent-b")?.pos).toEqual([1, 0]);
+    });
+
+    it("adds non-numeric agent IDs without coercing them to NaN", () => {
+      const prev = {
+        tick: 1,
+        agents: [],
+      };
+      const delta: any = {
+        global_updates: { tick: 2, temperature: 0, daylight: 1 },
+        changed_agents: {
+          "uuid-agent-1": { role: "priest", pos: [2, 3] },
+        },
+      };
+
+      const next = applyDelta(prev, delta) as any;
+      expect(next.agents).toHaveLength(1);
+      expect(next.agents[0].id).toBe("uuid-agent-1");
+      expect(next.agents[0].role).toBe("priest");
+    });
+  });
+
+  describe("applyDelta bounded arrays", () => {
+    it("caps combat events to configured limit", () => {
+      const prev = {
+        tick: 1,
+        combat_events: Array.from({ length: 50 }, (_, idx) => ({ id: idx })),
+      };
+      const delta: any = {
+        global_updates: { tick: 2, temperature: 0, daylight: 1 },
+        changed_agents: {},
+        combat_events: [{ id: 50 }, { id: 51 }],
+      };
+
+      const next = applyDelta(prev, delta) as any;
+      expect(next.combat_events).toHaveLength(50);
+      expect(next.combat_events[0]).toEqual({ id: 2 });
+      expect(next.combat_events[49]).toEqual({ id: 51 });
+    });
+
+    it("caps traces to configured limit", () => {
+      const prev = {
+        tick: 1,
+        traces: Array.from({ length: 250 }, (_, idx) => ({ id: idx })),
+      };
+      const delta: any = {
+        global_updates: { tick: 2, temperature: 0, daylight: 1 },
+        changed_agents: {},
+        traces: [{ id: 250 }, { id: 251 }, { id: 252 }],
+      };
+
+      const next = applyDelta(prev, delta) as any;
+      expect(next.traces).toHaveLength(250);
+      expect(next.traces[0]).toEqual({ id: 3 });
+      expect(next.traces[249]).toEqual({ id: 252 });
     });
   });
 });
