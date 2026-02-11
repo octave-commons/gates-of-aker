@@ -1,5 +1,6 @@
 (ns fantasia.sim.ecs.tick-test
   (:require [clojure.test :refer [deftest testing is]]
+            [fantasia.sim.ecs.core :as ecs-core]
             [fantasia.sim.ecs.tick :as tick]))
 
 (deftest test-ecs-world-management
@@ -8,10 +9,9 @@
       (is (some? world))))
   
   (testing "Reset ECS world"
-    (let [original-world (tick/get-ecs-world)]
-      (tick/reset-ecs-world!)
-      (let [new-world (tick/get-ecs-world)]
-        (is (some? new-world))))))
+    (tick/reset-ecs-world!)
+    (let [new-world (tick/get-ecs-world)]
+      (is (some? new-world)))))
 
 (deftest test-run-systems
   (testing "Run systems with basic global state"
@@ -55,6 +55,12 @@
       (is (= 0.1 (:tree-density global-state)))
       (is (= {:shape :rect :w 50 :h 50} (:bounds global-state)))))
 
+  (testing "Create initial world spawns initial agents"
+    (tick/create-ecs-initial-world {})
+    (let [ecs-world (tick/get-ecs-world)
+          agents (ecs-core/get-all-agents ecs-world)]
+      (is (= 5 (count agents))))))
+
 (deftest test-legacy-compatibility
   (testing "Get state function"
     (tick/reset-ecs-world!)
@@ -87,4 +93,4 @@
     (is (fn? tick/place-wolf!))
     (is (fn? tick/place-bear!))
     (is (fn? tick/queue-build-job!))
-     (is (fn? tick/get-agent-path!)))))
+    (is (fn? tick/get-agent-path!))))

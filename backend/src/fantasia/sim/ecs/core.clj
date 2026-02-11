@@ -1,18 +1,57 @@
 (ns fantasia.sim.ecs.core
   (:require [brute.entity :as be]
-            [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.constants :as const]))
+            [fantasia.sim.constants :as const]
+            [fantasia.sim.ecs.components :as c]))
 
-(defn component-class [instance]
+(defn component-class
   "Get the component class/type for a record instance."
+  [instance]
   (be/get-component-type instance))
 
-(defn create-ecs-world []
+(defn create-ecs-world
   "Create a new ECS world using Brute."
+  []
   (be/create-system))
 
 (defn tile-key [[q r]] [q r])
 (defn parse-tile-key [s] s)
+
+(defn- matching-component-type
+  [system component-type]
+  (let [target-name (.getName ^Class component-type)
+        component-map (:entity-components system {})]
+    (or (when (contains? component-map component-type)
+          component-type)
+        (some (fn [k]
+                (when (and (instance? Class k)
+                           (= target-name (.getName ^Class k)))
+                  k))
+              (keys component-map)))))
+
+(defn get-component-safe
+  "Read a component for an entity by component instance/type, with class-name fallback."
+  [system entity-id component-instance]
+  (let [component-type (if (instance? Class component-instance)
+                         component-instance
+                         (be/get-component-type component-instance))
+        exact (be/get-component system entity-id component-type)]
+    (if (some? exact)
+      exact
+      (when-let [resolved-type (matching-component-type system component-type)]
+        (be/get-component system entity-id resolved-type)))))
+
+(defn get-all-entities-with-component-safe
+  "Get entity IDs that contain component instance/type, with class-name fallback."
+  [system component-instance]
+  (let [component-type (if (instance? Class component-instance)
+                         component-instance
+                         (be/get-component-type component-instance))
+        direct (be/get-all-entities-with-component system component-type)]
+    (if (seq direct)
+      direct
+      (if-let [resolved-type (matching-component-type system component-type)]
+        (be/get-all-entities-with-component system resolved-type)
+        []))))
 
 (defn create-agent
    "Create an agent entity with standard components."
@@ -23,48 +62,45 @@
              entity-id (or id (java.util.UUID/randomUUID))
              {:keys [warmth food sleep wood needs status inventory frontier recall path job-id]} opts
              needs' (or needs (c/->Needs (or warmth 0.8) (or food 0.7) (or sleep 0.6) 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
-             status' (or status (c/->AgentStatus true false false nil))
+             status' (or status (c/->AgentStatus true false true nil))
              inventory' (or inventory (c/->PersonalInventory (or wood 0) (or food 0) {}))
              frontier' (or frontier (c/->Frontier {}))
              recall' (or recall (c/->Recall {}))
-            base-system (-> system
-                           (be/add-entity entity-id)
-                           (be/add-component entity-id (c/->AgentInfo id (str "agent-" id)))
-                           (be/add-component entity-id (c/->Position q r))
-                           (be/add-component entity-id (c/->Role role))
-                           (be/add-component entity-id needs')
-                           (be/add-component entity-id inventory')
-                           (be/add-component entity-id status')
-                           (be/add-component entity-id frontier')
-                           (be/add-component entity-id recall'))]
-        (let [system' (cond-> base-system
-                       job-id (be/add-component entity-id (c/->JobAssignment job-id 0.0))
-                       path (be/add-component entity-id (c/->Path path 0)))]
-          [entity-id system']))))
+             base-system (-> system
+                            (be/add-entity entity-id)
+                            (be/add-component entity-id (c/->AgentInfo entity-id (str "agent-" entity-id)))
+                            (be/add-component entity-id (c/->Position q r))
+                            (be/add-component entity-id (c/->Role role))
+                            (be/add-component entity-id needs')
+                            (be/add-component entity-id inventory')
+                            (be/add-component entity-id status')
+                            (be/add-component entity-id frontier')
+                            (be/add-component entity-id recall'))]
+        [entity-id
+         (cond-> base-system
+           job-id (be/add-component entity-id (c/->JobAssignment job-id 0.0))
+           path (be/add-component entity-id (c/->Path path 0)))])))
 
 (defn get-all-agents
   "Get all agent entities from the ECS world."
   [system]
-  (let [all-components (:entity-components system)
-        role-components (get all-components fantasia.sim.ecs.components.Role)
-        agent-ids (keys role-components)]
-    agent-ids))
+  (get-all-entities-with-component-safe system (c/->Role :peasant)))
 
 (defn get-all-tiles
   "Get all tile entities from the ECS world."
   [system]
-  (let [all-entities (be/get-all-entities system)
-        tile-entities (filter #(be/get-component system % fantasia.sim.ecs.components.TileIndex) all-entities)]
-    tile-entities))
+  (get-all-entities-with-component-safe system (c/->TileIndex 0 0)))
 
 (defn get-tile-at-pos
   "Get tile entity ID at specific position."
   [system pos]
-  (let [all-entities (be/get-all-entities system)
-        tile-entities (filter #(be/get-component system % fantasia.sim.ecs.components.TileIndex) all-entities)]
-    (some #(when-let [tile-index (be/get-component system % fantasia.sim.ecs.components.TileIndex)]
-                   (= [(:q tile-index) (:r tile-index)] pos))
-           tile-entities)))
+  (let [tile-index-instance (c/->TileIndex 0 0)
+        tile-entities (get-all-entities-with-component-safe system tile-index-instance)]
+    (some (fn [entity-id]
+            (when-let [tile-index (get-component-safe system entity-id tile-index-instance)]
+              (when (= [(:q tile-index) (:r tile-index)] pos)
+                entity-id)))
+          tile-entities)))
 
 (defn has-component?
   "Check if entity has specific component type."
@@ -76,20 +112,24 @@
   [system entity-id component-instance]
   (be/remove-component (or system (create-ecs-world)) entity-id component-instance))
 
-(defn assign-job-to-agent [system entity-id job-id]
+(defn assign-job-to-agent
   "Assign a job to an agent entity."
+  [system entity-id job-id]
   (be/add-component (or system (create-ecs-world)) entity-id (c/->JobAssignment job-id 0.0)))
 
-(defn set-agent-path [system entity-id waypoints]
+(defn set-agent-path
   "Set path for agent movement."
+  [system entity-id waypoints]
   (be/add-component (or system (create-ecs-world)) entity-id (c/->Path waypoints 0)))
 
-(defn update-agent-needs [system entity-id warmth food sleep]
+(defn update-agent-needs
   "Update needs component for an agent."
+  [system entity-id warmth food sleep]
   (be/add-component (or system (create-ecs-world)) entity-id (c/->Needs warmth food sleep 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)))
 
-(defn update-agent-inventory [system entity-id wood food]
+(defn update-agent-inventory
   "Update inventory component for an agent."
+  [system entity-id wood food]
   (be/add-component (or system (create-ecs-world)) entity-id (c/->PersonalInventory wood food {})))
 
 (defn create-tile
@@ -97,12 +137,12 @@
    ([system q r terrain biome structure resource]
      (create-tile system q r terrain biome structure resource {}))
    ([system q r terrain biome structure resource opts]
-      (let [system (or system (create-ecs-world))  ; Guard against nil system
-            entity-id (java.util.UUID/randomUUID)
-           {:keys [tile-resources structure-state campfire-state shrine-state]} opts
-           base-system (-> system
-                          (be/add-entity entity-id)
-                          (be/add-component entity-id (c/->Tile terrain biome structure resource))
+       (let [system (or system (create-ecs-world))  ; Guard against nil system
+             entity-id (java.util.UUID/randomUUID)
+            {:keys [tile-resources structure-state]} opts
+            base-system (-> system
+                           (be/add-entity entity-id)
+                           (be/add-component entity-id (c/->Tile terrain biome structure resource))
                           (be/add-component entity-id (c/->TileIndex q r)))
            system' (cond-> base-system
                       tile-resources (be/add-component entity-id tile-resources)
@@ -134,15 +174,12 @@
 (defn get-buildings-with-job-queue
   "Get all building entities with JobQueue component."
   [system]
-  (let [job-queue-instance (c/->JobQueue {} [] {})
-        job-queue-type (component-class job-queue-instance)]
-        (be/get-all-entities-with-component system job-queue-type)))
+  (get-all-entities-with-component-safe system (c/->JobQueue {} [] {})))
 
-(defn get-all-world-items [system]
+(defn get-all-world-items
   "Get all WorldItem entities."
-  (let [item-instance (c/->WorldItem :log 1 [0 0] 0)
-        item-type (component-class item-instance)]
-    (be/get-all-entities-with-component system item-type)))
+  [system]
+  (get-all-entities-with-component-safe system (c/->WorldItem :log 1 [0 0] 0)))
 
 (defn create-building
    "Create a building entity (job provider) with JobQueue."

@@ -1031,6 +1031,31 @@ This document catalogs all frontend improvement recommendations from the code re
     - `cd web && npm test` passes (`281 tests`, `27 files`).
     - `cd web && npm run build` passes.
 
+- BUGFIX follow-up (agents dropped after first tick in ECS runtime):
+  - Browser verification still showed `Agents None` / zero colonists while tick/daylight/temperature continued advancing.
+  - Reproduced in backend CLI: `reset-world!` spawned 5 agents, but one `tick-ecs!` reduced `get-all-agents` from 5 to 0.
+  - Root cause traced to `backend/src/fantasia/sim/ecs/systems/reproduction.clj` returning `nil` world when no pregnancy/growth state existed (`when` branches in `process-pregnancy` and `process-growth`).
+  - Fix applied:
+    - `process-pregnancy` now returns `ecs-world` on non-pregnant entities.
+    - `process-growth` now returns `ecs-world` when growth component is missing.
+    - Added compatibility hardening in `backend/src/fantasia/sim/ecs/core.clj` and `backend/src/fantasia/sim/ecs/adapter.clj` via class-name fallback helpers (`get-component-safe`, `get-all-entities-with-component-safe`) and corrected `create-agent` `AgentInfo` IDs to use `entity-id`.
+    - Added backend regression assertion in `backend/test/fantasia/sim/ecs/tick_test.clj` to require 5 initial agents after world creation.
+    - Added frontend E2E regression assertions in `web/src/__tests__/e2e/websocket-e2e.test.ts` requiring non-zero agents and detectable position changes over ticks.
+  - Verification evidence:
+    - `lsp_diagnostics` clean for all modified files.
+    - `cd backend && clojure -X:test` passes (`128 tests`, `467 assertions`).
+    - `cd web && npm run build` passes.
+    - `cd web && npm run test:websocket:e2e` currently fails in this environment for new agent-count assertions against the running PM2 backend (`expected 0 to be greater than 0`), which confirms the live runtime still exhibits the regression until backend process picks up the patch.
+  - Runtime resolution (2026-02-11 later pass):
+    - Loaded patched namespaces into the running backend through nREPL (`:reload` on `fantasia.sim.ecs.core`, `fantasia.sim.ecs.adapter`, `fantasia.sim.ecs.systems.reproduction`, `fantasia.sim.ecs.systems.movement`, `fantasia.sim.ecs.tick`) without manual PM2 restart.
+    - Confirmed live HTTP snapshot recovered from `agents: 0` to `agents: 5` after reset.
+    - Added ambient wander fallback in `backend/src/fantasia/sim/ecs/systems/movement.clj` (deterministic wander when no path is assigned, with optional tick context when available).
+    - Live movement verification (`/sim/state` position diff over 60 ticks) showed `5/5` agents changed coordinates.
+    - Browser + image-analysis evidence:
+      - `gates-aker-t0-initial-state.png` and `gates-aker-t1-after-10s.png`
+      - image analysis extracted counts/positions showing colonists present and coordinate changes (e.g. `#da9d...` from `(62, 62)` to `(62, 63)`) while tick advanced (`934` -> `1302`).
+    - End-to-end validation recovered: `cd web && npm run test:websocket:e2e` passes (`34/34`).
+
 ---
 
 **Next Steps:**

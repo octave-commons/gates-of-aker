@@ -161,6 +161,16 @@ describe('WebSocket E2E Tests', { timeout: 20000 }, () => {
   });
 
   describe('Game Mechanics Tests', () => {
+    it('should have at least one spawned agent after reset', async () => {
+      await client.connect();
+      await client.waitForHello();
+
+      const resetResult = await client.reset({ seed: DEFAULT_TEST_CONFIG.testSeed });
+      const agents = resetResult.state.agents || [];
+
+      expect(agents.length).toBeGreaterThan(0);
+    });
+
     it('should advance time and temperature correctly', async () => {
       await client.connect();
       const initialHello = await client.waitForHello();
@@ -205,6 +215,49 @@ describe('WebSocket E2E Tests', { timeout: 20000 }, () => {
           }
         }
       }
+    });
+
+    it('should show at least one agent changing position over time', async () => {
+      await client.connect();
+      await client.waitForHello();
+
+      const resetResult = await client.reset({ seed: DEFAULT_TEST_CONFIG.testSeed });
+      const baselineAgents = resetResult.state.agents || [];
+
+      expect(baselineAgents.length).toBeGreaterThan(0);
+
+      const baselinePositions = new Map<string, string>();
+      for (const agent of baselineAgents) {
+        const pos = agent.pos;
+        if (!Array.isArray(pos) || pos.length !== 2) {
+          continue;
+        }
+        baselinePositions.set(String(agent.id), `${pos[0]},${pos[1]}`);
+      }
+
+      let moved = false;
+      let latestSnapshotAgents = baselineAgents;
+
+      for (let i = 0; i < 6 && !moved; i++) {
+        const tickResult = await client.tick(10);
+        latestSnapshotAgents = tickResult.data.snapshot?.agents || [];
+
+        moved = latestSnapshotAgents.some(agent => {
+          const pos = agent.pos;
+          if (!Array.isArray(pos) || pos.length !== 2) {
+            return false;
+          }
+
+          const previousPos = baselinePositions.get(String(agent.id));
+          if (previousPos === undefined) {
+            return false;
+          }
+
+          return `${pos[0]},${pos[1]}` !== previousPos;
+        });
+      }
+
+      expect(moved, `No position changes detected for ${latestSnapshotAgents.length} agents across 60 ticks`).toBe(true);
     });
 
     it('should process multiple ticks correctly', async () => {

@@ -1,7 +1,7 @@
 (ns fantasia.sim.ecs.adapter
   (:require [brute.entity :as be]
-            [fantasia.sim.ecs.core]
             [fantasia.sim.ecs.components :as c]
+            [fantasia.sim.ecs.core :as ecs-core]
             [fantasia.sim.time :as time]))
 
 (def component-types
@@ -25,7 +25,9 @@
   "Helper to get component from entity by type key."
   [world entity-id type-key]
   (let [comp-type (get @component-types type-key)]
-    (be/get-component world entity-id comp-type)))
+    (if comp-type
+      (ecs-core/get-component-safe world entity-id comp-type)
+      nil)))
 
 (defn ecs->agent-map
   "Convert agent entity to old-style map format."
@@ -51,7 +53,7 @@
 (defn ecs->agent-list
   "Convert all agent entities to old-style list format."
   [ecs-world]
-  (let [agent-ids (fantasia.sim.ecs.core/get-all-agents ecs-world)]
+  (let [agent-ids (ecs-core/get-all-agents ecs-world)]
     (println "[ECS Adapter] Found agent IDs:" agent-ids "Count:" (count agent-ids))
     (map (partial ecs->agent-map ecs-world) agent-ids)))
 
@@ -75,13 +77,13 @@
                   tile-data (ecs->tile-map ecs-world tile-id)]
               (assoc acc tile-key tile-data)))
           {}
-          (fantasia.sim.ecs.core/get-all-tiles ecs-world)))
+          (ecs-core/get-all-tiles ecs-world)))
 
 (defn ecs->stockpiles-map
   "Convert stockpile entities to old-style map format."
   [ecs-world]
-  (let [stockpile-type (get @component-types :stockpile)
-        entities (be/get-all-entities-with-component ecs-world stockpile-type)]
+  (let [stockpile-instance (fantasia.sim.ecs.components/->Stockpile {})
+        entities (ecs-core/get-all-entities-with-component-safe ecs-world stockpile-instance)]
     (println "[ECS Adapter] Getting stockpiles, found" (count entities) "stockpile entities")
     (reduce (fn [acc entity-id]
               (let [stockpile (get-comp ecs-world entity-id :stockpile)
@@ -95,10 +97,9 @@
 (defn ecs->jobs-map
   "Extract jobs from ECS JobQueue components."
   [ecs-world]
-  (let [job-queue-type (be/get-component-type (c/->JobQueue {} [] {}))
-        buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)]
+  (let [buildings-with-queues (ecs-core/get-all-entities-with-component-safe ecs-world (c/->JobQueue {} [] {}))]
     (reduce (fn [acc building-id]
-              (let [job-queue (be/get-component ecs-world building-id job-queue-type)
+              (let [job-queue (ecs-core/get-component-safe ecs-world building-id (c/->JobQueue {} [] {}))
                     jobs (:jobs job-queue {})]
                 (merge acc jobs)))
             {}
