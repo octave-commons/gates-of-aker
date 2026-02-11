@@ -123,8 +123,12 @@ describe('WebSocket E2E Tests', { timeout: 20000 }, () => {
       
       const afterTick = await client.tick(5);
       const afterSnapshot = afterTick.data.snapshot;
+
+      if (!beforeSnapshot || !afterSnapshot) {
+        throw new Error('expected full snapshot but received delta');
+      }
       
-      const result = StateValidator.compareSnapshots(beforeSnapshot!, afterSnapshot!);
+      const result = StateValidator.compareSnapshots(beforeSnapshot, afterSnapshot);
       expect(result.isValid).toBe(true);
     });
 
@@ -154,8 +158,12 @@ describe('WebSocket E2E Tests', { timeout: 20000 }, () => {
       
       const afterTick = await client.tick(10);
       const afterSnapshot = afterTick.data.snapshot;
+
+      if (!beforeSnapshot || !afterSnapshot) {
+        throw new Error('expected full snapshot but received delta');
+      }
       
-      const result = StateValidator.validateResourceConservation(beforeSnapshot!, afterSnapshot!);
+      const result = StateValidator.validateResourceConservation(beforeSnapshot, afterSnapshot);
       expect(result.isValid).toBe(true);
     });
   });
@@ -417,7 +425,7 @@ describe('WebSocket E2E Tests', { timeout: 20000 }, () => {
       
       if (agents.length > 0) {
         const agentId = agents[0].id;
-        client.getAgentPath(Number(agentId));
+        client.getAgentPath(agentId);
         
         const tickResult = await client.tick();
         expect(tickResult.data.tick).toBeGreaterThanOrEqual(0);

@@ -1,9 +1,9 @@
 (ns fantasia.sim.scribes
   (:require [cheshire.core :as json]
             [clojure.string :as str]
-            [fantasia.dev.logging :as log]
-            [clj-http.client :as http]
             [clojure.java.io :as io]
+            [clj-http.client :as http]
+            [fantasia.dev.logging :as log]
             [fantasia.config :as config]))
 
 (def ^:private ollama-config (atom nil))
@@ -20,15 +20,19 @@
 (defn- get-ollama-config
   "Get Ollama configuration from loaded config with sensible fallbacks."
   []
-  (let [cfg @ollama-config]
+  (let [cfg (or @ollama-config (config/load-ollama-config!))
+        _ (when-not @ollama-config (reset! ollama-config cfg))
+        primary-model (config/get-ollama-primary-model cfg)
+        configured-models (config/get-ollama-models cfg)
+        models (if (seq configured-models) configured-models [primary-model])]
     {:timeout-ms (get-in cfg [:ollama :timeout-ms] 60000)
      :retries (get-in cfg [:ollama :retries] 1)
      :retry-delay-ms (get-in cfg [:ollama :retry-delay-ms] 2000)
      :keep-alive-enabled (get-in cfg [:ollama :keep-alive-enabled] true)
      :keep-alive-interval-ms (get-in cfg [:ollama :keep-alive-interval-ms] 300000)
      :url (get-in cfg [:ollama :url] "http://localhost:11434/api/generate")
-     :models (config/get-ollama-models cfg)
-     :primary-model (config/get-ollama-primary-model cfg)}))
+     :models models
+     :primary-model primary-model}))
 
 (defn- load-myths!
   "Load all myths from the persistent myths file."
@@ -38,7 +42,8 @@
       (with-open [rdr (io/reader myths-file-path)]
         (->> (line-seq rdr)
              (filter (complement str/blank?))
-             (map #(json/parse-string % true))))
+             (map #(json/parse-string % true))
+             (into [])))
       (catch Exception e
         (log/log-warn "[MYTHS:LOAD-FAILED]" {:error (.getMessage e)})
         []))))
@@ -77,11 +82,11 @@
                                :throw-exceptions false
                                :socket-timeout timeout-ms
                                :connection-timeout 5000})]
-      (if (= (:status response) 200)
-        (let [body (json/parse-string (:body response) true)
-              text (or (get-in body [:response] "")
-                       (get-in body [:thinking] "")
-                       "")]
+        (if (= (:status response) 200)
+          (let [body (json/parse-string (:body response) true)
+              text (or (get body :response "")
+                       (get body :thinking "")
+                        "")]
           (log/log-info "[OLLAMA:SUCCESS]" {:model model :length (count text)})
           {:success true :text text :model model})
         {:success false :error (str "HTTP " (:status response)) :model model}))
@@ -108,7 +113,7 @@
                       (Thread/sleep retry-delay-ms)
                       (retry-call (inc attempt) model-attempt))
                     result))))
-            (try-model [model-attempt model-idx]
+            (try-model [model-attempt _model-idx]
               (retry-call 0 model-attempt))]
       (if (empty? models)
         {:success false :error "No models configured"}
@@ -138,8 +143,9 @@
   [prompt model]
   (future
     (let [config (get-ollama-config)
-          models (or (:models config) [model])
-          {:keys [success text model used-model]} (call-ollama-with-fallbacks! prompt models config)]
+          configured-models (:models config)
+          models (if (seq configured-models) configured-models [model])
+          {:keys [success text]} (call-ollama-with-fallbacks! prompt models config)]
       (when success text))))
 
 (defn call-ollama-sync!
@@ -160,9 +166,9 @@
                                  :connection-timeout 5000})]
         (if (= (:status response) 200)
           (let [body (json/parse-string (:body response) true)
-                text (or (get-in body [:response] "")
-                         (get-in body [:thinking] "")
-                         "")]
+                text (or (get body :response "")
+                         (get body :thinking "")
+                          "")]
             (log/log-info "[OLLAMA:TEST-SUCCESS]" {:model model :length (count text)})
             {:success true :text text})
           {:success false :error (str "HTTP " (:status response))}))
@@ -212,15 +218,12 @@
  
 (defn generate-book-title
   "Generate a book title based on facets and events."
-  [facets event-facets]
-  (let [facet-str (str/join ", " (map name facets))
-        event-facet-str (str/join ", " (map name event-facets))
-        primary-facet (or (first (seq (concat event-facets facets))) :community)]
-    (cond
-      (contains? (set event-facets) :fire) "Tales of Ember"
-      (contains? (set event-facets) :death) "Echoes of Departed"
-      (contains? (set event-facets) :harvest) "Songs of Plenty"
-      :else "Chronicles of Our People")))
+  [_facets event-facets]
+  (cond
+    (contains? (set event-facets) :fire) "Tales of Ember"
+    (contains? (set event-facets) :death) "Echoes of Departed"
+    (contains? (set event-facets) :harvest) "Songs of Plenty"
+    :else "Chronicles of Our People"))
 
 (defn- build-myths-context
   "Build context string from ancient myths for Ollama prompt."
@@ -281,7 +284,7 @@
             (if (and generated (pos? (count generated)))
               (str (subs generated 0 (min 200 (count generated))) ".")
               fallback-text))
-          (catch Exception e
+          (catch Exception _e
             (log/log-warn "[SCRIBE:OLLAMA-TIMEOUT]" {:fallback true})
             fallback-text)))
       fallback-text)))
@@ -333,7 +336,7 @@
 
 (defn select-recent-traces
   "Select N recent traces relevant to given facets."
-  [world culture-id facets n]
+  [_world _culture-id _facets _n]
   ;; TODO: Migrate traces to ECS
   [])
 
@@ -355,13 +358,12 @@
   (let [book-id (:book/id book)]
     (-> world
         (assoc-in [:books book-id] book)
-        (update-in [:books-list] conj book-id))))
+        (update :books-list conj book-id))))
 
 (defn complete-scribe-job!
   "Complete a scribe job by creating a book, awarding favor, and starting async content generation."
   [world agent-id]
-  (let [agent nil ; TODO: Get agent from ECS system
-        library-pos nil ; TODO: Get from ECS job system
+  (let [library-pos nil ; TODO: Get from ECS job system
         culture-id (get-in world [:levers :default-culture-id] "culture-1")
         recent-events (take 3 (:recent-events world []))
         event-facets (mapcat #(get % :facets []) recent-events)
@@ -385,7 +387,7 @@
                    :trace-ids trace-ids
                    :favor-gained favor-gain})
     (generate-book-content-async! book-id selected-traces facets title)
-    (update-in world-initial [:favor] + favor-gain)))
+    (update world-initial :favor + favor-gain)))
 
 (defn apply-book-favor!
   "Generate favor from books each tick.
@@ -400,4 +402,4 @@
                           (+ acc (* favor-per-tick multiplier))))
                       0.0
                       books)]
-    (update-in world [:favor] + favor-gain)))
+    (update world :favor + favor-gain)))

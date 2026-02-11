@@ -7,14 +7,16 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:quiet": "vitest run --silent",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:coverage:verbose": "vitest run --coverage --reporter=verbose",
-    "test:debug": "VITE_LOG_LEVEL=debug vitest run",
+    "test": "NODE_ENV=test vitest run",
+    "test:quiet": "NODE_ENV=test vitest run --silent",
+    "test:watch": "NODE_ENV=test vitest",
+    "test:coverage": "NODE_ENV=test vitest run --coverage",
+    "test:coverage:verbose": "NODE_ENV=test vitest run --coverage --reporter=verbose",
+    "test:debug": "NODE_ENV=test VITE_LOG_LEVEL=debug vitest run",
+    "compose:up": "docker compose -f ../compose.yaml up -d",
+    "compose:down": "docker compose -f ../compose.yaml down",
     "test:e2e": "npm run compose:up && node e2e/compose.e2e.mjs; npm run compose:down || npm run compose:down",
-    "test:websocket:e2e": "vitest run src/__tests__/e2e/websocket-e2e.test.ts --reporter=verbose"
+    "test:websocket:e2e": "NODE_ENV=test vitest run src/__tests__/e2e/websocket-e2e.test.ts --reporter=verbose"
   },
   "dependencies": {
     "react": "^19.0.0",

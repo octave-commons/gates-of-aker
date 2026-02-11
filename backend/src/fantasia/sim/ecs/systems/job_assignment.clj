@@ -1,77 +1,139 @@
-(ns fantasia.sim.ecs.systems.job_assignment
-   (:require [brute.entity :as be]
-             [fantasia.sim.ecs.components :as c]))
+(ns fantasia.sim.ecs.systems.job-assignment
+  (:require [brute.entity :as be]
+            [fantasia.dev.logging :as log]
+            [fantasia.sim.ecs.components :as c]
+            [fantasia.sim.ecs.core :as ecs-core]))
 
-(defn alive-agent?
-  "Check if agent is alive."
+(defn- status-type []
+  (be/get-component-type (c/->AgentStatus true false false nil)))
+
+(defn- role-type []
+  (be/get-component-type (c/->Role :priest)))
+
+(defn- job-assignment-type []
+  (be/get-component-type (c/->JobAssignment nil 0.0)))
+
+(defn- job-queue-type []
+  (be/get-component-type (c/->JobQueue {} [] {})))
+
+(defn- alive-agent?
   [status]
-  (:alive? status))
+  (and status (:alive? status true)))
 
-(defn find-best-job
-  "Find the best available job for an agent."
-  [ecs-world agent-id pending-jobs]
-  (let [role-type (be/get-component-type (c/->Role :priest))
-        role (be/get-component ecs-world agent-id role-type)]
-    (first (sort-by :priority
-                   (filter #(= (:role %) role)
-                           (filter #(not (:blocked %)) pending-jobs))))))
+(defn- idle-agent?
+  [status]
+  (and status (:idle? status false) (alive-agent? status)))
 
-(defn claim-job!
-   "Assign a job to an agent."
-   [ecs-world agent-id job-id job-type job-queue]
-   (let [role-type (be/get-component-type (c/->Role :priest))
-          role (be/get-component ecs-world agent-id role-type)
-          status-type (be/get-component-type (c/->AgentStatus true false false nil))
-          job-assignment-type (be/get-component-type (c/->JobAssignment nil 0.0))
-          ecs-world' (be/add-component ecs-world agent-id (c/->JobAssignment job-id 0.0))
-          ecs-world'' (if job-type
-                         (let [queue-type (be/get-component-type job-type)
-                               queue (be/get-component ecs-world job-id queue-type)]
-                           (-> ecs-world'
-                               (be/add-component job-id (assoc queue :pending-jobs (conj (:pending-jobs queue) agent-id)))
-                               (be/add-component job-id (assoc queue :claimed-count (inc (or (:claimed-count queue) 0))))
-                               (be/add-component job-id (assoc queue :state :claimed))))
-                         ecs-world')
-          ecs-world''' (be/add-component ecs-world'' agent-id status-type)
-          job (be/get-component ecs-world''' job-id job-type)
-          target-pos (:target job)]
-      (-> ecs-world'''
-          (be/add-component agent-id (assoc (be/get-component ecs-world''' agent-id status-type) :idle? false))
-          (be/add-component job-id (assoc job :worker-id agent-id :state :claimed))
-          (fantasia.sim.ecs.core/set-agent-path agent-id [target-pos]))))
+(defn- job-pending?
+  [job]
+  (let [state (:state job :pending)]
+    (and (not (:blocked job false))
+         (not (:worker-id job))
+         (contains? #{:pending :queued} state))))
 
-(defn mark-agent-idle!
-  "Mark an agent as idle."
+(defn- gather-pending-jobs
+  [ecs-world]
+  (let [queue-t (job-queue-type)
+        building-ids (be/get-all-entities-with-component ecs-world queue-t)]
+    (mapcat (fn [building-id]
+              (let [queue (be/get-component ecs-world building-id queue-t)
+                    jobs (:jobs queue {})]
+                (->> jobs
+                     (filter (fn [[_ job]] (job-pending? job)))
+                     (map (fn [[job-id job]]
+                            {:building-id building-id
+                             :job-id job-id
+                             :job job})))))
+            building-ids)))
+
+(defn- find-best-job
+  [ecs-world _agent-id]
+  (->> (gather-pending-jobs ecs-world)
+       (sort-by (fn [{:keys [job]}]
+                  (- (long (:priority job 0)))))
+       first))
+
+(defn- update-job-in-queue
+  [ecs-world building-id job-id f]
+  (let [queue-t (job-queue-type)
+        queue (be/get-component ecs-world building-id queue-t)
+        jobs (:jobs queue {})
+        updated-job (f (get jobs job-id))
+        updated-jobs (assoc jobs job-id updated-job)
+        assigned-jobs (assoc (:assigned-jobs queue {}) job-id (:worker-id updated-job))
+        pending-jobs (vec (remove #(= % job-id) (:pending-jobs queue [])))
+        updated-queue (c/->JobQueue updated-jobs pending-jobs assigned-jobs)]
+    (be/add-component ecs-world building-id updated-queue)))
+
+(defn- mark-agent-idle
   [ecs-world agent-id]
-  (be/add-component ecs-world agent-id
-                     (assoc (be/get-component ecs-world agent-id
-                                                   (be/get-component-type (c/->AgentStatus true false false nil)))
-                            :idle? true :alive? true)))
+  (let [status-t (status-type)
+        current-status (or (be/get-component ecs-world agent-id status-t)
+                           (c/->AgentStatus true false true nil))
+        updated-status (assoc current-status :idle? true :alive? (:alive? current-status true))]
+    (be/add-component ecs-world agent-id updated-status)))
+
+(defn- mark-agent-active
+  [ecs-world agent-id]
+  (let [status-t (status-type)
+        current-status (or (be/get-component ecs-world agent-id status-t)
+                           (c/->AgentStatus true false false nil))
+        updated-status (assoc current-status :idle? false :alive? (:alive? current-status true))]
+    (be/add-component ecs-world agent-id updated-status)))
+
+(defn- target-pos
+  [job]
+  (or (:target-pos job) (:target job)))
+
+(defn- claim-job!
+  [ecs-world agent-id {:keys [building-id job-id job]}]
+  (let [job-assignment (c/->JobAssignment job-id 0.0)
+        claimed-job (assoc job :worker-id agent-id :state :claimed)
+        world-with-job (update-job-in-queue ecs-world building-id job-id (constantly claimed-job))
+        world-with-assignment (be/add-component world-with-job agent-id job-assignment)
+        world-with-status (mark-agent-active world-with-assignment agent-id)
+        destination (target-pos claimed-job)]
+    (log/log-info "[JOB:ASSIGN]"
+                  {:agent-id agent-id
+                   :building-id building-id
+                   :job-id job-id
+                   :job-type (:type claimed-job)
+                   :priority (:priority claimed-job)
+                   :target destination})
+    (if (and (vector? destination) (= 2 (count destination)))
+      (do
+        (log/log-info "[PATH:REQUEST]"
+                      {:agent-id agent-id
+                       :job-id job-id
+                       :start nil
+                       :goal destination
+                       :source :job-assignment})
+        (let [world-with-path (ecs-core/set-agent-path world-with-status agent-id [destination])]
+          (log/log-info "[PATH:RESULT]"
+                        {:agent-id agent-id
+                         :job-id job-id
+                         :status :ok
+                         :waypoints 1
+                         :goal destination})
+          world-with-path))
+      world-with-status)))
 
 (defn process
-  "Process job assignment for all agents with idle status."
-  [ecs-world global-state]
-  (let [role-type (be/get-component-type (c/->Role :priest))
-        all-agents (be/get-all-entities-with-component ecs-world role-type)
-        status-type (be/get-component-type (c/->AgentStatus true false false nil))
-        idle-agents (filter (fn [agent-id]
-                             (let [status (be/get-component ecs-world agent-id status-type)]
-                               (and (:idle? status) (alive-agent? status))))
-                           all-agents)
-        job-queue-type (be/get-component-type (c/->JobQueue {} [] {}))
-        buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)]
-    (reduce (fn [acc agent-id]
-              (let [building-id (first (filter (fn [bid]
-                                                  (let [job-queue (be/get-component ecs-world bid job-queue-type)]
-                                                    (or (some #(= % agent-id) (:pending-jobs job-queue))
-                                                        (some #(= % agent-id) (:assigned-jobs job-queue)))))
-                                                  buildings-with-queues))
-                     best-job (when building-id
-                                   (let [job-queue (be/get-component ecs-world building-id job-queue-type)
-                                         jobs (:jobs job-queue [])]
-                                     (find-best-job acc agent-id jobs)))]
-                 (if best-job
-                   (claim-job! acc agent-id (:job-id best-job) (:job-type best-job) job-queue-type)
-                   (mark-agent-idle! acc agent-id))))
+  "Assign pending jobs to idle agents."
+  [ecs-world _global-state]
+  (let [role-t (role-type)
+        status-t (status-type)
+        assignment-t (job-assignment-type)
+        agent-ids (be/get-all-entities-with-component ecs-world role-t)
+        idle-agent-ids (filter (fn [agent-id]
+                                 (let [status (be/get-component ecs-world agent-id status-t)
+                                       active-assignment (be/get-component ecs-world agent-id assignment-t)]
+                                   (and (idle-agent? status)
+                                        (nil? active-assignment))))
+                               agent-ids)]
+    (reduce (fn [world agent-id]
+              (if-let [job-candidate (find-best-job world agent-id)]
+                (claim-job! world agent-id job-candidate)
+                (mark-agent-idle world agent-id)))
             ecs-world
-            idle-agents)))
+            idle-agent-ids)))

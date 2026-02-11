@@ -133,12 +133,15 @@ const applyAgentDeltas = (agents: UnknownRecord[], agentDeltas: Record<string, U
             if (delta.relationships && typeof delta.relationships === 'object' && !Array.isArray(delta.relationships)) {
               const relMap = delta.relationships as Record<string, UnknownRecord>;
               const relArray = Object.entries(relMap)
-                .map(([targetId, rel]) => ({
-                  'agent-id': Number(targetId),
-                  name: String(targetId),
-                  affinity: typeof rel.affinity === "number" ? rel.affinity : 0.5,
-                  'last-interaction': rel['last-interaction']
-                }))
+                .map(([targetId, rel]) => {
+                  const normalizedTargetId = coerceAgentId(targetId);
+                  return {
+                    'agent-id': normalizedTargetId,
+                    name: String(normalizedTargetId),
+                    affinity: typeof rel.affinity === "number" ? rel.affinity : 0.5,
+                    'last-interaction': rel['last-interaction']
+                  };
+                })
                 .sort((a, b) => (b.affinity || 0.5) - (a.affinity || 0.5))
                 .slice(0, 3);
               updated.relationships = relArray;
@@ -186,10 +189,9 @@ const appendBounded = <T>(items: readonly T[], item: T, limit: number): T[] => {
   if (limit <= 0) {
     return [];
   }
-  if (items.length < limit) {
-    return [...items, item];
-  }
-  const next = items.slice(1);
+  const next = items.length >= limit
+    ? items.slice(Math.max(0, items.length - (limit - 1)))
+    : [...items];
   next.push(item);
   return next;
 };
@@ -198,17 +200,20 @@ const appendManyBounded = <T>(items: readonly T[], incoming: readonly T[], limit
   if (limit <= 0) {
     return [];
   }
+  const boundedItems = items.length > limit
+    ? items.slice(items.length - limit)
+    : [...items];
   if (incoming.length === 0) {
-    return [...items];
+    return boundedItems;
   }
   if (incoming.length >= limit) {
     return incoming.slice(incoming.length - limit);
   }
-  const overflow = items.length + incoming.length - limit;
+  const overflow = boundedItems.length + incoming.length - limit;
   if (overflow <= 0) {
-    return [...items, ...incoming];
+    return [...boundedItems, ...incoming];
   }
-  return [...items.slice(overflow), ...incoming];
+  return [...boundedItems.slice(overflow), ...incoming];
 };
 
 const applyDelta = (prev: UnknownRecord | null | undefined, delta: DeltaSnapshot): UnknownRecord => {

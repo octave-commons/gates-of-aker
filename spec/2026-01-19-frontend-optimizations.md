@@ -7,7 +7,7 @@ status: proposed
 workflow-state: in_progress
 related-issues: []
 estimated-effort: 56 story points
-  updated_at: 2026-02-11
+updated_at: 2026-02-11
 ---
 
 # Frontend Optimization Specifications

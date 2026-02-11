@@ -56,6 +56,7 @@
       (is (= {:shape :rect :w 50 :h 50} (:bounds global-state)))))
 
   (testing "Create initial world spawns initial agents"
+    (tick/reset-ecs-world!)
     (tick/create-ecs-initial-world {})
     (let [ecs-world (tick/get-ecs-world)
           agents (ecs-core/get-all-agents ecs-world)]

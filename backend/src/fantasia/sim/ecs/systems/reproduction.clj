@@ -51,7 +51,6 @@
   "Start pregnancy for female entity with male partner."
   [ecs-world female-id male-id tick]
   (let [pregnancy-duration 50 ; ticks until birth
-         
         new-pregnancy (c/->PregnancyState true male-id (+ tick pregnancy-duration) tick)]
     
     (be/add-component ecs-world female-id new-pregnancy)))
@@ -79,13 +78,14 @@
         child-role (c/->Role (:type mother-role)) ; Inherit mother's role
         
         child-id (java.util.UUID/randomUUID)]
-    
-    (when mother-pos
-      (let [ [_ initial-system] (ecs-core/create-agent ecs-world child-id (:q mother-pos) (:r mother-pos) (:type mother-role) {})
+
+    (if mother-pos
+      (let [[_ initial-system] (ecs-core/create-agent ecs-world child-id (:q mother-pos) (:r mother-pos) (:type mother-role) {})
             world-with-stats (be/add-component initial-system child-id child-stats)
             world-with-growth (be/add-component world-with-stats child-id (c/->GrowthState :infant 0.0))
             final-world (be/add-component world-with-growth child-id child-role)]
-        final-world))))
+        final-world)
+      ecs-world)))
 
 (defn- process-pregnancy
   "Process pregnancy and birth for pregnant entities."

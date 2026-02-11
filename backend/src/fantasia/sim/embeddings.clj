@@ -31,7 +31,11 @@
                                :connection-timeout 5000})]
        (if (= (:status response) 200)
          (let [body (json/parse-string (:body response) true)
-               embedding (get-in body [:embeddings 0 :embedding])]
+               first-embedding (first (:embeddings body))
+               embedding (cond
+                           (vector? first-embedding) first-embedding
+                           (and (map? first-embedding) (vector? (:embedding first-embedding))) (:embedding first-embedding)
+                           :else nil)]
            (if (and embedding (vector? embedding))
              {:success true :vector embedding :model model}
              {:success false :error "No embedding in response"}))

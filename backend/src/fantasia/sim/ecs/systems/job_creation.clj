@@ -486,36 +486,42 @@
                                              :job-id job-id
                                              :job-type :job/gather-food})
                               (enqueue-need-job acc food-job)))
-                          acc)]
-                    ;; Create sleep jobs if sleep is very low (< 0.3)
-                    (when (< (:sleep needs) 0.3)
-                      (let [job-id (str "need-sleep-" tick "-" agent-id)
-                            _sleep-job {:id job-id
-                                        :type :job/rest
-                                        :priority 95
-                                        :target-pos [(:q pos) (:r pos)]
-                                        :created-at tick
-                                        :state :pending}]
-                        (log/log-info "[NEED:JOB-CREATED]"
-                                      {:agent-id agent-id
-                                       :need :sleep
-                                       :value (:sleep needs)
-                                       :job-id job-id})))
-                    ;; Create warmth jobs if warmth is very low (< 0.3)
-                    (when (< (:warmth needs) 0.3)
-                      (let [job-id (str "need-warmth-" tick "-" agent-id)
-                            _warmth-job {:id job-id
-                                         :type :job/build-fire
-                                         :priority 85
-                                         :target-pos [(:q pos) (:r pos)]
-                                         :created-at tick
-                                         :state :pending}]
-                        (log/log-info "[NEED:JOB-CREATED]"
-                                      {:agent-id agent-id
-                                       :need :warmth
-                                       :value (:warmth needs)
-                                       :job-id job-id})))
-                    acc-after-food)
+                          acc)
+                        acc-after-sleep
+                        (if (< (:sleep needs) 0.3)
+                          (let [job-id (str "need-sleep-" tick "-" agent-id)
+                                sleep-job {:id job-id
+                                           :type :job/rest
+                                           :priority 95
+                                           :target-pos [(:q pos) (:r pos)]
+                                           :target [(:q pos) (:r pos)]
+                                           :created-at tick
+                                           :state :pending}]
+                            (log/log-info "[NEED:JOB-CREATED]"
+                                          {:agent-id agent-id
+                                           :need :sleep
+                                           :value (:sleep needs)
+                                           :job-id job-id})
+                            (enqueue-need-job acc-after-food sleep-job))
+                          acc-after-food)
+                        acc-after-warmth
+                        (if (< (:warmth needs) 0.3)
+                          (let [job-id (str "need-warmth-" tick "-" agent-id)
+                                warmth-job {:id job-id
+                                            :type :job/build-fire
+                                            :priority 85
+                                            :target-pos [(:q pos) (:r pos)]
+                                            :target [(:q pos) (:r pos)]
+                                            :created-at tick
+                                            :state :pending}]
+                            (log/log-info "[NEED:JOB-CREATED]"
+                                          {:agent-id agent-id
+                                           :need :warmth
+                                           :value (:warmth needs)
+                                           :job-id job-id})
+                            (enqueue-need-job acc-after-sleep warmth-job))
+                          acc-after-sleep)]
+                    acc-after-warmth)
                   acc)))
             ecs-world
             agent-ids)))

@@ -13,6 +13,11 @@ export interface ValidationResult {
 }
 
 export class StateValidator {
+  private static isValidCoordKey(key: string): boolean {
+    // Supports both legacy "q,r" keys and current ECS "[q r]" keys.
+    return /^-?\d+,-?\d+$/.test(key) || /^\[\s*-?\d+\s+-?\d+\s*\]$/.test(key);
+  }
+
   static validateSnapshot(snapshot: Snapshot): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationError[] = [];
@@ -52,16 +57,23 @@ export class StateValidator {
       errors.push(...stockpileErrors);
     }
 
-    // Job validation
+    // Job validation (legacy array format and ECS map format)
     if (Array.isArray(snapshot.jobs)) {
       snapshot.jobs.forEach((job, index) => {
         const jobErrors = this.validateJob(job, index);
         errors.push(...jobErrors);
       });
+    } else if (snapshot.jobs && typeof snapshot.jobs === 'object') {
+      Object.values(snapshot.jobs).forEach((job, index) => {
+        if (job && typeof job === 'object') {
+          const jobErrors = this.validateJob(job as Job, index);
+          errors.push(...jobErrors);
+        }
+      });
     } else if (snapshot.jobs !== undefined) {
       errors.push({
         field: 'jobs',
-        message: 'Jobs must be an array',
+        message: 'Jobs must be an array or object map',
         severity: 'error'
       });
     }
@@ -127,11 +139,20 @@ export class StateValidator {
     const errors: ValidationError[] = [];
 
     Object.entries(tiles).forEach(([key, tile]) => {
-      // Validate tile key format (q,r coordinates)
-      if (!/^-?\d+,-?\d+$/.test(key)) {
+      if (!tile || typeof tile !== 'object') {
         errors.push({
           field: `tiles.${key}`,
-          message: 'Tile key must be in format "q,r" with integer coordinates',
+          message: 'Tile must be an object',
+          severity: 'error'
+        });
+        return;
+      }
+
+      // Validate tile key format (q,r coordinates)
+      if (!this.isValidCoordKey(key)) {
+        errors.push({
+          field: `tiles.${key}`,
+          message: 'Tile key must be in format "q,r" or "[q r]" with integer coordinates',
           severity: 'error'
         });
       }
@@ -169,11 +190,20 @@ export class StateValidator {
     const errors: ValidationError[] = [];
 
     Object.entries(stockpiles).forEach(([key, stockpile]) => {
-      // Validate stockpile key format (q,r coordinates)
-      if (!/^-?\d+,-?\d+$/.test(key)) {
+      if (!stockpile || typeof stockpile !== 'object') {
         errors.push({
           field: `stockpiles.${key}`,
-          message: 'Stockpile key must be in format "q,r" with integer coordinates',
+          message: 'Stockpile must be an object',
+          severity: 'error'
+        });
+        return;
+      }
+
+      // Validate stockpile key format (q,r coordinates)
+      if (!this.isValidCoordKey(key)) {
+        errors.push({
+          field: `stockpiles.${key}`,
+          message: 'Stockpile key must be in format "q,r" or "[q r]" with integer coordinates',
           severity: 'error'
         });
       }
@@ -351,6 +381,10 @@ export class StateValidator {
     // Count resources in tiles
     if (snapshot.tiles) {
       Object.values(snapshot.tiles).forEach(tile => {
+        if (!tile || typeof tile !== 'object') {
+          return;
+        }
+
         if (tile.resource) {
           resources[tile.resource] = (resources[tile.resource] || 0) + 1;
         }
@@ -360,6 +394,10 @@ export class StateValidator {
     // Count resources in stockpiles
     if (snapshot.stockpiles) {
       Object.values(snapshot.stockpiles).forEach(stockpile => {
+        if (!stockpile || typeof stockpile !== 'object') {
+          return;
+        }
+
         const resource = stockpile.resource || stockpile[':resource'];
         const qty = stockpile.currentQty || stockpile['current-qty'] || 0;
         if (resource && typeof qty === 'number') {

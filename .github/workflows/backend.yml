@@ -27,7 +27,7 @@ jobs:
         distribution: 'temurin'
         
     - name: Setup Clojure CLI
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@13
       with:
         cli: latest
         lein: latest

@@ -1,7 +1,5 @@
 (ns fantasia.test-helpers
-  (:require [brute.entity :as be]
-            [fantasia.sim.ecs.core :as ecs]
-            [fantasia.sim.ecs.components :as c]))
+  (:require [fantasia.sim.ecs.core :as ecs]))
 
 (defn get-free-port
   "Get a free port for testing."
@@ -14,8 +12,7 @@
 (defn create-test-world
   "Create a test ECS world."
   []
-  (let [ecs-world (ecs/create-ecs-world)]
-    ;; Add some basic components for testing
-    (let [[agent-id world1] (ecs/create-agent ecs-world nil 0 0 :priest)
-          [agent-id2 world2] (ecs/create-agent world1 nil 1 0 :knight)]
-      (assoc world2 :agents {agent-id agent-id2}))))
+  (let [ecs-world (ecs/create-ecs-world)
+        [_agent-id world1] (ecs/create-agent ecs-world nil 0 0 :priest)
+        [_agent-id2 world2] (ecs/create-agent world1 nil 1 0 :knight)]
+    world2))

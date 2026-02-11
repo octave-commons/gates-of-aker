@@ -10,7 +10,6 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.modified, 'backend/') || github.event_name == 'pull_request'
     
     steps:
     - name: Checkout code
@@ -23,7 +22,7 @@ jobs:
         distribution: 'temurin'
         
     - name: Setup Clojure CLI
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@13
       with:
         cli: latest
         
@@ -59,7 +58,6 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.modified, 'web/') || github.event_name == 'pull_request'
     
     steps:
     - name: Checkout code

@@ -60,22 +60,25 @@
 (defn ecs->tile-map
   "Convert tile entity to old-style map format."
   [ecs-world tile-id]
-  (let [position (get-comp ecs-world tile-id :position)
+  (let [tile-index (get-comp ecs-world tile-id :tile-index)
         tile (get-comp ecs-world tile-id :tile)]
-    {:pos [(:q position) (:r position)]
-     :terrain (:terrain tile)
-     :biome (:biome tile)
-     :resource (:resource tile)
-     :structure (:structure tile)}))
+    (when tile-index
+      {:pos [(:q tile-index) (:r tile-index)]
+       :terrain (:terrain tile)
+       :biome (:biome tile)
+       :resource (:resource tile)
+       :structure (:structure tile)})))
 
 (defn ecs->tiles-map
   "Convert all tile entities to old-style map format keyed by position."
   [ecs-world]
   (reduce (fn [acc tile-id]
-            (let [position (get-comp ecs-world tile-id :position)
-                  tile-key (str (:q position) "," (:r position))
+            (let [tile-index (get-comp ecs-world tile-id :tile-index)
+                  tile-key (when tile-index (str (:q tile-index) "," (:r tile-index)))
                   tile-data (ecs->tile-map ecs-world tile-id)]
-              (assoc acc tile-key tile-data)))
+              (if (and tile-key tile-data)
+                (assoc acc tile-key tile-data)
+                acc)))
           {}
           (ecs-core/get-all-tiles ecs-world)))
 
