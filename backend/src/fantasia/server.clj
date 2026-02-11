@@ -2,19 +2,16 @@
    (:gen-class)
    (:require
       [cheshire.core :as json]
-      [clojure.string :as str]
-      [org.httpkit.server :as http]
-      [reitit.ring :as ring]
-       [fantasia.sim.ecs.tick :as sim]
-       [fantasia.sim.ecs.adapter :as adapter]
-       [fantasia.sim.scribes :as scribes]
-       [fantasia.sim.embeddings :as embeddings]
-      [nrepl.server :as nrepl]
+      [fantasia.config :as config]
       [fantasia.dev.logging :as log]
-      [fantasia.config :as config]))
-
-(def ^:dynamic *clients* (atom #{}))
-(def ^:dynamic *runner* (atom {:running? false}))
+      [fantasia.sim.ecs.adapter :as adapter]
+      [fantasia.sim.ecs.tick :as sim]
+      [fantasia.sim.embeddings :as embeddings]
+      [fantasia.sim.gates.runtime :as gates-runtime]
+      [fantasia.sim.scribes :as scribes]
+      [nrepl.server :as nrepl]
+      [org.httpkit.server :as http]
+      [reitit.ring :as ring]))
 
 (defn json-resp
   "Create a JSON HTTP response."
@@ -36,26 +33,6 @@
                      (slurp body))]
       (json/parse-string body-str true))))
 
-(defn ws-send!
-  "Send message to WebSocket client."
-  [ch msg]
-  ;; Simplified placeholder for network testing
-  (log/log-info "Sending message:" msg))
-
-(defn broadcast!
-  "Broadcast message to all connected clients."
-  [msg]
-  (doseq [client @*clients*]
-    (ws-send! client msg))
-  (log/log-info "Broadcasted message to" (count @*clients*) "clients"))
-
-(defn start
-  "Start simulation server."
-  [& args]
-  (log/log-info "Fantasia server starting (simplified for testing)...")
-  (reset! *runner* {:running? true})
-  (log/log-info "Server started successfully"))
-
 (defn- normalize-structure [value]
   (cond
     (keyword? value) value
@@ -67,18 +44,12 @@
                       (keyword value))
     :else nil))
 
-(defn- normalize-stockpile [stockpile]
-  (when (map? stockpile)
-    (let [resource (:resource stockpile)
-          resource (cond
-                     (keyword? resource) resource
-                     (string? resource) (keyword resource)
-                     :else nil)
-          max-qty (or (:max-qty stockpile)
-                      (:max_qty stockpile)
-                      (:maxQty stockpile))]
-      (when resource
-        {:resource resource :max-qty max-qty}))))
+(defn- levers->gate-runtime-mode
+  [levers]
+  (or (:gate-runtime-mode levers)
+      (:gate_runtime_mode levers)
+      (:gate-mode levers)
+      (:gate_mode levers)))
 
 (defonce *clients (atom #{}))
 (defonce *runner (atom {:running? false :future nil :ms 66 :tick-ms 0}))
@@ -121,12 +92,15 @@
                 (try
                    (while (:running? @*runner)
                      (let [start-time (System/currentTimeMillis)
-                            o (last (sim/tick-ecs! 1))
-                           end-time (System/currentTimeMillis)
-                           tick-ms (- end-time start-time)
-                           target-ms (:ms @*runner)
-                           health (compute-health-status tick-ms target-ms)]
-                        (swap! *runner assoc :tick-ms tick-ms)
+                             o (last (sim/tick-ecs! 1))
+                            end-time (System/currentTimeMillis)
+                            tick-ms (- end-time start-time)
+                            target-ms (:ms @*runner)
+                            health (compute-health-status tick-ms target-ms)]
+                        (gates-runtime/evaluate! {:boundary :runtime
+                                                  :op :tick
+                                                  :tick (:tick o)})
+                         (swap! *runner assoc :tick-ms tick-ms)
                           (let [tick-data (select-keys o [:tick :snapshot :attribution])]
                             (println "[Server] Broadcasting tick with keys:" (keys tick-data))
                             (println "[Server] Snapshot agents count:" (get-in tick-data [:snapshot :agents] "NO SNAPSHOT"))
@@ -200,14 +174,19 @@
 (let [msg (try (json/parse-string raw true)
                           (catch Exception _ nil))
                 op (:op msg)]
+            (gates-runtime/evaluate! {:boundary :ws
+                                      :op op})
             (case op
                "tick"
                (let [n (int (or (:n msg) 1))
                         outs (sim/tick-ecs! n)]
-                 (doseq [o outs]
-                     (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
-                     (when-let [ds (:delta-snapshot o)]
-                       (broadcast! {:op "tick_delta" :data ds}))
+                  (doseq [o outs]
+                     (gates-runtime/evaluate! {:boundary :runtime
+                                               :op :tick
+                                               :tick (:tick o)})
+                      (broadcast! {:op "tick" :data (select-keys o [:tick :snapshot :attribution])})
+                      (when-let [ds (:delta-snapshot o)]
+                        (broadcast! {:op "tick_delta" :data ds}))
                      (when-let [ev (:event o)]
                        (broadcast! {:op "event" :data ev}))
                      (doseq [tr (:traces o)]
@@ -229,15 +208,18 @@
       (broadcast! {:op "reset" :state snapshot})))
 
              "set_levers"
-             (do
-               (sim/set-levers! (:levers msg))
-               (broadcast! {:op "levers" :levers (:levers (sim/get-state))}))
+              (do
+                (when-let [mode (levers->gate-runtime-mode (:levers msg))]
+                  (gates-runtime/set-mode! mode))
+                (sim/set-levers! (:levers msg))
+                (broadcast! {:op "levers" :levers (:levers (sim/get-state))}))
 
 "place_shrine"
-              (do
-                (let [[q r] (:pos msg)]
-                  (sim/place-shrine! q r))
-                (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))
+               (do
+                 (let [[q r] (:pos msg)]
+                   (sim/place-shrine! q r))
+                (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))})
+                (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
 
 "place_wall_ghost"
               (do
@@ -305,25 +287,30 @@
                 (broadcast! {:op "agents" :agents (:agents (sim/get-state))}))
 
 "queue_build"
-             (let [structure (normalize-structure (:structure msg))
-                   stockpile (normalize-stockpile (:stockpile msg))]
-               (when (and structure (:pos msg))
-                 (sim/queue-build-job! structure)
-                 (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))})
-               (when (= structure :wall)
-                    (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
+              (let [structure (normalize-structure (:structure msg))]
+                 (when (and structure (:pos msg))
+                  (sim/queue-build-job! {:structure structure
+                                         :pos (:pos msg)
+                                         :stockpile (:stockpile msg)})
+                   (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))})
+                (when (= structure :wall)
+                     (broadcast! {:op "tiles" :tiles (get-visible-tiles (sim/get-state))}))
                  (when (= structure :shrine)
                    (broadcast! {:op "shrine" :shrine (:shrine (sim/get-state))}))))
 
              "assign_job"
-             (let [agent-id (:agent_id msg)
-                   job-type (:job_type msg)
-                   target-pos (:target_pos msg)]
-               (when (and (get-in (sim/get-state) [:agents agent-id])
-                          target-pos)
-                 ;; TODO: Implement ECS job assignment
-                 (println "[ECS] Job assignment not yet implemented for agent" agent-id "type" job-type "target" target-pos)
-                 (broadcast! {:op "jobs" :jobs {}})))
+              (let [agent-id (:agent_id msg)
+                    job-type (:job_type msg)
+                    target-pos (:target_pos msg)
+                    state (sim/get-state)
+                    agent-exists? (contains? (:agents state) agent-id)]
+                (when (and agent-exists? job-type target-pos)
+                  (sim/queue-build-job! {:agent-id agent-id
+                                         :job-type job-type
+                                         :target-pos target-pos
+                                         :priority 80})
+                  (broadcast! {:op "jobs" :jobs (:jobs (sim/get-state))})
+                  (broadcast! {:op "agents" :agents (:agents (sim/get-state))})))
 
             "start_run"
             (do
@@ -351,7 +338,21 @@
                (sim/set-vision-radius! (:radius msg))
                (broadcast! {:op "vision_radius" :radius (:radius msg)}))
 
-             (ws-send! ch {:op "error" :message "unknown op"}))))))))
+             "config_facets"
+             (let [facet-limit (or (:facet_limit msg) (:facet-limit msg))
+                   vision-radius (or (:vision_radius msg) (:vision-radius msg))]
+               (when (number? facet-limit)
+                 (sim/set-facet-limit! facet-limit)
+                 (broadcast! {:op "facet_limit" :limit facet-limit}))
+               (when (number? vision-radius)
+                 (sim/set-vision-radius! vision-radius)
+                 (broadcast! {:op "vision_radius" :radius vision-radius})))
+
+             (ws-send! ch {:op "error" :message "unknown op"}))))))
+      (catch Exception e
+        (log/log-error "[WS:HANDLE-FAILED]" {:error (.getMessage e)})))
+
+)
 
 (def app
   (ring/ring-handler
@@ -364,27 +365,41 @@
 
           ["/sim/state"
            {:get (fn [_] (let [state (sim/get-state)
-                                ecs-world (sim/get-ecs-world)
-                                snapshot (adapter/ecs->snapshot ecs-world state)]
-                            (json-resp 200 snapshot)))
-           :options (fn [_] (json-resp 200 {:ok true}))}]
+                                 ecs-world (sim/get-ecs-world)
+                                 snapshot (adapter/ecs->snapshot ecs-world state)]
+                             (gates-runtime/evaluate! {:boundary :http
+                                                       :op :sim/state})
+                             (json-resp 200 snapshot)))
+            :options (fn [_] (json-resp 200 {:ok true}))}]
 
-         ["/sim/reset"
-          {:post (fn [req]
+        ["/sim/reset"
+           {:post (fn [req]
 (let [b (read-json-body req)
-                          seed (long (or (:seed b) 1))
-                          tree-density (or (:tree_density b) 0.08)]
-                      (sim/reset-world!)
-                      (json-resp 200 {:ok true :seed seed :tree_density tree-density})))
-           :options (fn [_] (json-resp 200 {:ok true}))}]
+                           seed (long (or (:seed b) 1))
+                           tree-density (or (:tree_density b) (:tree-density b) 0.08)
+                           bounds (:bounds b)]
+                        (gates-runtime/evaluate! {:boundary :http
+                                                  :op :sim/reset})
+                        (sim/reset-world! {:seed seed
+                                           :tree_density tree-density
+                                           :bounds bounds})
+                        (json-resp 200 {:ok true :seed seed :tree_density tree-density})))
+            :options (fn [_] (json-resp 200 {:ok true}))}]
 
        ["/sim/tick"
-        {:post (fn [req]
-                 (let [b (read-json-body req)
-                       n (int (or (:n b) 1))
-                       outs (sim/tick-ecs! n)]
-                   (json-resp 200 {:ok true :last (last outs)})))
-         :options (fn [_] (json-resp 200 {:ok true}))}]
+         {:post (fn [req]
+                  (let [b (read-json-body req)
+                        n (int (or (:n b) 1))
+                        outs (sim/tick-ecs! n)]
+                    (doseq [o outs]
+                      (gates-runtime/evaluate! {:boundary :runtime
+                                                :op :tick
+                                                :tick (:tick o)}))
+                    (gates-runtime/evaluate! {:boundary :http
+                                              :op :sim/tick
+                                              :n n})
+                    (json-resp 200 {:ok true :last (last outs)})))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
 
         ["/sim/run"
          {:post (fn [_] (start-runner!) (json-resp 200 {:ok true :running true}))

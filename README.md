@@ -30,6 +30,7 @@ See `AGENTS.md` for the authoritative coding standards, naming conventions, and 
 - Dev server: `clojure -M:server` (serves HTTP+WS on `http://localhost:3000`; also starts nREPL on port 7888).
 - Hot reload loop: `clojure -X:watch-server` (restarts when `src/` or `deps.edn` changes).
 - Custom nREPL port: Set `NREPL_PORT` environment variable before starting (e.g., `NREPL_PORT=7889 clojure -M:server`).
+- Gate runtime defaults to `:enforce` for implemented policy gates; use `set_levers` with `gate-runtime-mode`/`gate_mode` to stage `:shadow` or `:off` during validation.
 
 #### Using nREPL for Dynamic Interaction
 The backend includes an nREPL server for interactive development and dynamic simulation manipulation. Connect using your preferred editor (CIDER, Calva, conjure) or CLI:
@@ -141,13 +142,13 @@ The project includes comprehensive end-to-end tests that validate game fundament
 - [[docs/tasks/002-prestige-retirement.md]] - Prestige and retirement system
 - [[docs/tasks/003-deity-moves.md]] - Deity moves and powers
 - [[docs/tasks/004-event-director.md]] - Event director
-- [[docs/tasks/005-aker-scheduler.md]] - Aker day/night scheduler
-- [[docs/tasks/006-sim-spatial.md]] - Spatial systems and hex math
-- [[docs/tasks/007-sim-agents.md]] - Agent simulation
-- [[docs/tasks/008-sim-institutions.md]] - Institutions and groups
-- [[docs/tasks/009-events-runtime.md]] - Events runtime
-- [[docs/tasks/010-world-snapshot.md]] - World snapshot system
-- [[docs/tasks/011-tick-engine.md]] - Tick engine
+- [[spec/09-gates-of-aker.md]] - Aker day/night scheduler and gate loop
+- [[spec/10-colony-sim.md]] - Spatial systems, jobs, and colony simulation
+- [[spec/11-agents-and-ai.md]] - Agent simulation and decision systems
+- [[spec/12-social-systems.md]] - Institutions, factions, and social runtime
+- [[spec/22-telemetry-debugging.md]] - Runtime events and observability
+- [[spec/20-technical-architecture.md]] - World snapshot and technical architecture
+- [[spec/04-core-loop.md]] - Tick engine and loop progression
 
 ### Design Notes
 - [[docs/notes/design/2026-01-15-minimal-schemas.md]] - Minimal schemas
