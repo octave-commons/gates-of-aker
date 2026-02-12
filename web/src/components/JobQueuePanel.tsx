@@ -55,6 +55,16 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
   const activeJobs = safeJobs.filter((j: any) => j.state !== ":completed");
   const getField = (job: any, key: string) => job?.[key] ?? job?.[key.replace(/-/g, "_")] ?? job?.[key.replace(/-(\w)/g, (_, c) => c.toUpperCase())];
   const getAgentId = (job: any) => getField(job, "worker-id") ?? getField(job, "worker");
+  const getPriority = (job: any) => {
+    const value = getField(job, "priority");
+    return typeof value === "number" ? value : Number(value ?? 0) || 0;
+  };
+  const formatAgentLabel = (id: unknown) => {
+    if (id == null) return "Unassigned";
+    const value = String(id);
+    const short = value.length > 12 ? `${value.slice(0, 8)}...` : value;
+    return `Agent ${short}`;
+  };
   const getPos = (value: any) => {
     if (!value || !Array.isArray(value)) return "-";
     return `[${value[0]}, ${value[1]}]`;
@@ -80,6 +90,7 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
     const progress = (job.progress ?? 0) / (job.required ?? 1);
     const uniqueKey = job.id ? `${job.id}-${idx}` : `idx-${idx}`;
     const workerId = getAgentId(job);
+    const priority = getPriority(job);
     const target = getPos(getField(job, "target"));
     const fromPos = getPos(getField(job, "from-pos"));
     const toPos = getPos(getField(job, "to-pos"));
@@ -98,8 +109,13 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
       >
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
           <strong style={{ color }}>{typeName}</strong>
+          <span style={{ fontSize: 11, color: "#666", fontWeight: 700 }}>
+            P{priority}
+          </span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
           <span style={{ fontSize: 11, color: "#666" }}>
-            {workerId ? `Agent #${workerId}` : "Unassigned"}
+            {formatAgentLabel(workerId)}
           </span>
         </div>
         <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>
@@ -128,12 +144,14 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
       </div>
     );
   };
-  const assignedJobs = activeJobs.filter((job: any) => getAgentId(job));
-  const unassignedJobs = activeJobs.filter((job: any) => !getAgentId(job));
+  const byPriorityDesc = (a: any, b: any) => getPriority(b) - getPriority(a);
+  const assignedJobs = activeJobs.filter((job: any) => getAgentId(job)).sort(byPriorityDesc);
+  const unassignedJobs = activeJobs.filter((job: any) => !getAgentId(job)).sort(byPriorityDesc);
 
   if (collapsed) {
     return (
-      <div 
+      <button
+        type="button"
         style={{
           padding: 12,
           border: "1px solid #aaa",
@@ -141,7 +159,10 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
           cursor: "pointer",
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center"
+          alignItems: "center",
+          width: "100%",
+          backgroundColor: "#fff",
+          textAlign: "left"
         }}
         onClick={onToggleCollapse}
       >
@@ -155,19 +176,25 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
         }}>
           ▼
         </span>
-      </div>
+      </button>
     );
   }
 
   return (
     <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-      <div 
+      <button
+        type="button"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: 8,
-          cursor: "pointer"
+          cursor: "pointer",
+          width: "100%",
+          border: "none",
+          padding: 0,
+          backgroundColor: "transparent",
+          textAlign: "left"
         }}
         onClick={onToggleCollapse}
       >
@@ -180,7 +207,7 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
         }}>
           ▼
         </span>
-      </div>
+      </button>
       {activeJobs.length === 0 ? (
         <div style={{ fontSize: 13, color: "#666" }}>No active jobs</div>
       ) : (

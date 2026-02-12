@@ -7,6 +7,9 @@
 (defn- status-type []
   (be/get-component-type (c/->AgentStatus true false false nil)))
 
+(defn- death-type []
+  (be/get-component-type (c/->DeathState true nil nil)))
+
 (defn- role-type []
   (be/get-component-type (c/->Role :priest)))
 
@@ -17,12 +20,15 @@
   (be/get-component-type (c/->JobQueue {} [] {})))
 
 (defn- alive-agent?
-  [status]
-  (and status (:alive? status true)))
+  [ecs-world agent-id status]
+  (let [death-state (be/get-component ecs-world agent-id (death-type))]
+    (and status
+         (not= false (:alive? status true))
+         (not= false (:alive? death-state true)))))
 
 (defn- idle-agent?
-  [status]
-  (and status (:idle? status false) (alive-agent? status)))
+  [ecs-world agent-id status]
+  (and status (:idle? status false) (alive-agent? ecs-world agent-id status)))
 
 (defn- job-pending?
   [job]
@@ -126,11 +132,11 @@
         assignment-t (job-assignment-type)
         agent-ids (be/get-all-entities-with-component ecs-world role-t)
         idle-agent-ids (filter (fn [agent-id]
-                                 (let [status (be/get-component ecs-world agent-id status-t)
-                                       active-assignment (be/get-component ecs-world agent-id assignment-t)]
-                                   (and (idle-agent? status)
-                                        (nil? active-assignment))))
-                               agent-ids)]
+                                  (let [status (be/get-component ecs-world agent-id status-t)
+                                        active-assignment (be/get-component ecs-world agent-id assignment-t)]
+                                    (and (idle-agent? ecs-world agent-id status)
+                                         (nil? active-assignment))))
+                                agent-ids)]
     (reduce (fn [world agent-id]
               (if-let [job-candidate (find-best-job world agent-id)]
                 (claim-job! world agent-id job-candidate)

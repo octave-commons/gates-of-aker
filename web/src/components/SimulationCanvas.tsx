@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { Agent, hasPos, PathPoint } from "../types";
 import type { HexConfig } from "../hex";
@@ -72,7 +72,7 @@ export function SimulationCanvas({
 
   const keysPressed = useRef<Set<string>>(new Set());
 
-  const getTileVisibilityState = (q: number, r: number): "hidden" | "revealed" | "visible" => {
+  const getTileVisibilityState = useCallback((q: number, r: number): "hidden" | "revealed" | "visible" => {
     const tileKey = `${q},${r}`;
     const vis = tileVisibility[tileKey];
     const tileInSnapshot = snapshot?.tiles?.[tileKey];
@@ -82,9 +82,9 @@ export function SimulationCanvas({
     }
 
     return vis ?? "hidden";
-  };
+  }, [snapshot, tileVisibility]);
 
-  const isVisible = (entity: any, type: "agent" | "tile" | "item" | "stockpile") => {
+  const isVisible = useCallback((entity: any, type: "agent" | "tile" | "item" | "stockpile") => {
     if (!selectedVisibilityAgentId || !visibilityData) return true;
 
     const selectedAgent = (snapshot.agents ?? []).find((a: Agent) => a.id === selectedVisibilityAgentId);
@@ -119,7 +119,7 @@ export function SimulationCanvas({
       default:
         return true;
     }
-  };
+  }, [selectedVisibilityAgentId, snapshot, visibilityData]);
 
   useEffect(() => {
     let animationFrameId: number | null = null;
@@ -859,7 +859,9 @@ export function SimulationCanvas({
       if (!showRelationships) return;
       const agents = snapshot.agents ?? [];
       const agentById = new Map<number, Agent>();
-      agents.forEach((agent: Agent) => agentById.set(typeof agent.id === 'number' ? agent.id : Number(agent.id), agent));
+      agents.forEach((agent: Agent) => {
+        agentById.set(typeof agent.id === "number" ? agent.id : Number(agent.id), agent);
+      });
 
       ctx.save();
       ctx.lineWidth = Math.max(1, 1 / camera.zoom);
@@ -893,36 +895,19 @@ export function SimulationCanvas({
 
     drawRelationshipLinks();
 
-     console.log("[SimulationCanvas] Starting entity rendering - total agents:", snapshot.agents?.length ?? 0);
-     let renderedAgents = 0;
-     let filteredByVisibility = 0;
-     let filteredByPosition = 0;
-     let filteredByTileVisibility = 0;
-     
-     // DEBUG: Temporarily bypass all visibility checks to test entity rendering
-     const DEBUG_BYPASS_VISIBILITY = true;
-     
      for (const agent of snapshot.agents ?? []) {
        if (!hasPos(agent)) {
-         filteredByPosition++;
          continue;
        }
-       
-       const [aq, ar] = agent.pos as AxialCoords;
-       
-       // DEBUG: Skip visibility checks if enabled
-       if (!DEBUG_BYPASS_VISIBILITY) {
-         if (!isVisible(agent, "agent")) {
-           filteredByVisibility++;
-           continue;
-         }
-         const tileVisibilityState = getTileVisibilityState(aq, ar);
-         if (tileVisibilityState === "hidden") {
-           filteredByTileVisibility++;
-           continue;
-         }
-       }
-       renderedAgents++;
+        
+        const [aq, ar] = agent.pos as AxialCoords;
+        if (!isVisible(agent, "agent")) {
+          continue;
+        }
+        const tileVisibilityState = getTileVisibilityState(aq, ar);
+        if (tileVisibilityState === "hidden") {
+          continue;
+        }
        
        const [ax, ay] = axialToPixel([aq, ar], size);
 const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
@@ -991,15 +976,13 @@ const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
        }
 
        const bubble = speechBubbles.find((b) => b.agentId === agentId);
-       if (bubble) {
-         const bubbleAge = Date.now() - bubble.timestamp;
-         if (bubbleAge < 3000) {
-           drawSpeechBubble(ax, ay, bubble.text, bubbleAge);
+        if (bubble) {
+          const bubbleAge = Date.now() - bubble.timestamp;
+          if (bubbleAge < 3000) {
+            drawSpeechBubble(ax, ay, bubble.text, bubbleAge);
+          }
          }
-        }
-      }
-     
-     console.log("[SimulationCanvas] Entity rendering summary - rendered:", renderedAgents, "filtered by visibility:", filteredByVisibility, "filtered by position:", filteredByPosition, "filtered by tile visibility:", filteredByTileVisibility);
+       }
 
     ctx.restore();
 
@@ -1012,10 +995,12 @@ const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       ctx.restore();
     }
-  }, [snapshot, mapConfig, selectedCell, selectedAgentId, camera, showRelationships, showNames, showStats, speechBubbles, visibilityData, selectedVisibilityAgentId, agentPaths, tileVisibility, revealedTilesSnapshot]);
+  }, [snapshot, mapConfig, selectedCell, selectedAgentId, camera, showRelationships, showNames, showStats, speechBubbles, visibilityData, selectedVisibilityAgentId, agentPaths, revealedTilesSnapshot, getTileVisibilityState, isVisible]);
 
   useEffect(() => {
     if (!mapConfig || !focusPos) return;
+    const _focusTrigger = focusTrigger;
+    void _focusTrigger;
     const size = CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING;
     const [px, py] = axialToPixel(focusPos, size);
     setCamera((prev) => ({ ...prev, offsetX: -px, offsetY: -py }));
