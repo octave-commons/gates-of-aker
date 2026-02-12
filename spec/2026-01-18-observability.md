@@ -1,12 +1,16 @@
-# Observability & Debugging Spec: Job System and Pathing
+---
+title: Observability and Debugging: Job System and Pathing
+type: spec
+component: backend
+priority: medium
+status: review
+workflow-state: in_review
+related-issues: []
+estimated-effort: 16 hours
+updated_at: 2026-02-10
+---
 
----
-Type: spec
-Component: backend
-Priority: medium
-Status: proposed
-Estimated-Effort: 16 hours
----
+# Observability & Debugging Spec: Job System and Pathing
 
 ## Context
 
@@ -19,10 +23,95 @@ Milestone 3 (Colony Job Loop) has code written but **no runtime observability**.
 
 This spec defines logging requirements to verify the integrated system works.
 
+## Iteration Update (2026-02-10)
+
+- Current ECS runtime now executes job and movement systems through `backend/src/fantasia/sim/ecs/tick.clj`.
+- Movement emits debug traces in `backend/src/fantasia/sim/ecs/systems/movement.clj` (`[MOVE:AGENT]`).
+- Backend verification checkpoint completed: `cd backend && clojure -X:test` passed (116 tests, 0 failures).
+- Next step for this spec is focused observability coverage for WS contract paths (`queue_build`, `assign_job`, `get_agent_path`) and job lifecycle transitions.
+
+## Iteration Evidence (2026-02-10)
+
+- Transition validation (`todo` -> `in-progress`) passed against frontmatter readiness and implementation evidence.
+- WS operation handlers are present in `backend/src/fantasia/server.clj`:
+  - `get_agent_path` (approx. lines 236-239)
+  - `queue_build` (approx. lines 289-299)
+  - `assign_job` (approx. lines 301-311)
+- ECS runtime functions backing these operations are active in `backend/src/fantasia/sim/ecs/tick.clj`:
+  - `queue-build-job!`
+  - `get-agent-path!`
+- Movement trace logging is implemented in `backend/src/fantasia/sim/ecs/systems/movement.clj` via `[MOVE:AGENT]`.
+- Need-trigger logging is implemented in `backend/src/fantasia/sim/ecs/systems/needs_decay.clj` via `[JOB:NEED-TRIGGER]`.
+- Related system tests are present in:
+  - `backend/test/fantasia/sim/ecs/systems/job_creation_test.clj`
+  - `backend/test/fantasia/sim/ecs/systems/job_processing_test.clj`
+
+## Verification Evidence (2026-02-10)
+
+### Command Outputs
+
+```bash
+# Backend suite with observability-relevant runtime output
+LOG_LEVEL=debug clojure -X:test
+# Result: Ran 116 tests containing 418 assertions. 0 failures, 0 errors.
+# Observed output includes: [DEBUG] [MOVE:AGENT] {:agent-id ..., :from [0 0], :to [1 1], :method job-path}
+
+# WS operation unit tests
+npm test -- src/__tests__/ws.test.ts
+# Result: 1 passed file, 40 passed tests
+```
+
+### Operation-Level Coverage Confirmed
+
+- `queue_build` operation test passes in `web/src/__tests__/ws.test.ts`.
+- `assign_job` operation test passes in `web/src/__tests__/ws.test.ts`.
+- `get_agent_path` operation test passes in `web/src/__tests__/ws.test.ts`.
+
+### Transition Gate Check (in_progress -> in_review)
+
+- Validation result: **fail** for now.
+- Remaining gap: capture at least one full job lifecycle + pathing verification scenario from this spec (with concrete log sequence evidence for `[JOB:CREATE]/[JOB:ASSIGN]/[JOB:PROGRESS]` and `[PATH:REQUEST]/[PATH:RESULT]`).
+
+### Gate Follow-up (2026-02-10)
+
+- Added explicit lifecycle log emitters in ECS runtime paths:
+  - `backend/src/fantasia/sim/ecs/systems/job_creation.clj`
+  - `backend/src/fantasia/sim/ecs/systems/job_assignment.clj`
+  - `backend/src/fantasia/sim/ecs/systems/job_processing.clj`
+  - `backend/src/fantasia/sim/ecs/tick.clj`
+- Added dedicated verification test:
+  - `backend/test/fantasia/sim/ecs/observability_test.clj`
+
+### Verification Evidence (2026-02-10, pass 2)
+
+```bash
+# Full backend verification (includes observability lifecycle assertions)
+LOG_LEVEL=debug clojure -X:test :only 'fantasia.sim.ecs.observability-test/test-observability-log-sequence'
+# Result: Ran 117 tests containing 425 assertions. 0 failures, 0 errors.
+
+# WebSocket contract tests still passing
+npm test -- src/__tests__/ws.test.ts
+# Result: 1 passed file, 40 passed tests.
+```
+
+Observed lifecycle labels in test/runtime output now include:
+
+- `[JOB:CREATE]`
+- `[JOB:ASSIGN]`
+- `[PATH:REQUEST]`
+- `[PATH:RESULT]`
+- `[MOVE:AGENT]`
+- `[JOB:PROGRESS]`
+- `[JOB:COMPLETE]`
+
+## Next Transition Target
+
+- Suggested next state: `in_review` (current) pending final reviewer confirmation of evidence sufficiency.
+
 ## Related Documentation
-- [[docs/notes/planning/2026-01-15-roadmap.md]] - Milestone 3 definition
-- [[docs/notes/world-schema.md]] - World schema reference
-- [[AGENTS.md]] - Backend style guide (keep logging to `println` for now)
+- [Milestone 3 roadmap](../docs/notes/planning/2026-01-15-roadmap.md) - Milestone 3 definition
+- [World schema reference](../docs/notes/world-schema.md) - World schema reference
+- [Repository agent guide](../AGENTS.md) - Backend style guide (keep logging to `println` for now)
 
 ---
 

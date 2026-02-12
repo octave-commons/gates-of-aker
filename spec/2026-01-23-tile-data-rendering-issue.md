@@ -1,3 +1,15 @@
+---
+title: Tile Data Rendering Issue
+type: bug
+component: frontend
+priority: medium
+status: review
+workflow-state: in_review
+related-issues: []
+estimated-effort: TBD
+updated_at: 2026-02-10
+---
+
 # Tile Data Rendering Issue: Raw JSON instead of Table
 
 ## Problem
@@ -30,3 +42,25 @@ Replace the raw JSON rendering with a proper table format that displays individu
 - All tile properties are properly normalized and displayed
 - The UI is consistent with other property displays in the SelectedPanel
 - No regression in other parts of the SelectedPanel functionality
+
+## Iteration Evidence (2026-02-10)
+
+- Implemented UI rendering fix in `web/src/components/SelectedPanel.tsx`:
+  - Removed stale `safeStringify` import.
+  - Tile data remains rendered as structured rows (`Biome`, `Terrain`, `Structure`, etc.) through `renderRow`.
+  - Header toggle now uses semantic `<button>` to satisfy accessibility/lint constraints.
+- Added targeted regression test: `web/src/__tests__/SelectedPanel.test.tsx`.
+  - Verifies structured tile field display and asserts no raw JSON payload text rendering.
+- Verification commands:
+
+```bash
+npm test -- src/__tests__/SelectedPanel.test.tsx
+# Result: 1 file passed, 1 test passed
+
+npm run typecheck
+# Result: pass
+```
+
+## Next Transition Target
+
+- Suggested next state: `document` after reviewer confirmation.

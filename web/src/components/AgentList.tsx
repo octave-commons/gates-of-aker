@@ -3,9 +3,15 @@ import { Agent } from "../types";
 import { AgentCard } from "./AgentCard";
 import { CONFIG } from "../config/constants";
 
+type JobLike = {
+  id?: string | number;
+  type?: string;
+  [key: string]: unknown;
+};
+
 type AgentListProps = {
   agents: Agent[];
-  jobs?: any[];
+  jobs?: JobLike[];
   collapsible?: boolean;
   onFocusAgent?: (agent: Agent) => void;
 };
@@ -13,23 +19,30 @@ type AgentListProps = {
 export function AgentList({ agents, jobs = [], collapsible = false, onFocusAgent }: AgentListProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const getAgentJob = (agentId: number) => {
-    const agent = agents.find((a: any) => a.id === agentId);
+  const getAgentJob = (agentId: number): JobLike | undefined => {
+    const agent = agents.find((a: Agent) => a.id === agentId);
     const jobId = agent?.current_job;
-    return jobs.find((j: any) => j.id === jobId);
+    return jobs.find((j: JobLike) => j.id === jobId);
   };
 
   if (collapsible) {
     return (
       <div style={{ marginTop: 12 }}>
-        <div 
+        <button
+          type="button"
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             cursor: "pointer",
             padding: "8px 0",
-            borderBottom: isCollapsed ? "1px solid #ddd" : "none"
+            borderBottom: isCollapsed ? "1px solid #ddd" : "none",
+            borderTop: "none",
+            borderLeft: "none",
+            borderRight: "none",
+            background: "transparent",
+            width: "100%",
+            textAlign: "left",
           }}
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
@@ -42,7 +55,7 @@ export function AgentList({ agents, jobs = [], collapsible = false, onFocusAgent
           }}>
             ▼
           </span>
-        </div>
+        </button>
         
         {!isCollapsed && (
           <div style={{

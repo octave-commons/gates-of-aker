@@ -3,9 +3,15 @@ import { Agent } from "../types";
 import { AgentCard } from "./AgentCard";
 import { CONFIG } from "../config/constants";
 
+type JobLike = {
+  id?: string | number;
+  type?: string;
+  [key: string]: unknown;
+};
+
 type FactionsPanelProps = {
   agents: Agent[];
-  jobs?: any[];
+  jobs?: JobLike[];
   collapsible?: boolean;
   onFocusAgent?: (agent: Agent) => void;
 };
@@ -42,7 +48,7 @@ const getAgentFaction = (agent: Agent): Faction => {
   if (faction === ":wilderness" || faction === "wilderness") {
     return ":wilderness";
   }
-  const role = (agent as any).role;
+  const role = agent.role;
   if (["wolf", "deer", "bear"].includes(role)) {
     return ":wilderness";
   }
@@ -59,22 +65,23 @@ function FactionSection({
 }: {
   faction: Faction;
   agents: Agent[];
-  jobs?: any[];
+  jobs?: JobLike[];
   collapsed: boolean;
   onToggleCollapse: () => void;
   onFocusAgent?: (agent: Agent) => void;
 }) {
   const config = FACTION_CONFIGS[faction];
 
-  const getAgentJob = (agentId: number) => {
+  const getAgentJob = (agentId: number): JobLike | undefined => {
     const agent = agents.find((a: Agent) => a.id === agentId);
     const jobId = agent?.current_job;
-    return Array.isArray(jobs) ? jobs.find((j: any) => j.id === jobId) : undefined;
+    return Array.isArray(jobs) ? jobs.find((j: JobLike) => j.id === jobId) : undefined;
   };
 
   return (
     <div style={{ marginBottom: 12 }}>
-      <div
+      <button
+        type="button"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -84,7 +91,9 @@ function FactionSection({
           backgroundColor: config.bgColor,
           border: `1px solid ${config.color}`,
           borderRadius: 8,
-          userSelect: "none"
+          userSelect: "none",
+          width: "100%",
+          textAlign: "left",
         }}
         onClick={onToggleCollapse}
       >
@@ -103,7 +112,7 @@ function FactionSection({
         }}>
           ▼
         </span>
-      </div>
+      </button>
 
       {!collapsed && (
         <div style={{
@@ -168,14 +177,21 @@ export function FactionsPanel({ agents, jobs, collapsible = false, onFocusAgent 
 
   return (
     <div>
-      <div
+      <button
+        type="button"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           cursor: "pointer",
           padding: "8px 0",
-          borderBottom: "1px solid #ddd"
+          borderBottom: "1px solid #ddd",
+          borderTop: "none",
+          borderLeft: "none",
+          borderRight: "none",
+          background: "transparent",
+          width: "100%",
+          textAlign: "left",
         }}
         onClick={() => {
           setPlayerCollapsed(!playerCollapsed);
@@ -186,7 +202,7 @@ export function FactionsPanel({ agents, jobs, collapsible = false, onFocusAgent 
         <span style={{ opacity: 0.7, marginRight: 8 }}>
           🏰 {playerAgents.length} | 🐺 {wildernessAgents.length}
         </span>
-      </div>
+      </button>
 
       <FactionSection
         faction=":player"

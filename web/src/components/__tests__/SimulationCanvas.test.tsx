@@ -394,4 +394,94 @@ describe("SimulationCanvas", () => {
     expect(typeof calledWith[0]).toBe("number");
     expect(typeof calledWith[1]).toBe("number");
   });
+
+  it("starts camera RAF on movement key and stops when keys are released", () => {
+    const frameCallbacks: FrameRequestCallback[] = [];
+    const cancelAnimationFrameMock = vi.fn();
+    const requestAnimationFrameMock = vi
+      .fn<(callback: FrameRequestCallback) => number>()
+      .mockImplementation((callback) => {
+        frameCallbacks.push(callback);
+        return frameCallbacks.length;
+      });
+
+    const originalRaf = window.requestAnimationFrame;
+    const originalCancelRaf = window.cancelAnimationFrame;
+    window.requestAnimationFrame = requestAnimationFrameMock;
+    window.cancelAnimationFrame = cancelAnimationFrameMock;
+
+    try {
+      renderCanvas();
+
+      fireEvent.keyDown(window, { code: "KeyW" });
+      expect(requestAnimationFrameMock).toHaveBeenCalledTimes(1);
+
+      const firstFrame = frameCallbacks[0];
+      firstFrame(16);
+      expect(requestAnimationFrameMock).toHaveBeenCalledTimes(2);
+
+      fireEvent.keyUp(window, { code: "KeyW" });
+      expect(cancelAnimationFrameMock).toHaveBeenCalledTimes(1);
+    } finally {
+      window.requestAnimationFrame = originalRaf;
+      window.cancelAnimationFrame = originalCancelRaf;
+    }
+  });
+
+  it("does not schedule camera RAF for non-movement keys", () => {
+    const requestAnimationFrameMock = vi
+      .fn<(callback: FrameRequestCallback) => number>()
+      .mockImplementation(() => 1);
+    const originalRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = requestAnimationFrameMock;
+
+    try {
+      renderCanvas();
+      fireEvent.keyDown(window, { code: "KeyE" });
+      expect(requestAnimationFrameMock).not.toHaveBeenCalled();
+    } finally {
+      window.requestAnimationFrame = originalRaf;
+    }
+  });
+
+  it("supports keyboard navigation with arrow keys", () => {
+    const onCellSelect = vi.fn();
+    renderCanvas({
+      onCellSelect,
+      selectedCell: [0, 0],
+      tileVisibility: {
+        "0,0": "visible",
+        "1,0": "visible",
+      },
+    });
+
+    const canvas = screen.getByTestId("simulation-canvas");
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+
+    expect(onCellSelect).toHaveBeenCalledWith([1, 0], null);
+  });
+
+  it("announces selected cell for screen readers", () => {
+    renderCanvas({
+      selectedCell: [2, 3],
+      selectedAgentId: null,
+      tileVisibility: {
+        "2,3": "visible",
+      },
+    });
+
+    expect(screen.getByText("Selected tile 2, 3.")).toBeInTheDocument();
+  });
+
+  it("announces selected agent details for screen readers", () => {
+    renderCanvas({
+      selectedCell: [1, 2],
+      selectedAgentId: 7,
+      tileVisibility: {
+        "1,2": "visible",
+      },
+    });
+
+    expect(screen.getByText("Selected tile 1, 2. Agent 7, role knight.")).toBeInTheDocument();
+  });
 });

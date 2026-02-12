@@ -1,18 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
-import { WSClient, WSMessage } from "./ws";
-import { playDeathTone, playTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction, playBookCreatedTone, playHuntStartTone, playHuntAttackTone, playHuntKillTone } from "./audio";
-import { applyDelta } from "./utils";
+import { playDeathTone, playToneSequence, playToneSequenceWithVoice, getScaleFrequency, markUserInteraction, playHuntStartTone, playHuntAttackTone, playHuntKillTone } from "./audio";
 import {
-  AgentList,
   FactionsPanel,
   MythPanel,
-  RawJSONFeedPanel,
   SelectedPanel,
   SimulationCanvas,
   StatusBar,
   TickControls,
-  BuildControls,
   BuildingPalette,
   JobQueuePanel,
   ResourceTotalsPanel,
@@ -27,8 +22,9 @@ import {
   FacetControls,
 } from "./components";
 import { TraceFeed } from "./components/TraceFeed";
-import { Agent, Trace, hasPos, PathPoint } from "./types";
-import type { HexConfig, AxialCoords } from "./hex";
+import { Agent, Snapshot, hasPos } from "./types";
+import type { AxialCoords } from "./hex";
+import type { Book } from "./components/LibraryPanel";
 
 
 
@@ -38,10 +34,55 @@ type SpeechBubble = {
   interactionType: string;
   timestamp: number;
 };
-import { clamp01, fmt, colorForRole, safeStringify, normalizeKeyedMap } from "./utils";
+import { normalizeKeyedMap } from "./utils";
 import { CONFIG } from "./config/constants";
+import { useWebSocket } from "./hooks/useWebSocket";
+import { useSimulationState } from "./hooks/useSimulationState";
+import { useSimulationInitialization } from "./hooks/useSimulationInitialization";
+import { useCollapsedPanels } from "./hooks/useCollapsedPanels";
+import { useWorldSizeFromMapConfig } from "./hooks/useWorldSizeFromMapConfig";
+import { useExpiringTimestampList } from "./hooks/useExpiringTimestampList";
+import { useGlobalSimulationShortcuts } from "./hooks/useGlobalSimulationShortcuts";
+import { useSimulationSelectors } from "./hooks/useSimulationSelectors";
+import { useResetDismissedOnOpen } from "./hooks/useResetDismissedOnOpen";
+import { useSyncRef } from "./hooks/useSyncRef";
+import { useSimulationControls } from "./hooks/useSimulationControls";
+import { useSimulationMessageHandler } from "./hooks/useSimulationMessageHandler";
+import { logDebug } from "./logging";
 
-const localFmt = (n: any) => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
+const normalizeBooks = (books: unknown): Record<string, Book> => {
+  if (!books || typeof books !== "object") {
+    return {};
+  }
+
+  const source = books as Record<string, unknown>;
+  return Object.entries(source).reduce((acc, [bookId, value]) => {
+    if (!value || typeof value !== "object") {
+      return acc;
+    }
+    const raw = value as Record<string, unknown>;
+    const id = typeof raw.id === "string" ? raw.id : String(bookId);
+    const title = typeof raw.title === "string" ? raw.title : "Untitled";
+    const text = typeof raw.text === "string" ? raw.text : "";
+    const createdAt = typeof raw.created_at === "number" ? raw.created_at : 0;
+    const createdBy = typeof raw.created_by === "string" ? raw.created_by : "unknown";
+    const traceIds = Array.isArray(raw.trace_ids) ? raw.trace_ids.filter((traceId): traceId is string => typeof traceId === "string") : [];
+    const readCount = typeof raw.read_count === "number" ? raw.read_count : 0;
+
+    return {
+      ...acc,
+      [bookId]: {
+        id,
+        title,
+        text,
+        created_at: createdAt,
+        created_by: createdBy,
+        trace_ids: traceIds,
+        read_count: readCount,
+      },
+    };
+  }, {} as Record<string, Book>);
+};
 
 const MAX_TONE_SEQUENCES_PER_TICK = 8;
 const NOTE_DURATION = 0.11;
@@ -104,22 +145,27 @@ const SOCIAL_TONE_SEQUENCES: Record<string, number[]> = {
    const toSequence = (notes: number[], octaveShift: number = 0) =>
    notes.map((note) => getScaleFrequency(note, octaveShift));
 
-     const normalizeSnapshot = (state: any) => {
-       if (!state || typeof state !== "object") return state;
-       console.log("[App] normalizeSnapshot - input agents:", state.agents?.length ?? 0, "tiles:", Object.keys(state.tiles ?? {}).length);
+      const normalizeSnapshot = (state: unknown): Snapshot => {
+        if (!state || typeof state !== "object") {
+          return {};
+        }
+        const rawState = state as Record<string, unknown>;
+        const inputAgents = Array.isArray(rawState.agents) ? rawState.agents.length : 0;
+        const inputTiles = normalizeKeyedMap(rawState.tiles as Record<string, unknown> | null | undefined);
+        logDebug("[App] normalizeSnapshot - input agents:", inputAgents, "tiles:", Object.keys(inputTiles).length);
+
+       const normalizedTiles = normalizeKeyedMap(rawState.tiles as Record<string, unknown> | null | undefined);
+       const normalizedItems = normalizeKeyedMap(rawState.items as Record<string, unknown> | null | undefined);
+       const normalizedStockpiles = normalizeKeyedMap(rawState.stockpiles as Record<string, unknown> | null | undefined);
+
+        const normalized: Snapshot = {
+          ...rawState,
+          tiles: normalizedTiles as Snapshot["tiles"],
+          items: normalizedItems as Snapshot["items"],
+          stockpiles: normalizedStockpiles as Snapshot["stockpiles"],
+        };
        
-       const normalizedTiles = normalizeKeyedMap(state.tiles);
-       const normalizedItems = normalizeKeyedMap(state.items);
-       const normalizedStockpiles = normalizeKeyedMap(state.stockpiles);
-       
-       const normalized = {
-         ...state,
-         tiles: normalizedTiles,
-         items: normalizedItems,
-         stockpiles: normalizedStockpiles,
-       };
-       
-       console.log("[App] normalizeSnapshot - output agents:", normalized.agents?.length ?? 0, "tiles:", Object.keys(normalized.tiles ?? {}).length);
+       logDebug("[App] normalizeSnapshot - output agents:", normalized.agents?.length ?? 0, "tiles:", Object.keys(normalized.tiles ?? {}).length);
        return normalized;
      };
 
@@ -130,16 +176,28 @@ export type AgentVisibility = {
 
 export function App() {
   const navigate = useNavigate();
-    const [status, setStatus] = useState<"open" | "closed" | "error">("closed");
-   const [tick, setTick] = useState(0);
-    const [snapshot, setSnapshot] = useState<any>(null);
-      const [mapConfig, setMapConfig] = useState<HexConfig | null>(null);
-   const [traces, setTraces] = useState<Trace[]>([]);
-   const [agentPaths, setAgentPaths] = useState<Record<number, PathPoint[]>>({});
-   const [books, setBooks] = useState<Record<string, any>>({});
-   const [selectedBookId, setSelectedBookId] = useState<string | undefined>(undefined);
+  const {
+    tick,
+    setTick,
+    snapshot,
+    setSnapshot,
+    mapConfig,
+    setMapConfig,
+    traces,
+    setTraces,
+    agentPaths,
+    books,
+    setBooks,
+    selectedBookId,
+    setSelectedBookId,
+    memories,
+    setMemories,
+    isInitializing,
+    setIsInitializing,
+  } = useSimulationState();
    const aliveAgentsRef = useRef<Set<number>>(new Set());
-   const prevSnapshotRef = useRef<any>(null);
+   const prevSnapshotRef = useRef<Snapshot | null>(null);
+   const snapshotRef = useRef<Snapshot | null>(null);
    const initialFocusRef = useRef(false);
    const prevBookCountRef = useRef<number>(0);
   const [focusPos, setFocusPos] = useState<[number, number] | null>(null);
@@ -153,34 +211,28 @@ export function App() {
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
       const [speechBubbles, setSpeechBubbles] = useState<SpeechBubble[]>([]);
       const [selectedVisibilityAgentId, setSelectedVisibilityAgentId] = useState<number | null>(null);
-      const [visibilityData, setVisibilityData] = useState<Record<string, any> | null>(null);
+      const [visibilityData, setVisibilityData] = useState<Record<string, unknown> | null>(null);
       const [tileVisibility, setTileVisibility] = useState<Record<string, "hidden" | "revealed" | "visible">>({});
-      const [revealedTilesSnapshot, setRevealedTilesSnapshot] = useState<Record<string, any>>({});
+      const [revealedTilesSnapshot, setRevealedTilesSnapshot] = useState<Record<string, unknown>>({});
       const [agentVisibilityMaps, setAgentVisibilityMaps] = useState<Record<number, Set<string>>>({});
 
-     useEffect(() => {
-     }, [snapshot]);
+  useSyncRef(snapshotRef, snapshot);
 
-  const getAgentPath = (agentId: number): PathPoint[] => {
-    return agentPaths[agentId] ?? [];
-  };
-
-  const [buildMode, setBuildMode] = useState(false);
-  const [stockpileMode, setStockpileMode] = useState(false);
+  const [buildMode] = useState(false);
     const [fps, setFps] = useState(15);
-    const [memories, setMemories] = useState<any[]>([]);
     const [facetLimit, setFacetLimit] = useState(16);
     const [visionRadius, setVisionRadius] = useState(10);
     const [showMemories, setShowMemories] = useState(false);
+    const [wsErrorDismissed, setWsErrorDismissed] = useState(false);
  
    const [worldWidth, setWorldWidth] = useState<number | null>(null);
    const [worldHeight, setWorldHeight] = useState<number | null>(null);
    const [treeDensity, setTreeDensity] = useState<number>(CONFIG.data.DEFAULT_TREE_DENSITY);
 
-  const getAliveAgents = useCallback((state: any) => {
+  const getAliveAgents = useCallback((state: Snapshot | null) => {
     const alive = new Set<number>();
     if (!state?.agents) return alive;
-    state.agents.forEach((agent: any) => {
+    state.agents.forEach((agent: Agent) => {
       const status = agent?.status ?? {};
       const aliveFlag = status["alive?"] ?? status.alive ?? true;
       if (aliveFlag && typeof agent.id === "number") {
@@ -190,7 +242,7 @@ export function App() {
     return alive;
   }, []);
 
-  const handleDeathTone = useCallback((nextSnapshot: any) => {
+  const handleDeathTone = useCallback((nextSnapshot: Snapshot | null) => {
     if (!nextSnapshot) return;
     const previousAlive = aliveAgentsRef.current;
     const currentAlive = getAliveAgents(nextSnapshot);
@@ -201,27 +253,27 @@ export function App() {
     aliveAgentsRef.current = currentAlive;
   }, [getAliveAgents]);
 
-   const handleTickAudio = useCallback((nextSnapshot: any) => {
+  const handleTickAudio = useCallback((nextSnapshot: Snapshot | null) => {
      if (!nextSnapshot) return;
      const prevSnapshot = prevSnapshotRef.current;
      prevSnapshotRef.current = nextSnapshot;
      if (!prevSnapshot) return;
 
-     const getField = (obj: any, key: string) =>
+     const getField = (obj: Record<string, unknown> | null | undefined, key: string) =>
        obj?.[key] ?? obj?.[key.replace(/-/g, "_")] ?? obj?.[key.replace(/-(\w)/g, (_: string, c: string) => c.toUpperCase())];
 
-     const sequences: number[][] = [];
+      const sequences: number[][] = [];
 
-      const prevJobs = new Map<string, any>();
+      const prevJobs = new Map<string, Record<string, unknown>>();
       const prevJobsArray = Array.isArray(prevSnapshot.jobs) ? prevSnapshot.jobs : Object.values(prevSnapshot.jobs ?? {});
-      prevJobsArray.forEach((job: any) => {
+      prevJobsArray.forEach((job: Record<string, unknown>) => {
         if (job?.id) {
           prevJobs.set(String(job.id), job);
         }
       });
       const nextJobIds = new Set<string>();
       const nextJobsArray = Array.isArray(nextSnapshot.jobs) ? nextSnapshot.jobs : Object.values(nextSnapshot.jobs ?? {});
-      nextJobsArray.forEach((job: any) => {
+      nextJobsArray.forEach((job: Record<string, unknown>) => {
         if (job?.id) {
           nextJobIds.add(String(job.id));
         }
@@ -234,14 +286,14 @@ export function App() {
         }
       });
 
-      const prevAgents = new Map<number, any>();
-      (prevSnapshot.agents ?? []).forEach((agent: any) => {
+      const prevAgents = new Map<number, Agent>();
+      (prevSnapshot.agents ?? []).forEach((agent: Agent) => {
         if (typeof agent?.id === "number") {
           prevAgents.set(agent.id, agent);
         }
       });
 
-      (nextSnapshot.agents ?? []).forEach((agent: any) => {
+      (nextSnapshot.agents ?? []).forEach((agent: Agent) => {
         if (typeof agent?.id !== "number") return;
         const prevAgent = prevAgents.get(agent.id);
         if (!prevAgent) return;
@@ -251,7 +303,7 @@ export function App() {
         const prevNeeds = prevAgent.needs ?? {};
         const nextNeeds = agent.needs ?? {};
         const thresholds =
-          getField(agent, "need-thresholds") ?? getField(agent, "needThresholds") ?? getField(agent, "need_thresholds") ?? {};
+          (getField(agent, "need-thresholds") ?? getField(agent, "needThresholds") ?? getField(agent, "need_thresholds") ?? {}) as Record<string, unknown>;
         Object.entries(NEED_THRESHOLD_KEYS).forEach(([needKey, thresholdKey]) => {
           const threshold = getField(thresholds, thresholdKey);
           const prevValue = getField(prevNeeds, needKey);
@@ -276,12 +328,12 @@ export function App() {
      });
    }, []);
 
-  const handleDeltaAudio = useCallback((delta: any) => {
+  const handleDeltaAudio = useCallback((delta: Record<string, unknown>) => {
     if (!delta) return;
 
-    if (delta.combat_events) {
-      delta.combat_events.forEach((ce: any) => {
-        const eventType = ce.type as string;
+    if (Array.isArray(delta.combat_events)) {
+      delta.combat_events.forEach((ce) => {
+        const eventType = (ce as Record<string, unknown>).type as string;
         if (eventType === "hunt-start") {
           playHuntStartTone();
         } else if (eventType === "hunt-attack") {
@@ -293,15 +345,15 @@ export function App() {
     }
   }, []);
 
-  const handleSocialSound = useCallback((interactionType: string, agent: any) => {
+  const handleSocialSound = useCallback((interactionType: string, agent: Agent | Record<string, unknown> | null | undefined) => {
     const notes = SOCIAL_TONE_SEQUENCES[interactionType] ?? [0, 2, 0];
     const sequence = toSequence(notes);
-    const voiceData = agent?.voice;
+    const voiceData = (agent as Record<string, unknown> | null | undefined)?.voice as Record<string, unknown> | undefined;
     const voice = voiceData ? {
       waveform: (voiceData.waveform || "sine") as OscillatorType,
-      pitchOffset: voiceData["pitch-offset"] ?? 0,
-      vibratoDepth: voiceData["vibrato-depth"] ?? 0,
-      attackTime: voiceData["attack-time"] ?? 0,
+      pitchOffset: typeof voiceData["pitch-offset"] === "number" ? voiceData["pitch-offset"] : 0,
+      vibratoDepth: typeof voiceData["vibrato-depth"] === "number" ? voiceData["vibrato-depth"] : 0,
+      attackTime: typeof voiceData["attack-time"] === "number" ? voiceData["attack-time"] : 0,
     } : undefined;
     playToneSequenceWithVoice(sequence, {
       noteDuration: NOTE_DURATION,
@@ -320,14 +372,14 @@ export function App() {
     setFocusTrigger((prev) => prev + 1);
   }, []);
 
-  const findTownCenter = useCallback((state: any): [number, number] | null => {
+  const findTownCenter = useCallback((state: Snapshot | null): [number, number] | null => {
     if (!state) return null;
     if (Array.isArray(state.shrine) && state.shrine.length === 2) {
       return [Number(state.shrine[0]), Number(state.shrine[1])];
     }
     const tiles = state.tiles ?? {};
     const entry = Object.entries(tiles).find(([, tile]) => {
-      const structure = (tile as any)?.structure;
+      const structure = (tile as Record<string, unknown>)?.structure;
       return structure === "campfire";
     });
     if (!entry) return null;
@@ -337,7 +389,7 @@ export function App() {
     return [q, r];
   }, []);
 
-  const focusOnTownCenter = useCallback((state: any) => {
+  const focusOnTownCenter = useCallback((state: Snapshot | null) => {
     const center = findTownCenter(state);
     if (!center) return;
     setSelectedAgentId(null);
@@ -346,11 +398,13 @@ export function App() {
     setFocusTrigger((prev) => prev + 1);
   }, [findTownCenter]);
 
-    const [tracesCollapsed, setTracesCollapsed] = useState(true);
-    const [jobsCollapsed, setJobsCollapsed] = useState(true);
-    const [thoughtsCollapsed, setThoughtsCollapsed] = useState(true);
-    const [mythCollapsed, setMythCollapsed] = useState(true);
-    const [isInitializing, setIsInitializing] = useState(false);
+  const {
+    tracesCollapsed,
+    jobsCollapsed,
+    thoughtsCollapsed,
+    mythCollapsed,
+    togglePanelCollapse,
+  } = useCollapsedPanels();
 
   const handleSplashComplete = useCallback(() => {
     navigate("/menu");
@@ -374,472 +428,120 @@ export function App() {
      health: "healthy" | "degraded" | "unhealthy" | "unknown";
    } | null>(null);
 
-  useEffect(() => {
-     const handleKeyDown = (e: KeyboardEvent) => {
-       if (e.code === "Space" && !e.repeat) {
-         e.preventDefault();
-         toggleRun();
-       }
-     };
-
-     window.addEventListener("keydown", handleKeyDown);
-     window.addEventListener("click", markUserInteraction);
-     return () => {
-       window.removeEventListener("keydown", handleKeyDown);
-       window.removeEventListener("click", markUserInteraction);
-     };
-   }, [isRunning]);
-
-   useEffect(() => {
-     const interval = setInterval(() => {
-       const now = Date.now();
-       setSpeechBubbles((prev) => prev.filter((bubble) => now - bubble.timestamp < 3000));
-     }, 500);
-     return () => clearInterval(interval);
-   }, []);
+  useExpiringTimestampList<SpeechBubble>({ setItems: setSpeechBubbles, maxAgeMs: 3000, intervalMs: 500 });
 
 
-  const client = useMemo(() => {
-    const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
-    const wsUrl = backendOrigin.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-    return new WSClient(
-      wsUrl,
-      (m: WSMessage) => {
-              if (m.op === "hello") {
-                console.log("[App] Processing hello message");
-                 const state = normalizeSnapshot(m.state ?? {});
-                    const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
-                const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
-                const avm = state?.agent_visibility ?? {};
-                console.log("[App] Setting initial state - agents:", state.agents?.length ?? 0);
-                setTick(state.tick ?? 0);
-                setSnapshot(state);
-                setTileVisibility(tv);
-                setRevealedTilesSnapshot(rts);
-                setAgentVisibilityMaps(avm);
-              prevSnapshotRef.current = state;
-           if (state.map) {
-             setMapConfig(state.map as HexConfig);
-           }
-           handleDeathTone(state);
-           if (!initialFocusRef.current) {
-             focusOnTownCenter(state);
-             initialFocusRef.current = true;
-           }
-         }
-           if (m.op === "tick") {
-               console.log("[App] Processing tick message");
-               console.log("[App] Full tick data:", m.data);
-               setTick(m.data?.tick ?? 0);
-               
-               // DEBUG: Check if snapshot exists in tick message
-               if (!m.data?.snapshot) {
-                 console.log("[App] WARNING: Tick message has no snapshot data, keeping current state");
-                 playTone(440, 0.08);
-                 return; // Don't clear current snapshot
-               }
-               
-               const nextSnapshot = normalizeSnapshot(m.data?.snapshot ?? null);
-               console.log("[App] Tick update - agents:", nextSnapshot.agents?.length ?? 0);
-               console.log("[App] First agent:", nextSnapshot.agents?.[0]);
-               setSnapshot(nextSnapshot);
-               setMemories(nextSnapshot?.memories ?? []);
-               playTone(440, 0.08);
-               handleDeathTone(nextSnapshot);
-               handleTickAudio(nextSnapshot);
-             }
-           if (m.op === "tick_delta") {
-                    console.log("[App] Processing tick_delta message");
-                    const delta = m.data as any;
-                     const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(delta?.tile_visibility ?? delta?.["tile-visibility"] ?? {});
-                    const rts = normalizeKeyedMap(delta?.revealed_tiles_snapshot ?? delta?.["revealed-tiles-snapshot"] ?? {});
-                    const avm = delta?.agent_visibility;
-                    if (delta && Object.keys(tv).length > 0 && Object.keys(tv).length < 5) {
-                      console.log("[App] tick_delta received, tileVisibility sample:", Object.entries(tv).slice(0, 3));
-                    }
-                    setTick(delta?.tick ?? 0);
-                    setSnapshot((prev: any) => {
-                      const result = applyDelta(prev, delta);
-                      console.log("[App] Delta applied - agents before:", prev?.agents?.length ?? 0, "after:", result?.agents?.length ?? 0);
-                      return result;
-                    });
-                    setVisibilityData(delta?.visibility ?? null);
-                    setTileVisibility(tv);
-                    setRevealedTilesSnapshot(rts);
-                    if (avm && typeof avm === "object") {
-                      setAgentVisibilityMaps((prev: Record<number, Set<string>>) => ({
-                        ...prev,
-                        ...Object.entries(avm).reduce((acc, [agentId, tiles]) => {
-                          const numId = parseInt(String(agentId), 10);
-                          const tilesArray = Array.isArray(tiles) ? tiles : [];
-                          return { ...acc, [numId]: new Set(tilesArray) };
-                        }, {})
-                      }));
-                    }
-                    handleDeltaAudio(delta);
-                  }
-        if (m.op === "trace") {
-            const incoming = m.data as Trace;
-            setTraces((prev) => {
-              const next = [...prev, incoming];
-              return next.slice(Math.max(0, next.length - CONFIG.data.MAX_TRACES));
-            });
-         }
-         if (m.op === "books") {
-           const newBooks = m.data?.books ?? {};
-           const newBookCount = Object.keys(newBooks).length;
-           if (newBookCount > prevBookCountRef.current) {
-             playBookCreatedTone();
-           }
-           prevBookCountRef.current = newBookCount;
-           setBooks(newBooks);
-         }
-            if (m.op === "reset") {
-                 setTraces([]);
-                 setSelectedCell(null);
-                 setSelectedAgentId(null);
-                 setSpeechBubbles([]);
-                 setTileVisibility({});
-                 setRevealedTilesSnapshot({});
-                const state = normalizeSnapshot(m.state ?? {});
-                const tv = normalizeKeyedMap<"hidden" | "revealed" | "visible">(state?.tile_visibility ?? state?.["tile-visibility"] ?? {});
-                const rts = normalizeKeyedMap(state?.revealed_tiles_snapshot ?? state?.["revealed-tiles-snapshot"] ?? {});
-                setSnapshot(state);
-                setTileVisibility(tv);
-                setRevealedTilesSnapshot(rts);
-               prevSnapshotRef.current = state;
-              if (state.map) {
-                setMapConfig(state.map as HexConfig);
-              }
-              aliveAgentsRef.current = getAliveAgents(state);
-             initialFocusRef.current = false;
-             focusOnTownCenter(state);
-             initialFocusRef.current = true;
-            }
-        if (m.op === "social_interaction") {
-           const si = m.data as any;
-           if (si && typeof si.agent_1_id === "number" && typeof si.agent_2_id === "number") {
-             const interactionName = (si.interaction_type || "social") as string;
-             const agents = snapshot?.agents ?? [];
-             const agent1 = agents.find((a: any) => a.id === si.agent_1_id);
-             const agent2 = agents.find((a: any) => a.id === si.agent_2_id);
-             if (agent1) handleSocialSound(interactionName, agent1);
-             if (agent2) handleSocialSound(interactionName, agent2);
-             setSpeechBubbles((prev) => [
-               ...prev,
-               {
-                 agentId: si.agent_1_id,
-                 text: interactionName,
-                 interactionType: interactionName,
-                 timestamp: Date.now()
-               },
-               {
-                 agentId: si.agent_2_id,
-                 text: interactionName,
-                 interactionType: interactionName,
-                 timestamp: Date.now()
-               }
-             ]);
-           }
-          }
-        if (m.op === "tiles") {
-           setSnapshot((prev: any) => {
-             if (!prev) return prev;
-             return { ...prev, tiles: normalizeKeyedMap(m.tiles) };
-           });
-         }
-         if (m.op === "stockpiles") {
-           setSnapshot((prev: any) => {
-             if (!prev) return prev;
-             return { ...prev, stockpiles: normalizeKeyedMap(m.stockpiles) };
-           });
-         }
-         if (m.op === "agent_path") {
-           setSnapshot((prev: any) => {
-             if (!prev) return prev;
-             const agentPath = { [m.agent_id]: m.path };
-             return { ...prev, agentPath };
-           });
-         }
-         if (m.op === "jobs") {
-           setSnapshot((prev: any) => {
-             if (!prev) return prev;
-             return { ...prev, jobs: m.jobs };
-           });
-         }
-        if (m.op === "runner_state") {
-           setIsRunning(m.running);
-           setFps(m.fps);
-         }
-         if (m.op === "tick_health") {
-            const data = m.data ?? {};
-            const targetMs = typeof data.targetMs === "number"
-              ? data.targetMs
-              : typeof data["target-ms"] === "number"
-                ? data["target-ms"]
-                : undefined;
-            const tickMs = typeof data.tickMs === "number"
-              ? data.tickMs
-              : typeof data["tick-ms"] === "number"
-                ? data["tick-ms"]
-                : undefined;
-            const health = (data.health as "healthy" | "degraded" | "unhealthy" | "unknown") ?? "unknown";
-            if (targetMs != null && tickMs != null) {
-              setTickHealth({ targetMs, tickMs, health });
-            } else {
-              setTickHealth(null);
-            }
-          }
-         if (m.op === "combat_event") {
-            const ce = m.data ?? {};
-            const eventType = ce.type as string;
-            if (eventType === "hunt-start") {
-              playHuntStartTone();
-            } else if (eventType === "hunt-attack") {
-              playHuntAttackTone();
-            } else if (eventType === "hunt-kill") {
-              playHuntKillTone();
-            }
-          }
-       },
-      (s) => setStatus(s)
-    );
-  }, []);
+  const handleWSMessage = useSimulationMessageHandler({
+    initialFocusRef,
+    aliveAgentsRef,
+    prevSnapshotRef,
+    snapshotRef,
+    prevBookCountRef,
+    setTick,
+    setSnapshot,
+    setMapConfig,
+    setTileVisibility,
+    setRevealedTilesSnapshot,
+    setAgentVisibilityMaps,
+    setMemories,
+    setVisibilityData,
+    setTraces,
+    setBooks,
+    setSelectedCell,
+    setSelectedAgentId,
+    setSpeechBubbles,
+    setIsRunning,
+    setFps,
+    setTickHealth,
+    normalizeSnapshot,
+    normalizeBooks,
+    handleDeathTone,
+    handleTickAudio,
+    handleDeltaAudio,
+    handleSocialSound,
+    focusOnTownCenter,
+    getAliveAgents,
+  });
 
-  useEffect(() => {
-    client.connect();
-    return () => client.close();
-  }, [client]);
+  const { client, status, reconnect } = useWebSocket({ onMessage: handleWSMessage });
 
-  // Initialize snapshot - fetch latest or create new one
-  useEffect(() => {
-    const initializeSnapshot = async () => {
-      setIsInitializing(true);
-      try {
-        const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN ?? "http://localhost:3000";
-        const response = await fetch(`${backendOrigin}/sim/state`);
+  useResetDismissedOnOpen({ status, setDismissed: setWsErrorDismissed });
 
-          if (response.ok) {
-            const state = normalizeSnapshot(await response.json());
+  useSimulationInitialization({
+    client,
+    snapshot,
+    status,
+    treeDensity,
+    defaultSeedRange: CONFIG.data.DEFAULT_SEED_RANGE,
+    initializationTimeout: CONFIG.ui.INITIALIZATION_TIMEOUT,
+    normalizeSnapshot,
+    focusOnTownCenter,
+    initialFocusRef,
+    prevSnapshotRef,
+    setIsInitializing,
+    setTick,
+    setSnapshot,
+    setMapConfig,
+  });
 
-          // Check if the state has meaningful data
-          const hasData = state && (
-            (state.tick && state.tick > 0) ||
-            (state.agents && state.agents.length > 0) ||
-            (state.ledger && Object.keys(state.ledger).length > 0)
-          );
+  useWorldSizeFromMapConfig({ mapConfig, setWorldWidth, setWorldHeight });
 
-            if (hasData) {
-                setTick(state.tick ?? 0);
-                setSnapshot(state);
-                prevSnapshotRef.current = state;
-               if (state.map) {
-                 setMapConfig(state.map as HexConfig);
-               }
-             if (!initialFocusRef.current) {
-               focusOnTownCenter(state);
-               initialFocusRef.current = true;
-             }
-            } else {
-              createNewSnapshot();
-            }
-         } else {
-           createNewSnapshot();
-         }
-       } catch (error) {
-         createNewSnapshot();
-      } finally {
-        setIsInitializing(false);
-      }
-    };
+  const {
+    toggleRun,
+    setFpsValue,
+    sendTick,
+    reset,
+    handleFacetLimitChange,
+    handleVisionRadiusChange,
+    applyWorldSize,
+  } = useSimulationControls({
+    client,
+    isRunning,
+    treeDensity,
+    worldWidth,
+    worldHeight,
+    setIsRunning,
+    clearTraces: () => setTraces([]),
+    setSelectedCell,
+    setSelectedAgentId,
+    clearSpeechBubbles: () => setSpeechBubbles([]),
+    setTileVisibility,
+    setRevealedTilesSnapshot,
+    setFps,
+    setFacetLimit,
+    setVisionRadius,
+    markUserInteraction,
+  });
 
-    const createNewSnapshot = () => {
-      const defaultSeed = Math.floor(Math.random() * CONFIG.data.DEFAULT_SEED_RANGE);
-      client.send({ op: "reset", seed: defaultSeed, tree_density: treeDensity });
-    };
+  useGlobalSimulationShortcuts({ onToggleRun: toggleRun, onMarkInteraction: markUserInteraction });
 
-    // Initialize snapshot when component mounts
-    const timeoutId = setTimeout(() => {
-      // Only initialize if WebSocket hasn't provided data yet
-      if (!snapshot && status === "open") {
-        initializeSnapshot();
-      }
-    }, CONFIG.ui.INITIALIZATION_TIMEOUT); // Wait for WebSocket "hello" message
-
-    return () => clearTimeout(timeoutId);
-    }, [client, snapshot, status]);
-
-  useEffect(() => {
-    if (!mapConfig || !mapConfig.bounds) return;
-    const b = mapConfig.bounds as any;
-    if (b.shape === "rect") {
-      setWorldWidth(b.w);
-      setWorldHeight(b.h);
-    } else if (b.shape === "radius") {
-      const size = (b.r * 2) + 1;
-      setWorldWidth(size);
-      setWorldHeight(size);
-    }
-  }, [mapConfig]);
-
-   const toggleRun = () => {
-     markUserInteraction();
-     if (isRunning) {
-       client.send({ op: "stop_run" });
-       setIsRunning(false);
-     } else {
-       client.send({ op: "start_run" });
-     }
-   };
-
-  const setFpsValue = (value: number) => {
-    client.sendSetFps(value);
-    setFps(value);
-  };
-
-   const sendTick = (n: number) => {
-     if (isRunning) {
-       console.log("[sendTick] Simulation is running, ignoring tick request");
-       return;
-     }
-     client.send({ op: "tick", n });
-   };
-   const reset = (seed: number, bounds?: { w: number; h: number }, treeDensity?: number) => {
-     console.log("[App] Resetting world with seed:", seed);
-     markUserInteraction();
-     const payload: { op: string; seed: number; bounds?: { w: number; h: number }; tree_density?: number } = { op: "reset", seed };
-     if (bounds) {
-       payload.bounds = bounds;
-     }
-     if (treeDensity !== undefined) {
-       payload.tree_density = treeDensity;
-     }
-     setIsRunning(false);
-     setTraces([]);
-     setSelectedCell(null);
-     setSelectedAgentId(null);
-     setSpeechBubbles([]);
-     setTileVisibility({});
-     setRevealedTilesSnapshot({});
-     client.send(payload);
-   };
-
-    const handleCellSelect = (cell: [number, number], agentId: number | null) => {
+    const handleCellSelect = useCallback((cell: [number, number], agentId: number | null) => {
       if (buildMode) {
         client.sendPlaceWallGhost(cell);
       }
       setSelectedCell(cell);
       setSelectedAgentId(agentId);
-    };
+    }, [buildMode, client]);
 
     const handleQueueBuild = (type: string, pos: [number, number], config?: { stockpile?: { resource?: string; max_qty?: number } }) => {
       client.sendQueueBuild(type, pos, config?.stockpile);
      };
 
-    const handleFacetLimitChange = (limit: number) => {
-      setFacetLimit(limit);
-      client.send({ op: "set_facet_limit", limit });
-    };
-
-    const handleVisionRadiusChange = (radius: number) => {
-      setVisionRadius(radius);
-      client.send({ op: "set_vision_radius", radius });
-    };
-  const agents = useMemo(() => {
-    if (!snapshot?.agents) return [];
-    return snapshot.agents as Agent[];
-  }, [snapshot?.agents]);
-   const jobs = useMemo(() => {
-      if (!snapshot?.jobs) return [];
-      return Array.isArray(snapshot.jobs) ? snapshot.jobs : Object.values(snapshot.jobs);
-    }, [snapshot?.jobs]);
-  const calendar = useMemo(() => {
-     if (!snapshot?.calendar) return null;
-     return snapshot.calendar;
-  }, [snapshot?.calendar]);
-
-  const mythData = useMemo(() => {
-    return {
-      globalFavor: typeof snapshot?.favor === "number" ? snapshot.favor : 0.0,
-      deities: snapshot?.deities ?? {}
-    };
-  }, [snapshot?.favor, snapshot?.deities]);
-
-  const stockpileTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    const stockpiles = snapshot?.stockpiles ?? {};
-    const normalizeResource = (val: unknown) => (typeof val === "string" ? val.replace(/^:/, "") : "unknown");
-    for (const stockpile of Object.values(stockpiles)) {
-      const spRaw = stockpile as Record<string, unknown>;
-      const resource = normalizeResource(spRaw.resource ?? spRaw[":resource"]);
-      const currentQty = Number(spRaw.currentQty ?? spRaw["current-qty"] ?? 0) || 0;
-      totals[resource] = (totals[resource] ?? 0) + currentQty;
-    }
-    return totals;
-  }, [snapshot?.stockpiles]);
-
-  const selectedTile = useMemo(() => {
-    try {
-      if (!selectedCell || !snapshot?.tiles) return null;
-      const tileKey = `${selectedCell[0]},${selectedCell[1]}`;
-      return snapshot.tiles[tileKey] ?? null;
-    } catch (error) {
-      console.error("Error in selectedTile useMemo:", error);
-      return null;
-    }
-  }, [selectedCell, snapshot?.tiles]);
-
-  const selectedTileItems = useMemo(() => {
-    if (!selectedCell || !snapshot?.items) return {};
-    return snapshot.items[`${selectedCell[0]},${selectedCell[1]}`] ?? {};
-  }, [selectedCell, snapshot?.items]);
-
-  const selectedTileAgents = useMemo(() => {
-    try {
-      if (!selectedCell || !agents || agents.length === 0) return [];
-      return agents.filter((a: Agent) => {
-        try {
-          if (!hasPos(a)) return false;
-          const [aq, ar] = a.pos as AxialCoords;
-          return aq === selectedCell[0] && ar === selectedCell[1];
-        } catch (error) {
-          console.error("Error filtering agent:", error, a);
-          return false;
-        }
-      });
-    } catch (error) {
-      console.error("Error in selectedTileAgents useMemo:", error);
-      return [];
-    }
-  }, [selectedCell, agents]);
-
-  const selectedAgent = useMemo(() => {
-    try {
-      if (selectedAgentId == null || !agents || agents.length === 0) return null;
-      return agents.find((a: Agent) => a.id === selectedAgentId) ?? null;
-    } catch (error) {
-      console.error("Error in selectedAgent useMemo:", error);
-      return null;
-    }
-  }, [selectedAgentId, agents]);
-
-  const getAgentJob = useCallback((agentId: number) => {
-    try {
-      if (!jobs || jobs.length === 0) return null;
-      const targetAgent = agents?.find((a: Agent) => a.id === agentId);
-      const currentJobId = targetAgent?.current_job ?? selectedAgent?.current_job;
-      if (currentJobId == null) return null;
-      return jobs.find((j: any) => j.id === currentJobId);
-    } catch (error) {
-      console.error("Error in getAgentJob:", error);
-      return null;
-    }
-  }, [agents, jobs, selectedAgent]);
-
-  const applyWorldSize = () => {
-      if (worldWidth == null || worldHeight == null) return;
-      reset(1, { w: worldWidth, h: worldHeight }, treeDensity);
-    };
+  const {
+    agents,
+    jobs,
+    calendar,
+    mythData,
+    stockpileTotals,
+    selectedTile,
+    selectedTileItems,
+    selectedTileAgents,
+    selectedAgent,
+  } = useSimulationSelectors({
+    snapshot,
+    selectedCell,
+    selectedAgentId,
+  });
 
   return (
     <Routes>
@@ -848,7 +550,6 @@ export function App() {
       <Route path="/ollama-test" element={<OllamaTestPage onBack={handleBackToMenu} />} />
       <Route path="/sim" element={(
     <div
-      onClick={() => markUserInteraction()}
       style={{ display: "grid", gridTemplateColumns: "1fr 320px 320px", overflow: "hidden", margin: 0 }}
     >
       <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
@@ -915,6 +616,58 @@ export function App() {
       <div style={{ height: "calc(100vh - 40px)", overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
         <StatusBar status={status} tickHealth={tickHealth} />
 
+        {status === "error" && !wsErrorDismissed && (
+          <div
+            role="alert"
+            style={{
+              border: "1px solid #fecaca",
+              backgroundColor: "#fef2f2",
+              color: "#991b1b",
+              borderRadius: 8,
+              padding: 10,
+              fontSize: 12,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>WebSocket connection error. The client will keep retrying in the background.</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => reconnect()}
+                style={{
+                  border: "1px solid #991b1b",
+                  backgroundColor: "#fff",
+                  color: "#991b1b",
+                  borderRadius: 4,
+                  padding: "2px 8px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Retry now
+              </button>
+              <button
+                type="button"
+                onClick={() => setWsErrorDismissed(true)}
+                style={{
+                  border: "1px solid #991b1b",
+                  backgroundColor: "#fff",
+                  color: "#991b1b",
+                  borderRadius: 4,
+                  padding: "2px 8px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         <WorldInfoPanel calendar={calendar} />
 
         <ResourceTotalsPanel totals={stockpileTotals} />
@@ -951,15 +704,15 @@ export function App() {
         <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8, flex: 1, overflow: "auto", backgroundColor: "rgba(255,255,255,0.98)", minHeight: 200 }}>
           <FactionsPanel agents={agents} jobs={jobs} collapsible onFocusAgent={focusOnAgent} />
         </div>
-         <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => setJobsCollapsed(!jobsCollapsed)} />
+         <JobQueuePanel jobs={jobs} collapsed={jobsCollapsed} onToggleCollapse={() => togglePanelCollapse("jobs")} />
        </div>
 
         <div style={{ height: "calc(100vh - 40px)", overflow: "auto", paddingRight: 8 }}>
           <MythPanel
-            deities={mythData.deities}
+            deities={mythData.deities ?? {}}
             globalFavor={mythData.globalFavor}
             collapsed={mythCollapsed}
-            onToggleCollapse={() => setMythCollapsed(!mythCollapsed)}
+            onToggleCollapse={() => togglePanelCollapse("myth")}
           />
 
           <BuildingPalette
@@ -1014,9 +767,10 @@ export function App() {
           <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-             <label style={{ fontSize: 12 }}>Width:</label>
-               <input
-                 type="number"
+              <label htmlFor="world-width" style={{ fontSize: 12 }}>Width:</label>
+                <input
+                  id="world-width"
+                  type="number"
                  min={0}
                  max={CONFIG.data.MAX_WORLD_WIDTH}
                  value={worldWidth ?? 0}
@@ -1026,9 +780,10 @@ export function App() {
                  }}
                  style={{ width: 60 }}
                />
-               <label style={{ fontSize: 12 }}>Height:</label>
-               <input
-                 type="number"
+                <label htmlFor="world-height" style={{ fontSize: 12 }}>Height:</label>
+                <input
+                  id="world-height"
+                  type="number"
                  min={0}
                  max={CONFIG.data.MAX_WORLD_HEIGHT}
                  value={worldHeight ?? 0}
@@ -1038,10 +793,11 @@ export function App() {
                  }}
                  style={{ width: 60 }}
                />
-             <button
-               onClick={applyWorldSize}
-               style={{ padding: "4px 8px", fontSize: 12 }}
-             >
+              <button
+                type="button"
+                onClick={applyWorldSize}
+                style={{ padding: "4px 8px", fontSize: 12 }}
+              >
                Apply
              </button>
            </div>
@@ -1050,11 +806,12 @@ export function App() {
          <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Tree Density</h3>
            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-             <label style={{ fontSize: 12 }}>
-               {(treeDensity * 100).toFixed(1)}%:
-             </label>
-              <input
-                type="range"
+              <label htmlFor="tree-density" style={{ fontSize: 12 }}>
+                {(treeDensity * 100).toFixed(1)}%:
+              </label>
+               <input
+                 id="tree-density"
+                 type="range"
                 min={0}
                 max={CONFIG.data.MAX_TREE_DENSITY}
                 step={0.01}
@@ -1073,29 +830,33 @@ export function App() {
 
 
 
-         <div style={{ marginTop: 12 }}>
-           <div
-             style={{
-               display: "flex",
-               justifyContent: "space-between",
-               alignItems: "center",
-               cursor: "pointer",
-               padding: "8px 0",
-               borderBottom: tracesCollapsed ? "1px solid #ddd" : "none"
-             }}
-             onClick={() => setTracesCollapsed(!tracesCollapsed)}
-           >
-             <strong style={{ margin: 0 }}>Traces</strong>
-             <span style={{ opacity: 0.7, marginRight: 8 }}>({traces.length})</span>
-             <span style={{
-               fontSize: "1.2em",
-               color: "#666",
-               transition: "transform 0.2s ease",
-               transform: tracesCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
-             }}>
-               ▼
-             </span>
-             </div>
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                cursor: "pointer",
+                padding: "8px 0",
+                borderBottom: tracesCollapsed ? "1px solid #ddd" : "none",
+                width: "100%",
+                background: "transparent",
+                border: "none",
+              }}
+               onClick={() => togglePanelCollapse("traces")}
+            >
+              <strong style={{ margin: 0 }}>Traces</strong>
+              <span style={{ opacity: 0.7, marginRight: 8 }}>({traces.length})</span>
+              <span style={{
+                fontSize: "1.2em",
+                color: "#666",
+                transition: "transform 0.2s ease",
+                transform: tracesCollapsed ? "rotate(-90deg)" : "rotate(0deg)"
+              }}>
+                ▼
+              </span>
+              </button>
 
             {!tracesCollapsed && (
               <div style={{ marginTop: 8 }}>
@@ -1115,7 +876,7 @@ export function App() {
            selectedAgent={selectedAgent}
            collapsible
            collapsed={thoughtsCollapsed}
-           onToggleCollapse={() => setThoughtsCollapsed(!thoughtsCollapsed)}
+           onToggleCollapse={() => togglePanelCollapse("thoughts")}
          />
         </div>
       </div>

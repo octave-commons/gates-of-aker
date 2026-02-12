@@ -146,6 +146,37 @@ describe('WSClient', () => {
       
       expect(mockWebSocket.mock.calls.length).toBeGreaterThan(initialCallCount);
     });
+
+    it('schedules automatic reconnect on unexpected close', () => {
+      vi.useFakeTimers();
+      client = new WSClient('ws://test.com', onMessageMock, onStatusMock, mockWebSocket as any);
+      client.connect();
+
+      const callCountBeforeClose = mockWebSocket.mock.calls.length;
+      if (mockWebSocketInstance.onclose) {
+        mockWebSocketInstance.onclose();
+      }
+
+      vi.advanceTimersByTime(300);
+      expect(mockWebSocket.mock.calls.length).toBeGreaterThan(callCountBeforeClose);
+      vi.useRealTimers();
+    });
+
+    it('does not reconnect after explicit close', () => {
+      vi.useFakeTimers();
+      client = new WSClient('ws://test.com', onMessageMock, onStatusMock, mockWebSocket as any);
+      client.connect();
+
+      const callCountBeforeClose = mockWebSocket.mock.calls.length;
+      client.close();
+      if (mockWebSocketInstance.onclose) {
+        mockWebSocketInstance.onclose();
+      }
+
+      vi.advanceTimersByTime(6000);
+      expect(mockWebSocket.mock.calls.length).toBe(callCountBeforeClose);
+      vi.useRealTimers();
+    });
   });
 
   describe('Message Handling', () => {
@@ -356,6 +387,14 @@ describe('WSClient', () => {
           min_interval: 10, 
           max_interval: 20 
         })
+      );
+    });
+
+    it('sends config_facets operation', () => {
+      client.sendConfigFacets(24, 12);
+
+      expect(mockWebSocketInstance.send).toHaveBeenCalledWith(
+        JSON.stringify({ op: 'config_facets', facet_limit: 24, vision_radius: 12 })
       );
     });
   });

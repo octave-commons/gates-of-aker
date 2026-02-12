@@ -1,3 +1,15 @@
+---
+title: App Componentization
+type: spec
+component: frontend
+priority: high
+status: proposed
+workflow-state: incoming
+related-issues: []
+estimated-effort: TBD
+updated_at: 2026-02-10
+---
+
 # Spec: App Componentization
 
 ## Prompt

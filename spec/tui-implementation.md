@@ -1,10 +1,13 @@
 ---
-Type: spec
-Component: frontend
-Priority: medium
-Status: implemented
-Related-Issues: []
-Estimated-Effort: 8 hours
+title: TUI Frontend Implementation
+type: spec
+component: frontend
+priority: medium
+status: implemented
+workflow-state: done
+related-issues: []
+estimated-effort: 8 hours
+updated_at: 2026-02-10
 ---
 
 # TUI Frontend Implementation Spec
@@ -86,3 +89,8 @@ The TUI will connect to the same WebSocket endpoint and handle the same operatio
 - Send `{ op: "tick", n: 1 }`
 - Send `{ op: "reset", seed: <seed> }`
 - Receive world state via `hello`, `tick`, `tick_delta`, `reset` messages
+
+## Closure Notes (2026-02-10)
+
+- Closed as `done` with `status: implemented`.
+- This document is retained as a completed TUI implementation specification and reference for parity expectations against the web client.

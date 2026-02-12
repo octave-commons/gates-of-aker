@@ -1,3 +1,15 @@
+---
+title: Docs Notes Review
+type: task
+component: docs
+priority: medium
+status: proposed
+workflow-state: incoming
+related-issues: []
+estimated-effort: TBD
+updated_at: 2026-02-10
+---
+
 # Scope
 - Review every markdown file currently in `docs/notes` (timestamped names from `2026.01.11.17.48.43.md` through `2026.01.15.17.08.23.md`).
 - Capture a concise (1-2 sentence) summary for each file describing the main idea or fact recorded.

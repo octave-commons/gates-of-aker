@@ -1,3 +1,15 @@
+---
+title: OpenCode Customization Agents Specification
+type: spec
+component: tooling
+priority: medium
+status: proposed
+workflow-state: incoming
+related-issues: []
+estimated-effort: TBD
+updated_at: 2026-02-10
+---
+
 # OpenCode Customization Agents Specification
 
 ## Overview

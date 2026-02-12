@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import type { CSSProperties } from "react";
 
 type LedgerPanelProps = {
-  data: any;
+  data: unknown;
   style?: CSSProperties;
 };
 
@@ -10,8 +10,25 @@ type LedgerEntry = {
   buzz: number;
   tradition: number;
   mentions: number;
-  event_instances?: any[];
-  eventInstances?: any[];
+  event_instances?: unknown[];
+  eventInstances?: unknown[];
+};
+
+type LedgerRow = {
+  key: string;
+  eventType: string;
+  claim: string;
+  buzz: number;
+  tradition: number;
+  mentions: number;
+  eventInstances: unknown[];
+};
+
+const toSortBy = (value: string): "buzz" | "tradition" | "mentions" => {
+  if (value === "buzz" || value === "mentions") {
+    return value;
+  }
+  return "tradition";
 };
 
 function formatNumber(num: number | null | undefined): string {
@@ -33,19 +50,19 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
   const [filterEventType, setFilterEventType] = useState<string>("all");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
-  const ledgerData = useMemo(() => {
+  const ledgerData = useMemo<LedgerRow[]>(() => {
     if (!data || typeof data !== "object") return [];
 
-    return Object.entries(data).map(([key, value]) => {
+    return Object.entries(data as Record<string, unknown>).map(([key, value]) => {
       const [eventType, claim] = key.startsWith("[") 
         ? JSON.parse(key.replace(/'/g, '"')) 
         : [key.split(",")[0], key.split(",")[1] || ""];
       
-      const entry = value as LedgerEntry;
+      const entry = (value && typeof value === "object") ? (value as LedgerEntry) : { buzz: 0, tradition: 0, mentions: 0 };
       return {
         key,
-        eventType: Array.isArray(eventType) ? eventType[0] : eventType,
-        claim: Array.isArray(claim) ? claim[0] : claim,
+        eventType: String(Array.isArray(eventType) ? eventType[0] : eventType),
+        claim: String(Array.isArray(claim) ? claim[0] : claim),
         buzz: entry.buzz || 0,
         tradition: entry.tradition || 0,
         mentions: entry.mentions || 0,
@@ -108,13 +125,18 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
   if (!data || typeof data !== "object") {
     return (
       <div className="ledger-panel" style={style}>
-        <div 
+        <button
+          type="button"
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             cursor: "pointer",
             padding: "8px 0",
+            border: "none",
+            background: "transparent",
+            width: "100%",
+            textAlign: "left",
           }}
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
@@ -127,7 +149,7 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
           }}>
             ▼
           </span>
-        </div>
+        </button>
         
         {!isCollapsed && (
           <div style={{ 
@@ -145,14 +167,21 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
 
   return (
     <div className="ledger-panel" style={style}>
-      <div 
+      <button
+        type="button"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           cursor: "pointer",
           padding: "8px 0",
-          borderBottom: isCollapsed ? "1px solid #ddd" : "none"
+          borderBottom: isCollapsed ? "1px solid #ddd" : "none",
+          borderTop: "none",
+          borderLeft: "none",
+          borderRight: "none",
+          background: "transparent",
+          width: "100%",
+          textAlign: "left",
         }}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
@@ -165,7 +194,7 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
         }}>
           ▼
         </span>
-      </div>
+      </button>
       
       {!isCollapsed && (
         <>
@@ -193,8 +222,9 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
             alignItems: "center"
           }}>
             <div>
-              <label style={{ fontSize: "0.9em", marginRight: 6 }}>Event Type:</label>
+              <label htmlFor="ledger-event-type" style={{ fontSize: "0.9em", marginRight: 6 }}>Event Type:</label>
               <select
+                id="ledger-event-type"
                 value={filterEventType}
                 onChange={(e) => setFilterEventType(e.target.value)}
                 style={{
@@ -212,10 +242,11 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
             </div>
             
             <div>
-              <label style={{ fontSize: "0.9em", marginRight: 6 }}>Sort by:</label>
+              <label htmlFor="ledger-sort-by" style={{ fontSize: "0.9em", marginRight: 6 }}>Sort by:</label>
               <select
+                id="ledger-sort-by"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(toSortBy(e.target.value))}
                 style={{
                   padding: "4px 8px",
                   border: "1px solid #ddd",
@@ -259,12 +290,18 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
                       padding: "12px"
                     }}>
                       {/* Main Entry */}
-                      <div
+                      <button
+                        type="button"
                         style={{
                           cursor: "pointer",
                           display: "flex",
                           justifyContent: "space-between",
-                          alignItems: "center"
+                          alignItems: "center",
+                          width: "100%",
+                          textAlign: "left",
+                          border: "none",
+                          background: "transparent",
+                          padding: 0,
                         }}
                         onClick={() => toggleExpanded(entry.key)}
                       >
@@ -319,7 +356,7 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </button>
 
                       {/* Tradition Level Badge */}
                       <div style={{ marginTop: 8 }}>
@@ -360,8 +397,8 @@ export function LedgerPanel({ data, style = {} }: LedgerPanelProps) {
                             <div>
                               <strong>Event Instances:</strong>
                               <div style={{ marginLeft: 12, marginTop: 4 }}>
-                                {entry.eventInstances.map((instance: any, idx: number) => (
-                                  <div key={idx} style={{ 
+                                {entry.eventInstances.map((instance, idx: number) => (
+                                  <div key={`${String(instance)}-${idx}`} style={{ 
                                     fontFamily: "monospace", 
                                     fontSize: "0.85em",
                                     color: "#666" 

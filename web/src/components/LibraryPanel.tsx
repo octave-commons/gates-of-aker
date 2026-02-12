@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 
-type Book = {
+export type Book = {
   id: string;
   title: string;
   text: string;
