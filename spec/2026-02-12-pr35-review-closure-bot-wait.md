@@ -58,3 +58,15 @@ Close out PR #35 review work by converting waiting time into process-aligned rea
   - `In Review -> Testing` once bot feedback is explicitly clear and CI is green.
   - `Testing -> Document` when test/check evidence is complete.
   - `Document -> Done` only after explicit no-remaining-issues confirmation and closure evidence is recorded.
+
+## Transition Note (2026-02-12)
+- Current state remains `In Review`.
+- Completed evidence:
+  - `@coderabbitai` explicitly confirmed no remaining actionable issues:
+    - https://github.com/octave-commons/gates-of-aker/pull/35#issuecomment-3888225219
+    - https://github.com/octave-commons/gates-of-aker/pull/35#issuecomment-3888189900
+  - Unresolved review thread count is currently zero.
+- Blocking external signal:
+  - Awaiting explicit `@codex` confirmation of no remaining actionable issues after latest commits (`99219ca`, `3cfd969`).
+- Next transition:
+  - Move `In Review -> Testing` immediately once explicit Codex closure signal is posted and required checks are not externally blocked.
