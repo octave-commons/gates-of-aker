@@ -49,12 +49,24 @@ export class StateValidator {
     if (snapshot.tiles && typeof snapshot.tiles === 'object') {
       const tileErrors = this.validateTiles(snapshot.tiles);
       errors.push(...tileErrors);
+    } else if (snapshot.tiles !== undefined) {
+      errors.push({
+        field: 'tiles',
+        message: 'Tiles must be an object map',
+        severity: 'error'
+      });
     }
 
     // Stockpile validation
     if (snapshot.stockpiles && typeof snapshot.stockpiles === 'object') {
       const stockpileErrors = this.validateStockpiles(snapshot.stockpiles);
       errors.push(...stockpileErrors);
+    } else if (snapshot.stockpiles !== undefined) {
+      errors.push({
+        field: 'stockpiles',
+        message: 'Stockpiles must be an object map',
+        severity: 'error'
+      });
     }
 
     // Job validation (legacy array format and ECS map format)
@@ -398,8 +410,8 @@ export class StateValidator {
           return;
         }
 
-        const resource = stockpile.resource || stockpile[':resource'];
-        const qty = stockpile.currentQty || stockpile['current-qty'] || 0;
+        const resource = stockpile.resource ?? stockpile[':resource'];
+        const qty = stockpile.currentQty ?? stockpile['current-qty'] ?? 0;
         if (resource && typeof qty === 'number') {
           resources[resource] = (resources[resource] || 0) + qty;
         }
