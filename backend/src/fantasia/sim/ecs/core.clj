@@ -74,6 +74,7 @@
                             (be/add-component entity-id needs')
                             (be/add-component entity-id inventory')
                             (be/add-component entity-id status')
+                            (be/add-component entity-id (c/->DeathState true nil nil))
                             (be/add-component entity-id frontier')
                             (be/add-component entity-id recall'))]
         [entity-id

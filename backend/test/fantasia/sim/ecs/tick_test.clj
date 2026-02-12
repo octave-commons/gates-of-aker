@@ -1,5 +1,7 @@
 (ns fantasia.sim.ecs.tick-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [brute.entity :as be]
+            [clojure.test :refer [deftest testing is]]
+            [fantasia.sim.ecs.components :as c]
             [fantasia.sim.ecs.core :as ecs-core]
             [fantasia.sim.ecs.tick :as tick]))
 
@@ -60,7 +62,18 @@
     (tick/create-ecs-initial-world {})
     (let [ecs-world (tick/get-ecs-world)
           agents (ecs-core/get-all-agents ecs-world)]
-      (is (= 5 (count agents))))))
+      (is (= 5 (count agents)))))
+
+  (testing "Create initial world includes a workshop building"
+    (tick/reset-ecs-world!)
+    (tick/create-ecs-initial-world {})
+    (let [ecs-world (tick/get-ecs-world)
+          tile-type (ecs-core/component-class (c/->Tile :ground :plains nil nil))
+          tile-ids (ecs-core/get-all-tiles ecs-world)
+          workshop-count (count (filter (fn [tile-id]
+                                          (= :workshop (:structure (be/get-component ecs-world tile-id tile-type))))
+                                        tile-ids))]
+      (is (pos? workshop-count)))))
 
 (deftest test-legacy-compatibility
   (testing "Get state function"

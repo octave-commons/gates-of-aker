@@ -58,7 +58,7 @@
         world8 (:world social-result)
         reproduction-result (reproduction/process-reproduction world8 tick)
         world9 (:world reproduction-result)
-        world10 (mortality/process world9)]
+           world10 (mortality/process world9 tick)]
     {:ecs-world world10
      :combat-events (:events combat-result)
      :social-interactions (:events social-result)
@@ -133,10 +133,11 @@
         ;; Place buildings in a circle around center
         campfire-pos [(- center-q 2) center-r]
         stockpile-pos [(+ center-q 2) center-r]
-        farm-pos [center-q (- center-r 3)]
-        orchard-pos [(- center-q 3) (- center-r 2)]
-        house-pos [(+ center-q 3) (- center-r 2)]
-        warehouse-pos [(+ center-q 1) (+ center-r 3)]]
+         farm-pos [center-q (- center-r 3)]
+         orchard-pos [(- center-q 3) (- center-r 2)]
+         house-pos [(+ center-q 3) (- center-r 2)]
+         workshop-pos [(- center-q 1) (+ center-r 3)]
+         warehouse-pos [(+ center-q 1) (+ center-r 3)]]
     (println "[ECS] Spawning initial buildings")
     (let [[_ ecs-world1] (ecs-core/create-building ecs-world campfire-pos :campfire)
           [_ ecs-world2] (ecs-core/create-building ecs-world1 stockpile-pos :stockpile
@@ -144,10 +145,11 @@
           [_ ecs-world3] (ecs-core/create-building ecs-world2 farm-pos :farm)
           [_ ecs-world4] (ecs-core/create-building ecs-world3 orchard-pos :orchard)
           [_ ecs-world5] (ecs-core/create-building ecs-world4 house-pos :house)
-          [_ ecs-world6] (ecs-core/create-building ecs-world5 warehouse-pos :warehouse
-                                                            {:stockpile-config {:resource :log}})]
-      (println "[ECS] Spawned 6 initial buildings")
-      ecs-world6)))
+          [_ ecs-world6] (ecs-core/create-building ecs-world5 workshop-pos :workshop)
+          [_ ecs-world7] (ecs-core/create-building ecs-world6 warehouse-pos :warehouse
+                                                             {:stockpile-config {:resource :log}})]
+      (println "[ECS] Spawned 7 initial buildings")
+      ecs-world7)))
 
 (defn create-ecs-initial-world
   "Create initial ECS world from scratch."

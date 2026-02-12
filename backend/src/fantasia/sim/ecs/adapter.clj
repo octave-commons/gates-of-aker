@@ -1,5 +1,6 @@
 (ns fantasia.sim.ecs.adapter
   (:require [brute.entity :as be]
+            [clojure.string :as str]
             [fantasia.sim.ecs.components :as c]
             [fantasia.sim.ecs.core :as ecs-core]
             [fantasia.sim.time :as time]))
@@ -13,6 +14,7 @@
      :role (be/get-component-type (fantasia.sim.ecs.components/->Role :priest))
      :frontier (be/get-component-type (fantasia.sim.ecs.components/->Frontier {}))
      :recall (be/get-component-type (fantasia.sim.ecs.components/->Recall {}))
+     :status (be/get-component-type (fantasia.sim.ecs.components/->AgentStatus true false true nil))
      :job-assignment (be/get-component-type (fantasia.sim.ecs.components/->JobAssignment nil 0.0))
      :path (be/get-component-type (fantasia.sim.ecs.components/->Path [] 0))
      :tile (be/get-component-type (fantasia.sim.ecs.components/->Tile :ground nil nil nil))
@@ -29,6 +31,14 @@
       (ecs-core/get-component-safe world entity-id comp-type)
       nil)))
 
+(defn- normalize-resource
+  "Normalize resource values for frontend rendering contracts."
+  [resource]
+  (cond
+    (keyword? resource) (name resource)
+    (string? resource) (str/replace resource #"^:" "")
+    :else resource))
+
 (defn ecs->agent-map
   "Convert agent entity to old-style map format."
   [ecs-world agent-id]
@@ -38,6 +48,8 @@
         inventory (get-comp ecs-world agent-id :inventory)
         frontier (get-comp ecs-world agent-id :frontier)
         recall (get-comp ecs-world agent-id :recall)
+        status (or (get-comp ecs-world agent-id :status)
+                   (c/->AgentStatus true false true nil))
         job-assignment (get-comp ecs-world agent-id :job-assignment)
         path (get-comp ecs-world agent-id :path)]
     {:id agent-id
@@ -47,6 +59,10 @@
      :inventory {:wood (:wood inventory) :food (:food inventory)}
      :frontier (:facets frontier)
      :recall (:events recall)
+     :status {:alive? (:alive? status)
+              :asleep? (:asleep? status)
+              :idle? (:idle? status)
+              :cause-of-death (:cause-of-death status)}
      :current-job (:job-id job-assignment)
      :current-path (:waypoints path)}))
 
@@ -64,10 +80,10 @@
         tile (get-comp ecs-world tile-id :tile)]
     (when tile-index
       {:pos [(:q tile-index) (:r tile-index)]
-       :terrain (:terrain tile)
-       :biome (:biome tile)
-       :resource (:resource tile)
-       :structure (:structure tile)})))
+        :terrain (:terrain tile)
+        :biome (:biome tile)
+        :resource (normalize-resource (:resource tile))
+        :structure (:structure tile)})))
 
 (defn ecs->tiles-map
   "Convert all tile entities to old-style map format keyed by position."

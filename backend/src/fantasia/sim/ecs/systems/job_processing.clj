@@ -122,15 +122,34 @@
     :warehouse :log
     nil))
 
+(defn- structure-needs-job-queue?
+  [structure]
+  (contains? #{:campfire :stockpile :lumberyard :farm :orchard :granary :quarry :house :warehouse :workshop}
+             structure))
+
 (defn- complete-build-structure
   [ecs-world job target]
   (let [structure (:structure job)
         world-with-tile (update-tile-structure ecs-world target structure)]
-    (if-let [resource (harvest-structure-resource structure)]
-      (if-let [{:keys [id]} (tile-at world-with-tile target)]
-        (be/add-component world-with-tile id (c/->Stockpile {resource 0}))
-        world-with-tile)
+    (if-let [{:keys [id]} (tile-at world-with-tile target)]
+      (let [world-with-structure-state (be/add-component world-with-tile id (c/->StructureState 1 100 100 nil))
+            world-with-queue (if (structure-needs-job-queue? structure)
+                               (be/add-component world-with-structure-state id (c/->JobQueue {} [] {}))
+                               world-with-structure-state)]
+        (if-let [resource (harvest-structure-resource structure)]
+          (be/add-component world-with-queue id (c/->Stockpile {resource 0}))
+          world-with-queue))
       world-with-tile)))
+
+(defn- apply-rest
+  [ecs-world agent-id]
+  (let [needs-t (needs-type)
+        needs (be/get-component ecs-world agent-id needs-t)]
+    (if needs
+      (be/add-component ecs-world
+                        agent-id
+                        (assoc needs :sleep (clamp01 (+ (:sleep needs 0.0) 0.35))))
+      ecs-world)))
 
 (defn- apply-job-effects
   [ecs-world agent-id job target]
@@ -145,6 +164,9 @@
 
     :job/build-structure
     (complete-build-structure ecs-world job target)
+
+    :job/rest
+    (apply-rest ecs-world agent-id)
 
     ecs-world))
 
@@ -163,11 +185,15 @@
 
 (defn- update-job
   [ecs-world building-id queue job-id new-job]
-  (let [updated-jobs (assoc (:jobs queue {}) job-id new-job)
-        assigned-jobs (if (= :completed (:state new-job))
+  (let [completed? (= :completed (:state new-job))
+        updated-jobs (if completed?
+                       (dissoc (:jobs queue {}) job-id)
+                       (assoc (:jobs queue {}) job-id new-job))
+        pending-jobs (vec (remove #(= % job-id) (:pending-jobs queue [])))
+        assigned-jobs (if completed?
                         (dissoc (:assigned-jobs queue {}) job-id)
                         (assoc (:assigned-jobs queue {}) job-id (:worker-id new-job)))
-        updated-queue (c/->JobQueue updated-jobs (:pending-jobs queue []) assigned-jobs)]
+        updated-queue (c/->JobQueue updated-jobs pending-jobs assigned-jobs)]
     (be/add-component ecs-world building-id updated-queue)))
 
 (defn- mark-agent-idle
@@ -195,7 +221,7 @@
       (some #(= % target) (hex/neighbors agent-pos))))
 
 (defn- process-job-for-agent
-  [ecs-world agent-id assignment]
+  [ecs-world tick agent-id assignment]
   (let [position (be/get-component ecs-world agent-id (position-type))
         job-id (:job-id assignment)
         current-progress (double (:progress assignment 0.0))]
@@ -220,7 +246,7 @@
                              :progress new-progress})
               (if (>= new-progress 1.0)
                 (let [world-with-effects (apply-job-effects world-with-progress agent-id job target)
-                      completed-job (assoc job :state :completed :completed-at true)
+                      completed-job (assoc job :state :completed :completed-at tick)
                       world-with-job (update-job world-with-effects building-id queue job-id completed-job)]
                   (log/log-info "[JOB:COMPLETE]"
                                 {:agent-id agent-id
@@ -239,12 +265,13 @@
 
 (defn process
   "Advance progress on claimed jobs for agents."
-  [ecs-world _global-state]
+  [ecs-world global-state]
   (let [assignment-t (job-assignment-type)
+        tick (:tick global-state 0)
         agents-with-jobs (be/get-all-entities-with-component ecs-world assignment-t)]
     (reduce (fn [world agent-id]
               (if-let [assignment (be/get-component world agent-id assignment-t)]
-                (process-job-for-agent world agent-id assignment)
+                (process-job-for-agent world tick agent-id assignment)
                 world))
             ecs-world
             agents-with-jobs)))
