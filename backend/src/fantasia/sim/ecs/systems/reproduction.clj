@@ -33,19 +33,20 @@
 
 (defn- find-nearby-partner
   "Find nearby entity for reproduction."
-  [ecs-world entity-id]
+  [ecs-world entity-id partner-pred]
   (let [pos-instance (c/->Position 0 0)
         pos-type (get-component-type-instance pos-instance)
         entity-pos (be/get-component ecs-world entity-id pos-type)
         all-entities (be/get-all-entities-with-component ecs-world pos-type)]
     (->> all-entities
-         (filter #(and (not= % entity-id)
-                       (can-reproduce? ecs-world %)))
-         (filter #(let [partner-pos (be/get-component ecs-world % pos-type)]
-                    (when (and entity-pos partner-pos)
-                      (<= (hex/distance [(:q entity-pos) (:r entity-pos)]
-                                       [(:q partner-pos) (:r partner-pos)]) 2))))
-         first)))
+          (filter #(and (not= % entity-id)
+                        (partner-pred %)
+                        (can-reproduce? ecs-world %)))
+          (filter #(let [partner-pos (be/get-component ecs-world % pos-type)]
+                     (when (and entity-pos partner-pos)
+                       (<= (hex/distance [(:q entity-pos) (:r entity-pos)]
+                                        [(:q partner-pos) (:r partner-pos)]) 2))))
+          first)))
 
 (defn- female-entity?
   [entity-id]
@@ -149,16 +150,13 @@
            (if (#{:knight :peasant} (:type entity-role)) ; Only humans reproduce
             (let [is-female (female-entity? entity-id)] ; Simple gender determination
              (if (and is-female (can-reproduce? world entity-id))
-                (if-let [partner-id (find-nearby-partner world entity-id)]
-                  (if (male-entity? partner-id)
-                    (let [world-with-pregnancy (start-pregnancy world entity-id partner-id tick)]
-                      {:world world-with-pregnancy
-                       :events (conj events {:type :reproduction-start
-                                            :mother-id entity-id
-                                            :father-id partner-id
-                                            :tick tick})})
-                    {:world world
-                     :events events})
+                (if-let [partner-id (find-nearby-partner world entity-id male-entity?)]
+                  (let [world-with-pregnancy (start-pregnancy world entity-id partner-id tick)]
+                    {:world world-with-pregnancy
+                     :events (conj events {:type :reproduction-start
+                                          :mother-id entity-id
+                                          :father-id partner-id
+                                          :tick tick})})
                   {:world world
                    :events events})
                ;; Check for existing pregnancies
