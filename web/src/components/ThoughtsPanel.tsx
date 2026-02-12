@@ -1,6 +1,40 @@
 import React, { memo } from "react";
 import { Agent } from "../types";
 
+type FacetEntry = {
+  facet?: string;
+  [key: string]: unknown;
+};
+
+type AgentStatus = {
+  asleep?: boolean;
+  "alive?"?: boolean;
+  alive?: boolean;
+  "cause-of-death"?: string;
+  causeOfDeath?: string;
+  [key: string]: unknown;
+};
+
+const asNeeds = (agent: Agent): Record<string, number> => {
+  const needs = (agent as Record<string, unknown>)["needs"];
+  return needs && typeof needs === "object" ? (needs as Record<string, number>) : {};
+};
+
+const asStatus = (agent: Agent): AgentStatus => {
+  const status = (agent as Record<string, unknown>)["status"];
+  return status && typeof status === "object" ? (status as AgentStatus) : {};
+};
+
+const asFacets = (agent: Agent): FacetEntry[] => {
+  const raw = (agent as Record<string, unknown>)["top-facets"] ?? (agent as Record<string, unknown>)["topFacets"];
+  return Array.isArray(raw) ? (raw as FacetEntry[]) : [];
+};
+
+const asCurrentJob = (agent: Agent): string | null => {
+  const value = (agent as Record<string, unknown>)["current_job"];
+  return typeof value === "string" ? value : null;
+};
+
 type ThoughtsPanelProps = {
   agents: Agent[];
   selectedAgent: Agent | null;
@@ -25,14 +59,21 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
   };
 
   const getThoughtText = (agent: Agent) => {
-    const needs = (agent as any).needs ?? {};
-    const facets = (agent["top-facets"] ?? agent.topFacets ?? []) as any[];
-    const facetNames = facets.map((f: any) => f.facet).slice(0, 3);
+    const needs = asNeeds(agent);
+    const facets = asFacets(agent);
+    const facetNames = facets.map((f: FacetEntry) => f.facet).filter((f): f is string => typeof f === "string").slice(0, 3);
 
     const { food = 1.0, warmth = 1.0, sleep = 1.0 } = needs;
-    const status = (agent as any).status ?? {};
+    const status = asStatus(agent);
     const asleep = status.asleep ?? false;
-    const currentJob = (agent as any).current_job ?? null;
+    const alive = (status["alive?"] ?? status.alive ?? true) !== false;
+    const causeOfDeath = status["cause-of-death"] ?? status.causeOfDeath;
+    const currentJob = asCurrentJob(agent);
+
+    if (!alive) {
+      const cause = typeof causeOfDeath === "string" ? causeOfDeath.replace(/^:/, "").replace(/_/g, " ") : "unknown";
+      return `⚰️ Dead (${cause})`;
+    }
 
     if (asleep) {
       return "💤 Sleeping peacefully...";
@@ -61,8 +102,12 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
   };
 
   const getUrgencyLevel = (agent: Agent) => {
-    const needs = (agent as any).needs ?? {};
+    const needs = asNeeds(agent);
+    const status = asStatus(agent);
+    const alive = (status["alive?"] ?? status.alive ?? true) !== false;
     const { food = 1.0, warmth = 1.0, sleep = 1.0 } = needs;
+
+    if (!alive) return "DEAD";
 
     if (food < 0.2 || warmth < 0.2 || sleep < 0.2) return "CRITICAL";
     if (food < 0.4 || warmth < 0.4 || sleep < 0.4) return "WARNING";
@@ -72,6 +117,7 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
   const getUrgencyColor = (agent: Agent) => {
     const level = getUrgencyLevel(agent);
     switch (level) {
+      case "DEAD": return "#9e9e9e";
       case "CRITICAL": return "#f44336";
       case "WARNING": return "#FF9800";
       default: return "#4CAF50";
@@ -81,14 +127,21 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
   return (
     <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
       {collapsible && (
-        <div
+        <button
+          type="button"
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             cursor: "pointer",
             padding: "8px 0",
-            borderBottom: collapsed ? "1px solid #ddd" : "none"
+            borderBottom: collapsed ? "1px solid #ddd" : "none",
+            borderTop: "none",
+            borderLeft: "none",
+            borderRight: "none",
+            background: "transparent",
+            width: "100%",
+            textAlign: "left",
           }}
           onClick={onToggleCollapse}
         >
@@ -101,7 +154,7 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
           }}>
             ▼
           </span>
-        </div>
+        </button>
       )}
 
       {!collapsed && (
@@ -129,10 +182,10 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
               }}>
                 {getUrgencyLevel(selectedAgent)}
               </div>
-              {Object.keys((selectedAgent as any).needs ?? {}).length > 0 && (
+              {Object.keys(asNeeds(selectedAgent)).length > 0 && (
                 <div style={{ marginTop: 6, fontSize: 11 }}>
                   {["food", "warmth", "sleep"].map((needKey) => {
-                    const needs = (selectedAgent as any).needs ?? {};
+                    const needs = asNeeds(selectedAgent);
                     const value = needs[needKey];
                     if (value === undefined) return null;
 
@@ -169,7 +222,7 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
               </div>
               {displayAgents.map((agent) => {
                 const isSelected = selectedAgent?.id === agent.id;
-                const needs = (agent as any).needs ?? {};
+                const needs = asNeeds(agent);
                 const { food = 1.0, warmth = 1.0, sleep = 1.0 } = needs;
 
                 return (

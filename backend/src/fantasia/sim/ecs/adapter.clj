@@ -14,6 +14,7 @@
      :role (be/get-component-type (fantasia.sim.ecs.components/->Role :priest))
      :frontier (be/get-component-type (fantasia.sim.ecs.components/->Frontier {}))
      :recall (be/get-component-type (fantasia.sim.ecs.components/->Recall {}))
+     :status (be/get-component-type (fantasia.sim.ecs.components/->AgentStatus true false true nil))
      :job-assignment (be/get-component-type (fantasia.sim.ecs.components/->JobAssignment nil 0.0))
      :path (be/get-component-type (fantasia.sim.ecs.components/->Path [] 0))
      :tile (be/get-component-type (fantasia.sim.ecs.components/->Tile :ground nil nil nil))
@@ -47,6 +48,8 @@
         inventory (get-comp ecs-world agent-id :inventory)
         frontier (get-comp ecs-world agent-id :frontier)
         recall (get-comp ecs-world agent-id :recall)
+        status (or (get-comp ecs-world agent-id :status)
+                   (c/->AgentStatus true false true nil))
         job-assignment (get-comp ecs-world agent-id :job-assignment)
         path (get-comp ecs-world agent-id :path)]
     {:id agent-id
@@ -56,6 +59,10 @@
      :inventory {:wood (:wood inventory) :food (:food inventory)}
      :frontier (:facets frontier)
      :recall (:events recall)
+     :status {:alive? (:alive? status)
+              :asleep? (:asleep? status)
+              :idle? (:idle? status)
+              :cause-of-death (:cause-of-death status)}
      :current-job (:job-id job-assignment)
      :current-path (:waypoints path)}))
 
