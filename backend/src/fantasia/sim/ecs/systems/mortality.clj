@@ -1,9 +1,9 @@
 (ns fantasia.sim.ecs.systems.mortality
   "ECS Mortality system - processes agent deaths and creates memories."
   (:require [brute.entity :as be]
+            [fantasia.dev.logging :as log]
             [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.ecs.core :as ecs-core]
-            [fantasia.dev.logging :as log]))
+            [fantasia.sim.ecs.core :as ecs-core]))
 
 (defn- get-component-type-instance
   "Get component type from ECS core."
@@ -43,10 +43,9 @@
           ;; Agent-specific facets
           agent-facets ["agent" "person"]
 
-          memory-facets (distinct (concat base-facets agent-facets killer-facets))
+           memory-facets (distinct (concat base-facets agent-facets killer-facets))
 
-          memory-instance (c/->Memory memory-id :memory/danger agent-pos (:tick ecs-world) memory-strength agent-id memory-facets)
-          memory-type (get-component-type-instance memory-instance)]
+          memory-instance (c/->Memory memory-id :memory/danger agent-pos (:tick ecs-world) memory-strength agent-id memory-facets)]
 
       (log/log-info "[MORTALITY:DEATH]"
                     {:agent-id agent-id
@@ -65,13 +64,13 @@
         pos-type (get-component-type-instance pos-instance)
         stats-instance (c/->Stats 0.0 0.0 0.0 0.0)
         stats-type (get-component-type-instance stats-instance)
-        needs-instance (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)
-        needs-type (get-component-type-instance needs-instance)
-        death-instance (c/->DeathState true nil nil)
-        death-type (get-component-type-instance death-instance)
+        status-instance (c/->AgentStatus true false true nil)
+        status-type (get-component-type-instance status-instance)
 
         entity-pos (be/get-component ecs-world entity-id pos-type)
         agent-stats (be/get-component ecs-world entity-id stats-type)
+        status (or (be/get-component ecs-world entity-id status-type)
+                   status-instance)
 
         ;; Calculate memory strength based on agent stats
         strength (min 2.0 (+ 0.5 (* 0.01 (or (:strength agent-stats) 0.4))))
@@ -83,7 +82,8 @@
         world-with-memory (create-death-memory ecs-world entity-pos cause killer-role entity-id strength)]
 
     (-> world-with-memory
-        (be/add-component entity-id new-death-state))))
+        (be/add-component entity-id new-death-state)
+        (be/add-component entity-id (assoc status :alive? false :cause-of-death cause)))))
 
 (defn- cleanup-jobs-for-dead-entity
   "Remove entity from any assigned jobs and mark jobs as pending."
@@ -91,22 +91,29 @@
   (let [job-instance (c/->JobAssignment nil 0.0)
         job-type (get-component-type-instance job-instance)
         current-job (be/get-component ecs-world entity-id job-type)]
-    (when current-job
+    (if current-job
       ;; Remove job assignment from dead entity
-      (be/remove-component ecs-world entity-id job-type))))
+      (be/remove-component ecs-world entity-id job-type)
+      ecs-world)))
 
 (defn process
   "Process mortality for all entities, handling deaths and creating memories.
    Returns updated ECS world."
   [ecs-world]
-  (let [death-instance (c/->DeathState true nil nil)
+  (let [needs-instance (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)
+        needs-type (get-component-type-instance needs-instance)
+        death-instance (c/->DeathState true nil nil)
         death-type (get-component-type-instance death-instance)
-        all-entities (be/get-all-entities-with-component ecs-world death-type)]
+        status-instance (c/->AgentStatus true false true nil)
+        status-type (get-component-type-instance status-instance)
+        all-entities (be/get-all-entities-with-component ecs-world needs-type)]
 
     (reduce
      (fn [world entity-id]
        (let [death-state (be/get-component world entity-id death-type)
-             alive? (or (:alive? death-state) true)
+             status (be/get-component world entity-id status-type)
+             alive? (and (not= false (:alive? death-state true))
+                         (not= false (:alive? status true)))
              cause-of-death (when alive? (check-entity-mortality world entity-id))]
          (if cause-of-death
            (-> world

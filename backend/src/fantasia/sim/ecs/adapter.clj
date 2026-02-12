@@ -1,5 +1,6 @@
 (ns fantasia.sim.ecs.adapter
   (:require [brute.entity :as be]
+            [clojure.string :as str]
             [fantasia.sim.ecs.components :as c]
             [fantasia.sim.ecs.core :as ecs-core]
             [fantasia.sim.time :as time]))
@@ -28,6 +29,14 @@
     (if comp-type
       (ecs-core/get-component-safe world entity-id comp-type)
       nil)))
+
+(defn- normalize-resource
+  "Normalize resource values for frontend rendering contracts."
+  [resource]
+  (cond
+    (keyword? resource) (name resource)
+    (string? resource) (str/replace resource #"^:" "")
+    :else resource))
 
 (defn ecs->agent-map
   "Convert agent entity to old-style map format."
@@ -64,10 +73,10 @@
         tile (get-comp ecs-world tile-id :tile)]
     (when tile-index
       {:pos [(:q tile-index) (:r tile-index)]
-       :terrain (:terrain tile)
-       :biome (:biome tile)
-       :resource (:resource tile)
-       :structure (:structure tile)})))
+        :terrain (:terrain tile)
+        :biome (:biome tile)
+        :resource (normalize-resource (:resource tile))
+        :structure (:structure tile)})))
 
 (defn ecs->tiles-map
   "Convert all tile entities to old-style map format keyed by position."
