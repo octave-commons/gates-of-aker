@@ -1,7 +1,18 @@
 import React, { memo } from "react";
 
+export type EventEntry = {
+  id?: string | number;
+  type?: string;
+  tick?: number;
+  pos?: [number, number];
+  impact?: number | string;
+  witnessScore?: number | string;
+  witnesses?: Array<string | number>;
+  [key: string]: unknown;
+};
+
 type EventCardProps = {
-  event: any;
+  event: EventEntry;
   compact?: boolean;
 };
 
@@ -57,8 +68,8 @@ export const EventCard = memo(function EventCard({ event, compact = false }: Eve
           gap: 4
         }}>
           <span style={{ fontSize: 11, color: "#888" }}>witnesses:</span>
-          {witnesses.slice(0, compact ? 3 : 6).map((witness: any, idx: number) => (
-            <span key={idx} style={{
+          {witnesses.slice(0, compact ? 3 : 6).map((witness, idx: number) => (
+            <span key={`${String(witness)}-${idx}`} style={{
               backgroundColor: "#f0f0f0",
               padding: "2px 6px",
               borderRadius: 3,

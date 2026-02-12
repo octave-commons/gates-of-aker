@@ -3,7 +3,7 @@ import type { HexConfig } from '../hex';
 import { axialToPixel } from '../hex';
 import { CONFIG } from '../config/constants';
 
-type Memory = {
+export type Memory = {
   id: string;
   type: string;
   location: [number, number];

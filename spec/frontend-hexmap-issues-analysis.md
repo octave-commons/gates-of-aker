@@ -1,3 +1,15 @@
+---
+title: Frontend Hexmap Issues Analysis and Resolution Plan
+type: analysis
+component: frontend
+priority: high
+status: proposed
+workflow-state: incoming
+related-issues: []
+estimated-effort: TBD
+updated_at: 2026-02-10
+---
+
 # Frontend Hexmap Issues Analysis & Resolution Plan
 
 ## Issue Summary

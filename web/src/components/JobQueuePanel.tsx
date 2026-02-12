@@ -1,7 +1,16 @@
 import React from "react";
 
+type JobEntry = {
+  id?: string | number;
+  type?: string;
+  state?: string;
+  progress?: number;
+  required?: number;
+  [key: string]: unknown;
+};
+
 type JobQueuePanelProps = {
-  jobs: any[] | null | undefined;
+  jobs: JobEntry[] | null | undefined;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 };
@@ -52,14 +61,17 @@ const jobTypeNames: Record<string, string> = {
 
 export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: JobQueuePanelProps) {
   const safeJobs = Array.isArray(jobs) ? jobs : [];
-  const activeJobs = safeJobs.filter((j: any) => j.state !== ":completed");
-  const getField = (job: any, key: string) => job?.[key] ?? job?.[key.replace(/-/g, "_")] ?? job?.[key.replace(/-(\w)/g, (_, c) => c.toUpperCase())];
-  const getAgentId = (job: any) => getField(job, "worker-id") ?? getField(job, "worker");
-  const getPos = (value: any) => {
+  const activeJobs = safeJobs.filter((j: JobEntry) => j.state !== ":completed");
+  const getField = (job: JobEntry, key: string): unknown => job?.[key] ?? job?.[key.replace(/-/g, "_")] ?? job?.[key.replace(/-(\w)/g, (_, c) => c.toUpperCase())];
+  const getAgentId = (job: JobEntry): string | number | null => {
+    const worker = getField(job, "worker-id") ?? getField(job, "worker");
+    return typeof worker === "number" || typeof worker === "string" ? worker : null;
+  };
+  const getPos = (value: unknown) => {
     if (!value || !Array.isArray(value)) return "-";
     return `[${value[0]}, ${value[1]}]`;
   };
-  const formatJobMeta = (job: any) => {
+  const formatJobMeta = (job: JobEntry) => {
     const resource = getField(job, "resource");
     const qty = getField(job, "qty");
     const structure = getField(job, "structure");
@@ -73,11 +85,11 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
     if (state) meta.push(`state: ${String(state).replace(":", "")}`);
     return meta.join(" • ");
   };
-  const renderJob = (job: any, idx: number) => {
+  const renderJob = (job: JobEntry, idx: number) => {
     const jobType = job.type ?? ":job/unknown";
     const color = jobTypeColors[jobType] ?? "#999";
     const typeName = jobTypeNames[jobType] ?? String(jobType).replace(":job/", "");
-    const progress = (job.progress ?? 0) / (job.required ?? 1);
+    const progress = ((typeof job.progress === "number" ? job.progress : 0) / (typeof job.required === "number" && job.required !== 0 ? job.required : 1));
     const uniqueKey = job.id ? `${job.id}-${idx}` : `idx-${idx}`;
     const workerId = getAgentId(job);
     const target = getPos(getField(job, "target"));
@@ -128,12 +140,13 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
       </div>
     );
   };
-  const assignedJobs = activeJobs.filter((job: any) => getAgentId(job));
-  const unassignedJobs = activeJobs.filter((job: any) => !getAgentId(job));
+  const assignedJobs = activeJobs.filter((job: JobEntry) => getAgentId(job) !== null);
+  const unassignedJobs = activeJobs.filter((job: JobEntry) => getAgentId(job) === null);
 
   if (collapsed) {
     return (
-      <div 
+      <button
+        type="button"
         style={{
           padding: 12,
           border: "1px solid #aaa",
@@ -141,7 +154,10 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
           cursor: "pointer",
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center"
+          alignItems: "center",
+          width: "100%",
+          background: "transparent",
+          textAlign: "left"
         }}
         onClick={onToggleCollapse}
       >
@@ -155,19 +171,24 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
         }}>
           ▼
         </span>
-      </div>
+      </button>
     );
   }
 
   return (
     <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
-      <div 
+      <button
+        type="button"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: 8,
-          cursor: "pointer"
+          cursor: "pointer",
+          width: "100%",
+          background: "transparent",
+          border: "none",
+          textAlign: "left"
         }}
         onClick={onToggleCollapse}
       >
@@ -180,7 +201,7 @@ export function JobQueuePanel({ jobs, collapsed = false, onToggleCollapse }: Job
         }}>
           ▼
         </span>
-      </div>
+      </button>
       {activeJobs.length === 0 ? (
         <div style={{ fontSize: 13, color: "#666" }}>No active jobs</div>
       ) : (

@@ -1,12 +1,16 @@
-# Musical Simulation Audio
+---
+title: Musical Simulation Audio
+type: spec
+component: frontend
+priority: low
+status: implemented
+workflow-state: done
+related-issues: []
+estimated-effort: 12 hours
+updated_at: 2026-02-10
+---
 
----
-Type: spec
-Component: frontend
-Priority: low
-Status: implemented
-Estimated-Effort: 12 hours
----
+# Musical Simulation Audio
 
 ## Summary
 - Add tone sequences for every job completion and need threshold crossing.
@@ -54,3 +58,8 @@ Estimated-Effort: 12 hours
 ## Change Log
 - 2026-01-20: Spec created.
 - 2026-01-20: Added tone sequences for jobs/needs and wired tick diff audio hooks.
+
+## Closure Notes (2026-02-10)
+
+- Closed as `done` with `status: implemented`.
+- Core musical cue behavior was delivered and documented; this spec remains as a completed implementation record.

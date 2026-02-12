@@ -1,7 +1,8 @@
 import React, { memo } from "react";
 
 type DeityData = {
-  faith: number;
+  faith?: number;
+  favor?: number;
 };
 
 type MythPanelProps = {
@@ -62,6 +63,11 @@ export const MythPanel = memo(function MythPanel({
   onToggleCollapse
 }: MythPanelProps) {
   const deityList = Object.entries(deities).sort(([a], [b]) => a.localeCompare(b));
+  const getFaith = (deity: DeityData): number => {
+    if (typeof deity.faith === "number") return deity.faith;
+    if (typeof deity.favor === "number") return deity.favor;
+    return 0;
+  };
 
   return (
     <div
@@ -75,14 +81,19 @@ export const MythPanel = memo(function MythPanel({
         border: "1px solid #424242"
       }}
     >
-      <div
+      <button
+        type="button"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           borderBottom: collapsed ? "1px solid #424242" : "none",
           paddingBottom: 8,
-          cursor: "pointer"
+          cursor: "pointer",
+          background: "transparent",
+          border: "none",
+          width: "100%",
+          color: "inherit",
         }}
         onClick={() => onToggleCollapse?.()}
       >
@@ -99,7 +110,7 @@ export const MythPanel = memo(function MythPanel({
         >
           ▼
         </span>
-      </div>
+      </button>
 
       {!collapsed && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -161,7 +172,7 @@ export const MythPanel = memo(function MythPanel({
                 {DeityName(deityId)}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <ProgressBar value={data.faith} label="Faith" />
+                <ProgressBar value={getFaith(data)} label="Faith" />
               </div>
             </div>
           ))}

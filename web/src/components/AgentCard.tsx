@@ -2,10 +2,28 @@ import React, { memo } from "react";
 import { Agent, hasPos } from "../types";
 import { getMovementSteps } from "../utils";
 
+type CurrentJob = {
+  type?: string;
+  [key: string]: unknown;
+};
+
+type Relationship = {
+  name?: string;
+  affinity?: number;
+  agentId?: number | string;
+  "agent-id"?: number | string;
+  [key: string]: unknown;
+};
+
+type FacetEntry = {
+  facet?: string;
+  [key: string]: unknown;
+};
+
 type AgentCardProps = {
   agent: Agent;
   compact?: boolean;
-  currentJob?: any;
+  currentJob?: CurrentJob;
   onSelect?: (agent: Agent) => void;
 };
 
@@ -32,18 +50,23 @@ const jobTypeNames: Record<string, string> = {
 };
 
 export const AgentCard = memo(function AgentCard({ agent, compact = false, currentJob, onSelect }: AgentCardProps) {
-  const topFacets = (agent["top-facets"] ?? agent.topFacets ?? []);
-  const facetNames = topFacets.map((f: any) => f.facet).filter(Boolean);
-  const needs = (agent as any).needs ?? {};
-  const inventory = (agent as any).inventory ?? {};
-  const isAsleep = (agent as any).asleep ?? false;
-  const status = (agent as any).status ?? {};
+  const agentRecord = agent as Record<string, unknown>;
+  const topFacetsRaw = agentRecord["top-facets"] ?? agentRecord["topFacets"] ?? [];
+  const topFacets = Array.isArray(topFacetsRaw) ? (topFacetsRaw as FacetEntry[]) : [];
+  const facetNames = topFacets
+    .map((f: FacetEntry) => f.facet)
+    .filter((facet): facet is string => typeof facet === "string" && facet.length > 0);
+  const needs = (agentRecord["needs"] as Record<string, number> | undefined) ?? {};
+  const inventory = (agentRecord["inventory"] as Record<string, unknown> | undefined) ?? {};
+  const isAsleep = Boolean(agentRecord["asleep"] ?? false);
+  const status = (agentRecord["status"] as Record<string, unknown> | undefined) ?? {};
   const alive = status["alive?"] ?? status.alive ?? true;
   const causeOfDeath = status["cause-of-death"] ?? status.causeOfDeath ?? null;
-  const relationships = (agent as any).relationships ?? [];
+  const relationshipsRaw = agentRecord["relationships"];
+  const relationships: Relationship[] = Array.isArray(relationshipsRaw) ? (relationshipsRaw as Relationship[]) : [];
   const topRelationship = Array.isArray(relationships) ? relationships[0] : null;
-  const lastSocialThought = (agent as any).lastSocialThought ?? (agent as any)["last-social-thought"] ?? null;
-  const stats = (agent as any).stats ?? {};
+  const lastSocialThought = agentRecord["lastSocialThought"] ?? agentRecord["last-social-thought"] ?? null;
+  const stats = (agentRecord["stats"] as Record<string, number> | undefined) ?? {};
   const statKeys = ["strength", "dexterity", "fortitude", "charisma"];
   const speed = getMovementSteps(stats);
   const statLine = statKeys
@@ -52,24 +75,29 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
     .concat(`SPD ${speed.base}/${speed.road}`)
     .join(" · ");
 
-  const jobTypeName = currentJob ? (jobTypeNames[currentJob.type] ?? String(currentJob.type).replace(":job/", "")) : null;
+  const currentJobType = typeof currentJob?.type === "string" ? currentJob.type : null;
+  const jobTypeName = currentJobType ? (jobTypeNames[currentJobType] ?? currentJobType.replace(":job/", "")) : null;
 
   const mood = needs.mood ?? 0.5;
   const moodLabel = mood < 0.3 ? "DEPRESSED" : mood > 0.8 ? "HAPPY" : "OK";
   const moodColor = mood < 0.3 ? "#4A148C" : mood > 0.8 ? "#9C27B0" : "#7B1FA2";
 
-  const parentIds = (agent as any).parentIds ?? (agent as any)["parent-ids"] ?? [];
-  const childrenIds = (agent as any).childrenIds ?? (agent as any)["children-ids"] ?? [];
-  const childStage = (agent as any).childStage ?? (agent as any)["child-stage"] ?? null;
-  const carryingChild = (agent as any).carryingChild ?? (agent as any)["carrying-child"] ?? null;
+  const parentIdsRaw = agentRecord["parentIds"] ?? agentRecord["parent-ids"] ?? [];
+  const childrenIdsRaw = agentRecord["childrenIds"] ?? agentRecord["children-ids"] ?? [];
+  const parentIds = Array.isArray(parentIdsRaw) ? parentIdsRaw : [];
+  const childrenIds = Array.isArray(childrenIdsRaw) ? childrenIdsRaw : [];
+  const childStage = agentRecord["childStage"] ?? agentRecord["child-stage"] ?? null;
+  const carryingChild = agentRecord["carryingChild"] ?? agentRecord["carrying-child"] ?? null;
   const childStageLabel = childStage ? (String(childStage).toUpperCase()) : null;
   const childStageIcon = childStage === "infant" ? "👶" : childStage === "child" ? "👦" : "";
 
   const clickable = typeof onSelect === "function";
 
   return (
-    <div
+    <button
+      type="button"
       onClick={clickable ? () => onSelect?.(agent) : undefined}
+      disabled={!clickable}
       style={{
       backgroundColor: alive ? (isAsleep ? "#e8f0fe" : "#fff") : "#f3f3f3",
       border: `1px solid ${alive ? (isAsleep ? "#4285f4" : "#ccc") : "#c62828"}`,
@@ -78,12 +106,15 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
       marginBottom: compact ? 4 : 8,
       fontSize: 13,
       opacity: alive ? (isAsleep ? 0.8 : 1) : 0.7,
-      cursor: clickable ? "pointer" : "default"
+      cursor: clickable ? "pointer" : "default",
+      width: "100%",
+      textAlign: "left",
+      color: "inherit"
     }}
     >
        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
            <div style={{ fontWeight: "bold", color: "#333" }}>
-             {(agent as any).name || <span>#{agent.id} <span style={{ fontWeight: "normal", color: "#666" }}>{agent.role ?? "unknown"}</span></span>}
+             {(typeof agentRecord["name"] === "string" ? agentRecord["name"] : null) || <span>#{agent.id} <span style={{ fontWeight: "normal", color: "#666" }}>{agent.role ?? "unknown"}</span></span>}
              {isAsleep && <span> 💤</span>}
            </div>
            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
@@ -182,9 +213,9 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
            display: "inline-block",
            marginRight: 4
          }}>
-           🤱 CARRYING #{carryingChild}
-         </div>
-       )}
+            🤱 CARRYING #{String(carryingChild)}
+          </div>
+        )}
 
        {parentIds.length > 0 && (
          <div style={{
@@ -278,7 +309,7 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
 
       {Array.isArray(relationships) && relationships.length > 1 && (
         <div style={{ fontSize: 11, color: "#777", marginBottom: 4 }}>
-          <strong>Links:</strong> {relationships.slice(1, 3).map((rel: any) => {
+          <strong>Links:</strong> {relationships.slice(1, 3).map((rel: Relationship) => {
             const label = rel.name ?? `#${rel.agentId ?? rel["agent-id"]}`;
             const affinity = Math.round(((rel.affinity ?? 0) as number) * 100);
             return `${label} ${affinity}%`;
@@ -303,8 +334,8 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
           flexWrap: "wrap",
           gap: 4
         }}>
-          {facetNames.slice(0, 8).map((name: string, idx: number) => (
-            <span key={idx} style={{
+          {facetNames.slice(0, 8).map((name: string) => (
+            <span key={name} style={{
               backgroundColor: "#f0f0f0",
               padding: "2px 6px",
               borderRadius: 3,
@@ -319,6 +350,6 @@ export const AgentCard = memo(function AgentCard({ agent, compact = false, curre
           )}
         </div>
       )}
-    </div>
+    </button>
   );
 });

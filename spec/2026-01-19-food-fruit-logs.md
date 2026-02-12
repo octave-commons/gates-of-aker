@@ -1,3 +1,15 @@
+---
+title: Food, Fruit, Logs
+type: task
+component: backend, frontend
+priority: medium
+status: review
+workflow-state: in_review
+related-issues: []
+estimated-effort: TBD
+updated_at: 2026-02-10
+---
+
 # Food, Fruit, Logs
 
 ## Context
@@ -30,3 +42,28 @@
 - New worlds spawn with scattered fruit items and an initial fruit stockpile.
 - Chop-tree jobs produce log items instead of wood.
 - Tests and docs notes updated for the new resource names.
+
+## Iteration Evidence (2026-02-10)
+
+- Backend food/fruit/log mechanics implemented:
+  - `backend/src/fantasia/sim/ecs/systems/job_creation.clj`
+    - Adds fruit-targeted `:job/eat` selection (fruit tiles first, then fruit stockpiles).
+    - Adds periodic tree-adjacent fruit drops (`generate-tree-fruit-drops`).
+  - `backend/src/fantasia/sim/ecs/systems/job_processing.clj`
+    - Completes `:job/chop-tree` by clearing tree and scattering `:log` drops on nearby tiles.
+    - Completes `:job/eat` by consuming fruit from ground first, then stockpiles.
+  - `backend/src/fantasia/sim/ecs/tick.clj`
+    - Initial stockpile now configured for fruit.
+    - New worlds scatter initial fruit near trees.
+    - ECS tile projections now merge into world tiles for visibility in snapshots.
+- Tests added/updated:
+  - `backend/test/fantasia/sim/ecs/systems/job_processing_test.clj`
+    - Validates chop-tree completion log drops.
+    - Validates eat from fruit tile.
+    - Validates eat fallback to fruit stockpile.
+  - `backend/test/fantasia/sim/ecs/systems/job_creation_test.clj`
+    - Covers demand-driven chop behavior and idle build generation.
+- Verification commands:
+  - `cd backend && clojure -X:test` -> pass (`122 tests`, `436 assertions`, `0 failures`, `0 errors`).
+  - `lsp_diagnostics` on all modified files -> no errors.
+  - Sub-agent verification completed (session `ses_3b53f03d0ffeZ1KBHUmEZqTWbp`) confirming requirement alignment and test evidence.

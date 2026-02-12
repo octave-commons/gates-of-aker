@@ -1,11 +1,14 @@
 ---
+title: WebSocket E2E Test Suite Specification
 type: spec
 component: testing
 priority: critical
 status: implemented
+workflow-state: done
 related-issues: []
 estimated-effort: 8 hours
 implementation-date: 2026-01-25
+updated_at: 2026-02-10
 ---
 
 # WebSocket E2E Test Suite Specification
@@ -116,6 +119,11 @@ web/src/__tests__/e2e/
 
 ### Test Configuration
 - Configurable backend URL via environment variable
+
+## Closure Notes (2026-02-10)
+
+- Closed as `done` with `status: implemented`.
+- This specification remains the completed baseline for WebSocket E2E coverage and validation criteria.
 - Timeout settings for async operations
 - Retry logic for flaky network conditions
 - Clean shutdown procedures

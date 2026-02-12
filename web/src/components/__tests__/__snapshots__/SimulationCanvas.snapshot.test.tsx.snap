@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SimulationCanvas snapshot > matches stable render snapshot 1`] = `
+<DocumentFragment>
+  <div
+    style="position: relative; width: 100%; height: 100%; overflow: hidden;"
+  >
+    <canvas
+      aria-describedby="_r_0_"
+      aria-label="Simulation map canvas"
+      data-testid="simulation-canvas"
+      style="display: block; width: 100%; height: 100%; cursor: crosshair;"
+      tabindex="0"
+    />
+    <output
+      aria-live="polite"
+      id="_r_0_"
+      style="position: absolute; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; border: 0px;"
+    >
+      Selected tile 0, 0. Agent 1, role priest.
+    </output>
+  </div>
+</DocumentFragment>
+`;

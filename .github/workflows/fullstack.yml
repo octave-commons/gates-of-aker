@@ -23,7 +23,7 @@ jobs:
         distribution: 'temurin'
         
     - name: Setup Clojure CLI
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@27f91575da4b554a890f789faf65b6e433162b88
       with:
         cli: latest
         
@@ -127,7 +127,7 @@ jobs:
         distribution: 'temurin'
         
     - name: Setup Clojure CLI
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@27f91575da4b554a890f789faf65b6e433162b88
       with:
         cli: latest
         

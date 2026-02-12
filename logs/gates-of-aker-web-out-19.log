@@ -1,0 +1,192 @@
+2026-02-09T22:57:29: 
+2026-02-09T22:57:29: > fantasia-web@0.0.1 dev
+2026-02-09T22:57:29: > vite
+2026-02-09T22:57:29: 
+2026-02-09T22:57:29: Port 5173 is in use, trying another one...
+2026-02-09T22:57:29: 
+2026-02-09T22:57:29:   VITE v6.4.1  ready in 333 ms
+2026-02-09T22:57:29: 
+2026-02-09T22:57:29:   ➜  Local:   http://localhost:5174/
+2026-02-09T22:57:29:   ➜  Network: http://192.168.12.2:5174/
+2026-02-09T22:57:29:   ➜  Network: http://100.77.244.9:5174/
+2026-02-09T22:57:29:   ➜  Network: http://172.19.0.1:5174/
+2026-02-09T22:57:29:   ➜  Network: http://172.18.0.1:5174/
+2026-02-09T23:03:32: 11:03:32 PM [vite] (client) ✨ new dependencies optimized: react/jsx-runtime
+2026-02-09T23:03:32: 11:03:32 PM [vite] (client) ✨ optimized dependencies changed. reloading
+2026-02-10T12:40:35: 
+2026-02-10T12:40:35: > fantasia-web@0.0.1 dev
+2026-02-10T12:40:35: > vite
+2026-02-10T12:40:35: 
+2026-02-10T12:40:36: 
+2026-02-10T12:40:36:   VITE v6.4.1  ready in 795 ms
+2026-02-10T12:40:36: 
+2026-02-10T12:40:36:   ➜  Local:   http://localhost:5173/
+2026-02-10T12:40:36:   ➜  Network: http://192.168.12.2:5173/
+2026-02-10T12:40:36:   ➜  Network: http://100.77.244.9:5173/
+2026-02-10T21:10:56: 9:10:56 PM [vite] (client) page reload src/components/SelectedPanel.tsx
+2026-02-10T21:11:09: 9:11:09 PM [vite] (client) page reload src/components/SelectedPanel.tsx
+2026-02-10T21:14:13: 9:14:13 PM [vite] (client) page reload src/components/SelectedPanel.tsx
+2026-02-10T21:45:41: 9:45:41 PM [vite] (client) page reload src/ws.ts
+2026-02-10T21:45:52: 9:45:52 PM [vite] (client) page reload src/App.tsx
+2026-02-10T21:51:10: 9:51:10 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-10T21:52:02: 9:52:02 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-10T21:52:14: 9:52:14 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-10T21:55:42: 9:55:42 PM [vite] (client) page reload src/App.tsx
+2026-02-10T21:56:01: 9:56:01 PM [vite] (client) page reload src/App.tsx
+2026-02-10T22:17:18: 10:17:18 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-10T22:21:48: 10:21:48 PM [vite] (client) page reload src/utils.ts
+2026-02-10T22:21:58: 10:21:58 PM [vite] (client) page reload src/utils.ts
+2026-02-10T22:22:08: 10:22:08 PM [vite] (client) page reload src/App.tsx
+2026-02-10T22:24:31: 10:24:31 PM [vite] (client) page reload src/App.tsx
+2026-02-10T22:26:29: 10:26:29 PM [vite] (client) page reload src/App.tsx
+2026-02-10T22:28:35: 10:28:35 PM [vite] (client) page reload src/App.tsx
+2026-02-10T22:33:48: 10:33:48 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-10T22:34:12: 10:34:12 PM [vite] (client) page reload src/App.tsx
+2026-02-10T22:38:47: 10:38:47 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-10T22:38:59: 10:38:59 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-10T22:53:07: 10:53:07 PM [vite] (client) page reload src/ws.ts
+2026-02-10T22:54:38: 10:54:38 PM [vite] (client) page reload src/ws.ts
+2026-02-10T23:03:04: 11:03:04 PM [vite] (client) page reload src/ws.ts
+2026-02-10T23:03:15: 11:03:15 PM [vite] (client) page reload src/ws.ts
+2026-02-10T23:03:26: 11:03:26 PM [vite] (client) page reload src/ws.ts
+2026-02-10T23:03:37: 11:03:37 PM [vite] (client) page reload src/ws.ts
+2026-02-10T23:04:56: 11:04:56 PM [vite] (client) page reload src/ws.ts
+2026-02-10T23:05:15: 11:05:15 PM [vite] (client) page reload src/ws.ts
+2026-02-10T23:05:44: 11:05:44 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:06:02: 11:06:02 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:10:16: 11:10:16 PM [vite] (client) page reload src/types/index.ts
+2026-02-10T23:10:26: 11:10:26 PM [vite] (client) page reload src/types/index.ts
+2026-02-10T23:10:40: 11:10:40 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:11:02: 11:11:02 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:13:48: 11:13:48 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:13:59: 11:13:59 PM [vite] (client) page reload src/types/index.ts
+2026-02-10T23:22:18: 11:22:18 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:23:43: 11:23:43 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:23:53: 11:23:53 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:34:16: 11:34:16 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:34:28: 11:34:28 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:34:45: 11:34:45 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:35:31: 11:35:31 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:35:49: 11:35:49 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:36:15: 11:36:15 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:36:54: 11:36:54 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:37:06: 11:37:06 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:41:35: 11:41:35 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:41:50: 11:41:50 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:48:01: 11:48:01 PM [vite] (client) page reload src/components/LibraryPanel.tsx
+2026-02-10T23:48:13: 11:48:13 PM [vite] (client) page reload src/components/MemoryOverlay.tsx
+2026-02-10T23:48:30: 11:48:30 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:48:54: 11:48:54 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:54:51: 11:54:51 PM [vite] (client) page reload src/App.tsx
+2026-02-10T23:55:07: 11:55:07 PM [vite] (client) page reload src/App.tsx
+2026-02-11T00:01:42: 12:01:42 AM [vite] (client) page reload src/utils.ts
+2026-02-11T00:02:46: 12:02:46 AM [vite] (client) page reload src/App.tsx
+2026-02-11T00:07:51: 12:07:51 AM [vite] (client) page reload src/types/index.ts
+2026-02-11T00:08:45: 12:08:45 AM [vite] (client) page reload src/types/index.ts
+2026-02-11T00:09:12: 12:09:12 AM [vite] (client) page reload src/types/index.ts
+2026-02-11T00:13:04: 12:13:04 AM [vite] (client) page reload src/App.tsx
+2026-02-11T00:21:28: 12:21:28 AM [vite] (client) page reload src/App.tsx
+2026-02-11T00:28:35: 12:28:35 AM [vite] (client) page reload src/components/AgentList.tsx
+2026-02-11T00:28:58: 12:28:58 AM [vite] (client) page reload src/components/FactionsPanel.tsx
+2026-02-11T00:29:27: 12:29:27 AM [vite] (client) page reload src/components/AgentList.tsx
+2026-02-11T00:29:52: 12:29:52 AM [vite] (client) page reload src/components/FactionsPanel.tsx
+2026-02-11T00:41:13: 12:41:13 AM [vite] (client) page reload src/components/AgentCard.tsx
+2026-02-11T00:43:17: 12:43:17 AM [vite] (client) page reload src/components/AgentCard.tsx
+2026-02-11T00:43:45: 12:43:45 AM [vite] (client) page reload src/components/AgentCard.tsx
+2026-02-11T00:57:37: 12:57:37 AM [vite] (client) page reload src/components/EventCard.tsx
+2026-02-11T00:58:16: 12:58:16 AM [vite] (client) page reload src/components/EventFeed.tsx
+2026-02-11T00:58:48: 12:58:48 AM [vite] (client) page reload src/components/TraceFeed.tsx
+2026-02-11T00:59:16: 12:59:16 AM [vite] (client) page reload src/components/TraceFeed.tsx
+2026-02-11T01:09:37: 1:09:37 AM [vite] (client) page reload src/hooks/useWebSocket.ts
+2026-02-11T01:10:11: 1:10:11 AM [vite] (client) page reload src/App.tsx
+2026-02-11T01:19:31: 1:19:31 AM [vite] (client) page reload src/components/WorldInfoPanel.tsx
+2026-02-11T01:20:04: 1:20:04 AM [vite] (client) page reload src/components/WorldInfoPanel.tsx
+2026-02-11T01:20:39: 1:20:39 AM [vite] (client) page reload src/components/VisibilityControlPanel.tsx
+2026-02-11T01:21:33: 1:21:33 AM [vite] (client) page reload src/components/VisibilityControlPanel.tsx
+2026-02-11T01:22:04: 1:22:04 AM [vite] (client) page reload src/components/BuildingPalette.tsx
+2026-02-11T01:22:46: 1:22:46 AM [vite] (client) page reload src/components/JobQueuePanel.tsx
+2026-02-11T01:23:20: 1:23:20 AM [vite] (client) page reload src/components/JobQueuePanel.tsx
+2026-02-11T01:32:43: 1:32:43 AM [vite] (client) page reload src/components/ThoughtsPanel.tsx
+2026-02-11T01:33:39: 1:33:39 AM [vite] (client) page reload src/components/SelectedPanel.tsx
+2026-02-11T01:34:35: 1:34:35 AM [vite] (client) page reload src/components/SelectedPanel.tsx
+2026-02-11T02:01:29: 2:01:29 AM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-11T02:03:30: 2:03:30 AM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-11T02:03:40: 2:03:40 AM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-11T02:06:35: 2:06:35 AM [vite] (client) page reload src/App.tsx
+2026-02-11T02:07:06: 2:07:06 AM [vite] (client) page reload src/App.tsx
+2026-02-11T02:07:25: 2:07:25 AM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-11T02:25:05: 2:25:05 AM [vite] (client) page reload src/ws.ts
+2026-02-11T02:25:19: 2:25:19 AM [vite] (client) page reload src/App.tsx
+2026-02-11T02:25:52: 2:25:52 AM [vite] (client) page reload src/App.tsx
+2026-02-11T02:34:13: 2:34:12 AM [vite] (client) page reload src/ws.ts
+2026-02-11T02:34:29: 2:34:29 AM [vite] (client) page reload src/ws.ts
+2026-02-11T02:34:43: 2:34:43 AM [vite] (client) page reload src/hooks/useWebSocket.ts
+2026-02-11T02:40:50: 2:40:50 AM [vite] (client) page reload src/types/index.ts
+2026-02-11T02:48:33: 2:48:33 AM [vite] (client) page reload src/App.tsx
+2026-02-11T02:48:55: 2:48:55 AM [vite] (client) page reload src/App.tsx
+2026-02-11T02:49:08: 2:49:08 AM [vite] (client) page reload src/App.tsx
+2026-02-11T02:55:21: 2:55:21 AM [vite] (client) page reload src/App.tsx
+2026-02-11T03:03:31: 3:03:31 AM [vite] (client) page reload src/App.tsx
+2026-02-11T03:13:10: 3:13:10 AM [vite] (client) page reload src/App.tsx
+2026-02-11T03:21:45: 3:21:45 AM [vite] (client) page reload src/App.tsx
+2026-02-11T03:31:25: 3:31:25 AM [vite] (client) page reload src/App.tsx
+2026-02-11T03:40:52: 3:40:52 AM [vite] (client) page reload src/App.tsx
+2026-02-11T12:11:07: 
+2026-02-11T12:11:07: > fantasia-web@0.0.1 dev
+2026-02-11T12:11:07: > vite
+2026-02-11T12:11:07: 
+2026-02-11T12:11:07: 
+2026-02-11T12:11:07:   VITE v6.4.1  ready in 352 ms
+2026-02-11T12:11:07: 
+2026-02-11T12:11:07:   ➜  Local:   http://localhost:5173/
+2026-02-11T12:11:07:   ➜  Network: http://192.168.12.2:5173/
+2026-02-11T15:29:26: 
+2026-02-11T15:29:26: > fantasia-web@0.0.1 dev
+2026-02-11T15:29:26: > vite
+2026-02-11T15:29:26: 
+2026-02-11T15:29:27: 
+2026-02-11T15:29:27:   VITE v6.4.1  ready in 207 ms
+2026-02-11T15:29:27: 
+2026-02-11T15:29:27:   ➜  Local:   http://localhost:5173/
+2026-02-11T15:29:27:   ➜  Network: http://192.168.12.2:5173/
+2026-02-11T15:29:27:   ➜  Network: http://100.77.244.9:5173/
+2026-02-11T15:29:27:   ➜  Network: http://172.19.0.1:5173/
+2026-02-11T15:29:27:   ➜  Network: http://172.18.0.1:5173/
+2026-02-11T15:42:08: 3:42:08 PM [vite] (client) page reload src/utils.ts
+2026-02-11T16:03:52: 
+2026-02-11T16:03:52: > fantasia-web@0.0.1 dev
+2026-02-11T16:03:52: > vite
+2026-02-11T16:03:52: 
+2026-02-11T16:03:52: 
+2026-02-11T16:03:52:   VITE v6.4.1  ready in 149 ms
+2026-02-11T16:03:52: 
+2026-02-11T16:03:52:   ➜  Local:   http://localhost:5173/
+2026-02-11T16:03:52:   ➜  Network: http://192.168.12.2:5173/
+2026-02-11T16:03:52:   ➜  Network: http://100.77.244.9:5173/
+2026-02-11T16:03:52:   ➜  Network: http://172.19.0.1:5173/
+2026-02-11T16:03:52:   ➜  Network: http://172.18.0.1:5173/
+2026-02-11T17:45:01: 5:45:01 PM [vite] (client) page reload src/utils.ts
+2026-02-11T19:05:39: 
+2026-02-11T19:05:39: > fantasia-web@0.0.1 dev
+2026-02-11T19:05:39: > vite
+2026-02-11T19:05:39: 
+2026-02-11T19:05:39: 
+2026-02-11T19:05:39:   VITE v6.4.1  ready in 400 ms
+2026-02-11T19:05:39: 
+2026-02-11T19:05:39:   ➜  Local:   http://localhost:5173/
+2026-02-11T19:05:39:   ➜  Network: http://192.168.12.2:5173/
+2026-02-11T19:05:39:   ➜  Network: http://100.77.244.9:5173/
+2026-02-11T20:17:33: 8:17:33 PM [vite] (client) page reload src/components/SimulationCanvas.tsx
+2026-02-11T20:50:09: 8:50:09 PM [vite] (client) page reload src/components/ThoughtsPanel.tsx
+2026-02-11T21:26:41: 
+2026-02-11T21:26:41: > fantasia-web@0.0.1 dev
+2026-02-11T21:26:41: > vite
+2026-02-11T21:26:41: 
+2026-02-11T21:26:42: 
+2026-02-11T21:26:42:   VITE v6.4.1  ready in 257 ms
+2026-02-11T21:26:42: 
+2026-02-11T21:26:42:   ➜  Local:   http://localhost:5173/
+2026-02-11T21:26:42:   ➜  Network: http://192.168.12.2:5173/
+2026-02-11T21:26:42:   ➜  Network: http://100.77.244.9:5173/
+2026-02-11T21:26:42:   ➜  Network: http://172.19.0.1:5173/
+2026-02-11T21:26:42:   ➜  Network: http://172.18.0.1:5173/
