@@ -68,5 +68,7 @@ Close out PR #35 review work by converting waiting time into process-aligned rea
   - Unresolved review thread count is currently zero.
 - Blocking external signal:
   - Awaiting explicit `@codex` confirmation of no remaining actionable issues after latest commits (`99219ca`, `3cfd969`).
+  - Latest Codex connector response indicates repository environment setup is required before it can run a review:
+    - https://github.com/octave-commons/gates-of-aker/pull/35#issuecomment-3888236459
 - Next transition:
   - Move `In Review -> Testing` immediately once explicit Codex closure signal is posted and required checks are not externally blocked.
