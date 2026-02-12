@@ -87,12 +87,12 @@
 
 (defn- claim-job!
   [ecs-world agent-id {:keys [building-id job-id job]}]
-  (let [job-assignment (c/->JobAssignment job-id 0.0)
-        claimed-job (assoc job :worker-id agent-id :state :claimed)
+  (let [claimed-job (assoc job :worker-id agent-id :state :claimed)
+        destination (target-pos claimed-job)
+        job-assignment (assoc (c/->JobAssignment job-id 0.0) :target-pos destination)
         world-with-job (update-job-in-queue ecs-world building-id job-id (constantly claimed-job))
         world-with-assignment (be/add-component world-with-job agent-id job-assignment)
-        world-with-status (mark-agent-active world-with-assignment agent-id)
-        destination (target-pos claimed-job)]
+        world-with-status (mark-agent-active world-with-assignment agent-id)]
     (log/log-info "[JOB:ASSIGN]"
                   {:agent-id agent-id
                    :building-id building-id
