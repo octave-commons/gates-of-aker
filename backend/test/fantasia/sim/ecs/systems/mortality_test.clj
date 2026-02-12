@@ -28,11 +28,13 @@
   (testing "food below starvation threshold marks entity dead"
     (let [world (ecs/create-ecs-world)
           [agent-id world1] (ecs/create-agent world nil 0 0 :peasant {:needs (needs 0.1)})
-          world2 (mortality/process world1)
+          death-tick 42
+          world2 (mortality/process world1 death-tick)
           death-state (be/get-component world2 agent-id (death-state-type))
           status (be/get-component world2 agent-id (status-type))]
       (is (false? (:alive? death-state)))
       (is (= :starvation (:cause-of-death death-state)))
+      (is (= death-tick (:death-tick death-state)))
       (is (false? (:alive? status)))
       (is (= :starvation (:cause-of-death status))))))
 
@@ -40,6 +42,6 @@
   (testing "mortality cleanup returns world even when no job assignment exists"
     (let [world (ecs/create-ecs-world)
           [agent-id world1] (ecs/create-agent world nil 1 1 :peasant {:needs (needs 0.1)})
-          world2 (mortality/process world1)]
+          world2 (mortality/process world1 99)]
       (is (some? world2))
       (is (some? (be/get-component world2 agent-id (death-state-type)))))))

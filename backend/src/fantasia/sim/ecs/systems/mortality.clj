@@ -25,9 +25,9 @@
           (<= health 0.0) :health-critical
           :else nil)))))
 
-  (defn- create-death-memory
+(defn- create-death-memory
     "Create a memory entity for agent death."
-    [ecs-world agent-pos cause killer-role agent-id memory-strength]
+    [ecs-world tick agent-pos cause killer-role agent-id memory-strength]
     (let [memory-id (java.util.UUID/randomUUID)
 
           ;; Build facet list for memory
@@ -45,7 +45,7 @@
 
            memory-facets (distinct (concat base-facets agent-facets killer-facets))
 
-          memory-instance (c/->Memory memory-id :memory/danger agent-pos (:tick ecs-world) memory-strength agent-id memory-facets)]
+          memory-instance (c/->Memory memory-id :memory/danger agent-pos tick memory-strength agent-id memory-facets)]
 
       (log/log-info "[MORTALITY:DEATH]"
                     {:agent-id agent-id
@@ -59,7 +59,7 @@
 
 (defn- handle-entity-death
   "Handle entity death by creating memory and marking as dead."
-  [ecs-world entity-id cause killer-role]
+  [ecs-world tick entity-id cause killer-role]
   (let [pos-instance (c/->Position 0 0)
         pos-type (get-component-type-instance pos-instance)
         stats-instance (c/->Stats 0.0 0.0 0.0 0.0)
@@ -76,10 +76,10 @@
         strength (min 2.0 (+ 0.5 (* 0.01 (or (:strength agent-stats) 0.4))))
 
         ;; Mark as dead
-        new-death-state (c/->DeathState false cause (:tick ecs-world))
+        new-death-state (c/->DeathState false cause tick)
 
         ;; Create memory at death location
-        world-with-memory (create-death-memory ecs-world entity-pos cause killer-role entity-id strength)]
+        world-with-memory (create-death-memory ecs-world tick entity-pos cause killer-role entity-id strength)]
 
     (-> world-with-memory
         (be/add-component entity-id new-death-state)
@@ -99,26 +99,28 @@
 (defn process
   "Process mortality for all entities, handling deaths and creating memories.
    Returns updated ECS world."
-  [ecs-world]
-  (let [needs-instance (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)
-        needs-type (get-component-type-instance needs-instance)
-        death-instance (c/->DeathState true nil nil)
-        death-type (get-component-type-instance death-instance)
-        status-instance (c/->AgentStatus true false true nil)
-        status-type (get-component-type-instance status-instance)
-        all-entities (be/get-all-entities-with-component ecs-world needs-type)]
+  ([ecs-world]
+   (process ecs-world nil))
+  ([ecs-world tick]
+   (let [needs-instance (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)
+         needs-type (get-component-type-instance needs-instance)
+         death-instance (c/->DeathState true nil nil)
+         death-type (get-component-type-instance death-instance)
+         status-instance (c/->AgentStatus true false true nil)
+         status-type (get-component-type-instance status-instance)
+         all-entities (be/get-all-entities-with-component ecs-world needs-type)]
 
-    (reduce
-     (fn [world entity-id]
-       (let [death-state (be/get-component world entity-id death-type)
-             status (be/get-component world entity-id status-type)
-             alive? (and (not= false (:alive? death-state true))
-                         (not= false (:alive? status true)))
-             cause-of-death (when alive? (check-entity-mortality world entity-id))]
-         (if cause-of-death
-           (-> world
-               (handle-entity-death entity-id cause-of-death nil)
-               (cleanup-jobs-for-dead-entity entity-id))
-           world)))
-     ecs-world
-     all-entities)))
+     (reduce
+      (fn [world entity-id]
+        (let [death-state (be/get-component world entity-id death-type)
+              status (be/get-component world entity-id status-type)
+              alive? (and (not= false (:alive? death-state true))
+                          (not= false (:alive? status true)))
+              cause-of-death (when alive? (check-entity-mortality world entity-id))]
+          (if cause-of-death
+            (-> world
+                (handle-entity-death tick entity-id cause-of-death nil)
+                (cleanup-jobs-for-dead-entity entity-id))
+            world)))
+      ecs-world
+      all-entities))))

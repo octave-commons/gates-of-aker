@@ -58,7 +58,7 @@
         world8 (:world social-result)
         reproduction-result (reproduction/process-reproduction world8 tick)
         world9 (:world reproduction-result)
-        world10 (mortality/process world9)]
+           world10 (mortality/process world9 tick)]
     {:ecs-world world10
      :combat-events (:events combat-result)
      :social-interactions (:events social-result)
