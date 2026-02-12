@@ -1,6 +1,6 @@
 ---
 title: "Tree Visibility + Starvation Mortality Fix"
-status: draft
+status: approved
 owner: riatzukiza
 created_at: 2026-02-12
 updated_at: 2026-02-12
@@ -8,6 +8,8 @@ tags: [simulation, starvation, mortality, rendering, ecs]
 related_pr:
   repo: octave-commons/gates-of-aker
   branch: feature/tree-visibility-starvation-mortality
+  number: 36
+  url: https://github.com/octave-commons/gates-of-aker/pull/36
 process_ref: docs/reference/process.md
 ---
 
@@ -19,6 +21,7 @@ Fix two player-facing simulation issues in a single reviewable slice:
 ## Scope
 - Seed `DeathState` for all created agents.
 - Ensure mortality processing evaluates living agents reliably and updates `AgentStatus` when death occurs.
+- Pass simulation `tick` into mortality processing so `DeathState :death-tick` and death memory timestamps are populated.
 - Prevent mortality cleanup from returning nil world when no job assignment exists.
 - Normalize tile resource payload values (`:tree`, `":tree"`) to plain strings (`"tree"`) before snapshot broadcast.
 
@@ -34,6 +37,16 @@ Fix two player-facing simulation issues in a single reviewable slice:
 - Frontend tests: `cd web && npm test -- src/__tests__/ws.test.ts src/components/__tests__/SimulationCanvas.test.tsx`
 - Frontend build: `cd web && npm run build`
 
+## Review Evidence
+- CodeRabbit explicit closure (no remaining issues):
+  - `https://github.com/octave-commons/gates-of-aker/pull/36#issuecomment-3888339811`
+  - `https://github.com/octave-commons/gates-of-aker/pull/36#issuecomment-3888340871`
+- Follow-up patch applied from review:
+  - `backend/src/fantasia/sim/ecs/systems/mortality.clj`
+  - `backend/src/fantasia/sim/ecs/tick.clj`
+  - `backend/test/fantasia/sim/ecs/systems/mortality_test.clj`
+
 ## FSM Note (`docs/reference/process.md`)
 - This slice is bounded at LoE <= 5 and moved through implementation with explicit verification evidence.
-- Next state after PR creation: `In Review`, then iterate review comments to closure.
+- State progression completed for this slice: `In Review -> Testing -> Document` with review/test evidence captured.
+- User requested review closure requirement met via explicit CodeRabbit confirmation on PR #36.
