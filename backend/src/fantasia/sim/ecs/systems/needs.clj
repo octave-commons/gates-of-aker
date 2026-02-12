@@ -1,9 +1,9 @@
 (ns fantasia.sim.ecs.systems.needs
-  (:require [brute.entity :as be]
-            [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.ecs.facets :as f]
-            [fantasia.sim.ecs.spatial :as sf]
-            [fantasia.dev.logging :as log]))
+   (:require [brute.entity :as be]
+             [fantasia.sim.ecs.components :as c]
+             [fantasia.sim.ecs.facets :as f]
+             [fantasia.sim.ecs.spatial :as sf]
+             [fantasia.dev.logging :as log]))
 
 ;; =============================================================================
 ;; Axis Weights

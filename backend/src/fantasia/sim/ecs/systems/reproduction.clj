@@ -19,13 +19,10 @@
         preg-type (get-component-type-instance preg-instance)
         death-instance (c/->DeathState true nil nil)
         death-type (get-component-type-instance death-instance)
-        stats-instance (c/->Stats 0.0 0.0 0.0 0.0)
-        stats-type (get-component-type-instance stats-instance)
         
         needs (be/get-component ecs-world entity-id needs-type)
         pregnancy (be/get-component ecs-world entity-id preg-type)
-        death-state (be/get-component ecs-world entity-id death-type)
-        stats (be/get-component ecs-world entity-id stats-type)]
+        death-state (be/get-component ecs-world entity-id death-type)]
     
     (and needs
          (or (nil? death-state) (:alive? death-state true))
@@ -36,42 +33,46 @@
 
 (defn- find-nearby-partner
   "Find nearby entity for reproduction."
-  [ecs-world entity-id]
+  [ecs-world entity-id partner-pred]
   (let [pos-instance (c/->Position 0 0)
         pos-type (get-component-type-instance pos-instance)
         entity-pos (be/get-component ecs-world entity-id pos-type)
         all-entities (be/get-all-entities-with-component ecs-world pos-type)]
     (->> all-entities
-         (filter #(and (not= % entity-id)
-                       (can-reproduce? ecs-world %)))
-         (filter #(let [partner-pos (be/get-component ecs-world % pos-type)]
-                    (when (and entity-pos partner-pos)
-                      (<= (hex/distance [(:q entity-pos) (:r entity-pos)]
-                                       [(:q partner-pos) (:r partner-pos)]) 2))))
-         first)))
+          (filter #(and (not= % entity-id)
+                        (partner-pred %)
+                        (can-reproduce? ecs-world %)))
+          (filter #(let [partner-pos (be/get-component ecs-world % pos-type)]
+                     (when (and entity-pos partner-pos)
+                       (<= (hex/distance [(:q entity-pos) (:r entity-pos)]
+                                        [(:q partner-pos) (:r partner-pos)]) 2))))
+          first)))
+
+(defn- female-entity?
+  [entity-id]
+  (even? (hash (str entity-id))))
+
+(defn- male-entity?
+  [entity-id]
+  (not (female-entity? entity-id)))
 
 (defn- start-pregnancy
   "Start pregnancy for female entity with male partner."
   [ecs-world female-id male-id tick]
-  (let [preg-instance (c/->PregnancyState false nil nil nil)
-        preg-type (get-component-type-instance preg-instance)
-        pregnancy-duration 50 ; ticks until birth
-        
+  (let [pregnancy-duration 50 ; ticks until birth
         new-pregnancy (c/->PregnancyState true male-id (+ tick pregnancy-duration) tick)]
     
     (be/add-component ecs-world female-id new-pregnancy)))
 
 (defn- give-birth
   "Give birth to new entity."
-  [ecs-world mother-id father-id tick]
+  [ecs-world mother-id father-id _tick]
   (let [pos-instance (c/->Position 0 0)
         pos-type (get-component-type-instance pos-instance)
         role-instance (c/->Role :priest)
         role-type (get-component-type-instance role-instance)
         stats-instance (c/->Stats 0.0 0.0 0.0 0.0)
         stats-type (get-component-type-instance stats-instance)
-        growth-instance (c/->GrowthState :infant 0.0)
-        growth-type (get-component-type-instance growth-instance)
         
         mother-pos (be/get-component ecs-world mother-id pos-type)
         mother-role (be/get-component ecs-world mother-id role-type)
@@ -86,13 +87,14 @@
         child-role (c/->Role (:type mother-role)) ; Inherit mother's role
         
         child-id (java.util.UUID/randomUUID)]
-    
-    (when mother-pos
-      (let [ [_ initial-system] (ecs-core/create-agent ecs-world child-id (:q mother-pos) (:r mother-pos) (:type mother-role) {})
+
+    (if mother-pos
+      (let [[_ initial-system] (ecs-core/create-agent ecs-world child-id (:q mother-pos) (:r mother-pos) (:type mother-role) {})
             world-with-stats (be/add-component initial-system child-id child-stats)
             world-with-growth (be/add-component world-with-stats child-id (c/->GrowthState :infant 0.0))
             final-world (be/add-component world-with-growth child-id child-role)]
-        final-world))))
+        final-world)
+      ecs-world)))
 
 (defn- process-pregnancy
   "Process pregnancy and birth for pregnant entities."
@@ -100,7 +102,7 @@
   (let [preg-instance (c/->PregnancyState false nil nil nil)
         preg-type (get-component-type-instance preg-instance)
         pregnancy (be/get-component ecs-world entity-id preg-type)]
-    (when (:pregnant? pregnancy)
+    (if (:pregnant? pregnancy)
       (if (>= tick (:due-tick pregnancy))
         ;; Give birth
         (let [birth-world (give-birth ecs-world entity-id (:partner-id pregnancy) tick)
@@ -108,34 +110,35 @@
           (-> birth-world
               (be/add-component entity-id clear-pregnancy)))
         ;; Continue pregnancy
-        ecs-world))))
+        ecs-world)
+      ecs-world)))
 
 (defn- process-growth
   "Process growth and aging for entities."
-  [ecs-world entity-id tick]
+  [ecs-world entity-id _tick]
   (let [growth-instance (c/->GrowthState :infant 0.0)
         growth-type (get-component-type-instance growth-instance)
         growth (be/get-component ecs-world entity-id growth-type)]
-    (when growth
+    (if growth
       (let [current-stage (:age-stage growth)
             current-progress (:growth-progress growth)
             growth-rate 0.02 ; Progress per tick
-            
             new-progress (min 1.0 (+ current-progress growth-rate))]
         (if (>= new-progress 1.0)
           ;; Advance to next stage
           (let [next-stage (case current-stage
-                            :infant :child
-                            :child :teenager  
-                            :teenager :adult
-                            :adult :adult)]
+                             :infant :child
+                             :child :teenager
+                             :teenager :adult
+                             :adult :adult)]
             (be/add-component ecs-world entity-id (c/->GrowthState next-stage 0.0)))
           ;; Continue current stage
-          (be/add-component ecs-world entity-id (c/->GrowthState current-stage new-progress)))))))
+          (be/add-component ecs-world entity-id (c/->GrowthState current-stage new-progress))))
+      ecs-world)))
 
 (defn process-reproduction
   "Process reproduction for all entities.
-   Returns [updated-world reproduction-events] tuple."
+   Returns {:world updated-world :events reproduction-events} map."
   [ecs-world tick]
   (let [role-instance (c/->Role :priest)
         role-type (get-component-type-instance role-instance)
@@ -144,19 +147,18 @@
     (reduce
      (fn [{:keys [world events]} entity-id]
        (let [entity-role (be/get-component world entity-id role-type)]
-         (if (#{:knight :peasant} (:type entity-role)) ; Only humans reproduce
-           (let [entity-stats (be/get-component world entity-id (get-component-type-instance (c/->Stats 0.0 0.0 0.0 0.0)))
-                 is-female (even? (hash (str entity-id)))] ; Simple gender determination
+           (if (#{:knight :peasant} (:type entity-role)) ; Only humans reproduce
+            (let [is-female (female-entity? entity-id)] ; Simple gender determination
              (if (and is-female (can-reproduce? world entity-id))
-               (if-let [partner-id (find-nearby-partner world entity-id)]
-                 (let [world-with-pregnancy (start-pregnancy world entity-id partner-id tick)]
-                   {:world world-with-pregnancy
-                    :events (conj events {:type :reproduction-start
-                                         :mother-id entity-id
-                                         :father-id partner-id
-                                         :tick tick})})
-                 {:world world
-                  :events events})
+                (if-let [partner-id (find-nearby-partner world entity-id male-entity?)]
+                  (let [world-with-pregnancy (start-pregnancy world entity-id partner-id tick)]
+                    {:world world-with-pregnancy
+                     :events (conj events {:type :reproduction-start
+                                          :mother-id entity-id
+                                          :father-id partner-id
+                                          :tick tick})})
+                  {:world world
+                   :events events})
                ;; Check for existing pregnancies
                (let [world-after-pregnancy (process-pregnancy world entity-id tick)]
                  {:world world-after-pregnancy

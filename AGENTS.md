@@ -17,6 +17,7 @@
 - [[ESTIMATION]] -> `ESTIMATION.md` - Story points and estimation guidelines
 - [[BUILD]] -> `BUILD.md` - Build/run/watch commands for both frontend and backend
 - [[TESTING]] -> `TESTING.md` - Testing procedures and framework usage
+- [[web/src/__tests__/e2e/README.md]] -> `web/src/__tests__/e2e/README.md` - WebSocket E2E testing guide
 - [[LINTING]] -> `LINTING.md` - Code style and static analysis rules
 - [[LOGGING]] -> `LOGGING.md` - Backend logging configuration and best practices
 
@@ -25,6 +26,7 @@
 - [[FRONTEND]] -> `FRONTEND.md` - TypeScript/React frontend style guide
 - [[DIRECTORIES]] -> `DIRECTORIES.md` - Project structure and organization
 - [[TOOLCHAINS]] -> `TOOLCHAINS.md` - Development tools and environment setup
+- [[ecosystem.pm2.edn]] -> `ecosystem.pm2.edn` - PM2 process management configuration
 
 ### Knowledge Management
 - [[OBSIDIAN]] -> `OBSIDIAN.md` - Obsidian specific instructions for knowledge graphing
@@ -56,9 +58,10 @@
 - **NEVER manually restart the backend or frontend** while developing
 - PM2 automatically detects file changes and restarts the services
 - Backend runs as `gates-backend` process, frontend as `gates-frontend`
-- If services are unresponsive, check logs instead of restarting:
-  - Backend: `pm2 logs gates-backend --nostream --lines 50`
-  - Frontend: `pm2 logs gates-frontend --nostream --lines 50` (usually less useful)
+- If services are unresponsive, check log files instead of restarting:
+  - Backend logs: `backend/logs/backend.log`, `backend/logs/backend-error.log`
+  - Frontend logs: `backend/logs/frontend.log`, `backend/logs/frontend-error.log`
+  - For recent logs: `tail -50 backend/logs/backend-error.log`
 - PM2 handles all process management, including crash recovery
 - Focus on writing code - PM2 handles the rest
 - Serialization: always encode WS payloads via `cheshire` and decode them once before branching on `:op`/`op`.
@@ -70,7 +73,8 @@
 - Security: treat WS inputs as user-controlled; never trust UI-sent numbers without validation.
 - Performance: profile long-running `sim/tick!` operations before optimizing; measure first.
 - Internationalization: not required yet; keep strings central for future extraction.
-- **Testing**: Run backend tests with `cd backend && clojure -X:test` and frontend tests with `cd web && npm test`. Use `-X:test` for coverage reports.
+- **Testing**: Run backend tests with `cd backend && clojure -X:test` and frontend tests with `cd web && npm test`. Use `-X:test` for coverage reports. Run WebSocket E2E tests with `cd web && npm run test:websocket:e2e` to validate game fundamentals against a real backend instance.
+- **linting** Backend tests are ran with `cd backend && clojure -X:lint`
 
 
 ## GitHub Issue and Spec Labeling

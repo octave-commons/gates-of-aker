@@ -1,0 +1,13 @@
+{:ollama
+ {:url "http://localhost:11434/api/generate"
+  :primary-model "qwen3:4b"
+  :fallback-models ["llama3.2:1b" "mistral:7b"]
+  :timeout-ms 60000
+  :retries 1
+  :retry-delay-ms 2000
+  :keep-alive-enabled true
+  :keep-alive-interval-ms 300000}
+ :ollama-embed
+ {:url "http://localhost:11434/api/embed"
+  :model "nomic-embed-text"
+  :timeout-ms 10000}}

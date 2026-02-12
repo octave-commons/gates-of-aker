@@ -1,5 +1,39 @@
 import { CONFIG } from "./config/constants";
 
+type UnknownRecord = Record<string, unknown>;
+
+type DeltaSnapshot = {
+  delta: true;
+  tick: number;
+  global_updates: {
+    tick: number;
+    temperature: number;
+    daylight: number;
+    calendar?: UnknownRecord;
+    levers?: UnknownRecord;
+    map?: UnknownRecord;
+  };
+  changed_agents: Record<string, UnknownRecord>;
+  changed_tiles?: Record<string, unknown>;
+  changed_items?: Record<string, unknown>;
+  changed_stockpiles?: Record<string, unknown>;
+  changed_jobs?: unknown;
+  combat_events?: UnknownRecord[];
+  mentions?: UnknownRecord[];
+  traces?: UnknownRecord[];
+  attribution?: UnknownRecord;
+  social_interactions?: UnknownRecord[];
+  books?: UnknownRecord;
+  changed_tile_visibility?: Record<string, unknown>;
+  changed_revealed_tiles_snapshot?: Record<string, unknown>;
+  tile_visibility?: Record<string, unknown>;
+  "tile-visibility"?: Record<string, unknown>;
+  revealed_tiles_snapshot?: Record<string, unknown>;
+  "revealed-tiles-snapshot"?: Record<string, unknown>;
+  visibility?: Record<string, unknown>;
+  changed_agent_visibility?: Record<number, string[]>;
+};
+
 const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
 
 const fmt = (n: unknown): string => (typeof n === "number" ? n.toFixed(3) : String(n ?? ""));
@@ -72,45 +106,21 @@ const getMovementSteps = (stats?: Record<string, number>): { base: number; road:
   };
 };
 
-type DeltaSnapshot = {
-  delta: true;
-  tick: number;
-  global_updates: {
-    tick: number;
-    temperature: number;
-    daylight: number;
-    calendar?: any;
-    levers?: any;
-    map?: any;
-  };
-    changed_agents: Record<number, any>;
-    changed_tiles?: Record<string, any>;
-    changed_items?: Record<string, any>;
-    changed_stockpiles?: Record<any, any>;
-    changed_jobs?: any;
-    combat_events?: any[];
-    mentions?: any[];
-    traces?: any[];
-    attribution?: any;
-    social_interactions?: any[];
-    books?: any;
-    changed_tile_visibility?: Record<string, any>;
-    changed_revealed_tiles_snapshot?: Record<string, any>;
-    tile_visibility?: Record<string, any>;
-    "tile-visibility"?: Record<string, any>;
-    revealed_tiles_snapshot?: Record<string, any>;
-    "revealed-tiles-snapshot"?: Record<string, any>;
-    visibility?: Record<string, any>;
-    changed_agent_visibility?: Record<number, string[]>;
-  };
+const coerceAgentId = (id: string): string | number => {
+  const numericId = Number(id);
+  if (Number.isFinite(numericId) && String(numericId) === id) {
+    return numericId;
+  }
+  return id;
+};
 
-const applyAgentDeltas = (agents: any[], agentDeltas: Record<string, any>): any[] => {
+const applyAgentDeltas = (agents: UnknownRecord[], agentDeltas: Record<string, UnknownRecord>): UnknownRecord[] => {
   const deltaIds = new Set<string>(Object.keys(agentDeltas));
-  const removedIds = new Set<number>();
+  const removedIds = new Set<string>();
 
   for (const [id, delta] of Object.entries(agentDeltas)) {
-    if (delta.removed) {
-      removedIds.add(Number(id));
+    if (delta.removed === true) {
+      removedIds.add(id);
     }
   }
 
@@ -118,34 +128,37 @@ const applyAgentDeltas = (agents: any[], agentDeltas: Record<string, any>): any[
     .map(agent => {
       const agentId = String(agent.id);
       const delta = agentDeltas[agentId];
-      if (delta && !delta.removed) {
+          if (delta && delta.removed !== true) {
             const updated = { ...agent, ...delta };
             if (delta.relationships && typeof delta.relationships === 'object' && !Array.isArray(delta.relationships)) {
-              const relMap = delta.relationships as Record<string, any>;
+              const relMap = delta.relationships as Record<string, UnknownRecord>;
               const relArray = Object.entries(relMap)
-                .map(([targetId, rel]) => ({
-                  'agent-id': Number(targetId),
-                  name: String(targetId),
-                  affinity: rel.affinity ?? 0.5,
-                  'last-interaction': rel['last-interaction']
-                }))
+                .map(([targetId, rel]) => {
+                  const normalizedTargetId = coerceAgentId(targetId);
+                  return {
+                    'agent-id': normalizedTargetId,
+                    name: String(normalizedTargetId),
+                    affinity: typeof rel.affinity === "number" ? rel.affinity : 0.5,
+                    'last-interaction': rel['last-interaction']
+                  };
+                })
                 .sort((a, b) => (b.affinity || 0.5) - (a.affinity || 0.5))
                 .slice(0, 3);
               updated.relationships = relArray;
             }
             return updated;
           }
-          if (!removedIds.has(agent.id) && !deltaIds.has(agent.id)) {
+          if (!removedIds.has(agentId) && !deltaIds.has(agentId)) {
             return agent;
           }
           return null;
         })
-        .filter((a): a is any => a !== null);
+        .filter((a): a is UnknownRecord => a !== null);
 
-  const updatedIds = new Set(updatedAgents.map(a => a.id));
+  const updatedIdKeys = new Set(updatedAgents.map((a) => String(a.id)));
   const toAdd = Object.entries(agentDeltas)
-      .filter(([id, delta]) => !updatedIds.has(Number(id)) && !delta.removed)
-      .map(([id, delta]) => ({ id: Number(id), ...delta }));
+      .filter(([id, delta]) => !updatedIdKeys.has(id) && delta.removed !== true)
+      .map(([id, delta]) => ({ id: coerceAgentId(id), ...delta }));
 
   return [...updatedAgents, ...toAdd];
 };
@@ -172,8 +185,40 @@ const normalizeKeyedMap = <T,>(input: Record<string, T> | null | undefined): Rec
   return normalized;
 };
 
-const applyDelta = (prev: any, delta: DeltaSnapshot): any => {
-  const updated = { ...(prev || {}) };
+const appendBounded = <T>(items: readonly T[], item: T, limit: number): T[] => {
+  if (limit <= 0) {
+    return [];
+  }
+  const next = items.length >= limit
+    ? items.slice(Math.max(0, items.length - (limit - 1)))
+    : [...items];
+  next.push(item);
+  return next;
+};
+
+const appendManyBounded = <T>(items: readonly T[], incoming: readonly T[], limit: number): T[] => {
+  if (limit <= 0) {
+    return [];
+  }
+  const boundedItems = items.length > limit
+    ? items.slice(items.length - limit)
+    : [...items];
+  if (incoming.length === 0) {
+    return boundedItems;
+  }
+  if (incoming.length >= limit) {
+    return incoming.slice(incoming.length - limit);
+  }
+  const overflow = boundedItems.length + incoming.length - limit;
+  if (overflow <= 0) {
+    return [...boundedItems, ...incoming];
+  }
+  return [...boundedItems.slice(overflow), ...incoming];
+};
+
+const applyDelta = (prev: UnknownRecord | null | undefined, delta: DeltaSnapshot): UnknownRecord => {
+  const previous = (prev ?? {}) as UnknownRecord;
+  const updated: UnknownRecord = { ...previous };
 
   if (delta.global_updates) {
     updated.tick = delta.global_updates.tick;
@@ -185,50 +230,57 @@ const applyDelta = (prev: any, delta: DeltaSnapshot): any => {
     }
 
   if (delta.changed_agents) {
-    updated.agents = applyAgentDeltas(prev.agents || [], delta.changed_agents);
+    const prevAgents = Array.isArray(previous.agents) ? (previous.agents as UnknownRecord[]) : [];
+    updated.agents = applyAgentDeltas(prevAgents, delta.changed_agents);
   }
 
   if (delta.changed_tiles) {
-       const normalizedTiles: Record<string, any> = {};
+       const normalizedTiles: Record<string, unknown> = {};
        for (const [key, value] of Object.entries(delta.changed_tiles)) {
          const normalizedKey = normalizeTileKey(key);
          normalizedTiles[normalizedKey] = value;
        }
-       updated.tiles = { ...(prev.tiles || {}), ...normalizedTiles };
+       const prevTiles = (previous.tiles && typeof previous.tiles === "object") ? (previous.tiles as Record<string, unknown>) : {};
+       updated.tiles = { ...prevTiles, ...normalizedTiles };
   }
 
   if (delta.changed_items) {
-       const normalizedItems: Record<string, any> = {};
+       const normalizedItems: Record<string, unknown> = {};
        for (const [key, value] of Object.entries(delta.changed_items)) {
          const normalizedKey = normalizeTileKey(key);
          normalizedItems[normalizedKey] = value;
        }
-       updated.items = { ...(prev.items || {}), ...normalizedItems };
+       const prevItems = (previous.items && typeof previous.items === "object") ? (previous.items as Record<string, unknown>) : {};
+       updated.items = { ...prevItems, ...normalizedItems };
   }
 
   if (delta.changed_stockpiles) {
-       const normalizedStockpiles: Record<string, any> = {};
+       const normalizedStockpiles: Record<string, unknown> = {};
        for (const [key, value] of Object.entries(delta.changed_stockpiles)) {
          const normalizedKey = normalizeTileKey(key);
          normalizedStockpiles[normalizedKey] = value;
        }
-       updated.stockpiles = { ...(prev.stockpiles || {}), ...normalizedStockpiles };
+       const prevStockpiles = (previous.stockpiles && typeof previous.stockpiles === "object") ? (previous.stockpiles as Record<string, unknown>) : {};
+       updated.stockpiles = { ...prevStockpiles, ...normalizedStockpiles };
   }
 
   if (delta.changed_jobs) {
       updated.jobs = delta.changed_jobs;
     }
 
-  if (delta.combat_events && updated.combat_events) {
-      updated.combat_events = [...(prev.combat_events || []), ...delta.combat_events];
+  if (Array.isArray(delta.combat_events)) {
+      const prevCombatEvents = Array.isArray(previous.combat_events) ? (previous.combat_events as UnknownRecord[]) : [];
+      updated.combat_events = appendManyBounded(prevCombatEvents, delta.combat_events, CONFIG.data.MAX_EVENTS);
     }
 
-  if (delta.mentions && updated.mentions) {
-      updated.mentions = [...(prev.mentions || []), ...delta.mentions];
+  if (Array.isArray(delta.mentions)) {
+      const prevMentions = Array.isArray(previous.mentions) ? (previous.mentions as UnknownRecord[]) : [];
+      updated.mentions = [...prevMentions, ...delta.mentions];
     }
 
-  if (delta.traces && updated.traces) {
-      updated.traces = [...(prev.traces || []), ...delta.traces];
+  if (Array.isArray(delta.traces)) {
+      const prevTraces = Array.isArray(previous.traces) ? (previous.traces as UnknownRecord[]) : [];
+      updated.traces = appendManyBounded(prevTraces, delta.traces, CONFIG.data.MAX_TRACES);
     }
 
   if (delta.attribution) {
@@ -236,7 +288,10 @@ const applyDelta = (prev: any, delta: DeltaSnapshot): any => {
     }
 
     if (delta.social_interactions) {
-      updated.social_interactions = [...(prev.social_interactions || []), ...delta.social_interactions];
+      const prevSocialInteractions = Array.isArray(previous.social_interactions)
+        ? (previous.social_interactions as UnknownRecord[])
+        : [];
+      updated.social_interactions = [...prevSocialInteractions, ...delta.social_interactions];
     }
 
     if (delta.books) {
@@ -264,4 +319,15 @@ const applyDelta = (prev: any, delta: DeltaSnapshot): any => {
   return updated;
 };
 
-export { clamp01, fmt, colorForRole, getAgentIcon, getMovementSteps, applyDelta, safeStringify, normalizeKeyedMap };
+export {
+  clamp01,
+  fmt,
+  colorForRole,
+  getAgentIcon,
+  getMovementSteps,
+  applyDelta,
+  safeStringify,
+  normalizeKeyedMap,
+  appendBounded,
+  appendManyBounded,
+};

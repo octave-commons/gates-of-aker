@@ -1,7 +1,7 @@
 (ns fantasia.sim.ecs.adapter
   (:require [brute.entity :as be]
-            [fantasia.sim.ecs.core]
-             [fantasia.sim.ecs.components :as c]
+            [fantasia.sim.ecs.components :as c]
+            [fantasia.sim.ecs.core :as ecs-core]
             [fantasia.sim.time :as time]))
 
 (def component-types
@@ -19,13 +19,15 @@
      :stockpile (be/get-component-type (fantasia.sim.ecs.components/->Stockpile {}))
      :wall-ghost (be/get-component-type (fantasia.sim.ecs.components/->WallGhost nil))
      :agent (be/get-component-type (fantasia.sim.ecs.components/->Agent "test"))
-      :tile-index (be/get-component-type (fantasia.sim.ecs.components/->TileIndex 0 0))}))
+     :tile-index (be/get-component-type (fantasia.sim.ecs.components/->TileIndex 0 0))}))
 
 (defn get-comp
   "Helper to get component from entity by type key."
   [world entity-id type-key]
   (let [comp-type (get @component-types type-key)]
-    (be/get-component world entity-id comp-type)))
+    (if comp-type
+      (ecs-core/get-component-safe world entity-id comp-type)
+      nil)))
 
 (defn ecs->agent-map
   "Convert agent entity to old-style map format."
@@ -51,97 +53,105 @@
 (defn ecs->agent-list
   "Convert all agent entities to old-style list format."
   [ecs-world]
-  (let [agent-ids (fantasia.sim.ecs.core/get-all-agents ecs-world)]
+  (let [agent-ids (ecs-core/get-all-agents ecs-world)]
     (println "[ECS Adapter] Found agent IDs:" agent-ids "Count:" (count agent-ids))
     (map (partial ecs->agent-map ecs-world) agent-ids)))
 
 (defn ecs->tile-map
   "Convert tile entity to old-style map format."
   [ecs-world tile-id]
-  (let [position (get-comp ecs-world tile-id :position)
+  (let [tile-index (get-comp ecs-world tile-id :tile-index)
         tile (get-comp ecs-world tile-id :tile)]
-    {:pos [(:q position) (:r position)]
-     :terrain (:terrain tile)
-     :biome (:biome tile)
-     :resource (:resource tile)
-     :structure (:structure tile)}))
+    (when tile-index
+      {:pos [(:q tile-index) (:r tile-index)]
+       :terrain (:terrain tile)
+       :biome (:biome tile)
+       :resource (:resource tile)
+       :structure (:structure tile)})))
 
 (defn ecs->tiles-map
-   "Convert all tile entities to old-style map format keyed by position."
-   [ecs-world]
-   (reduce (fn [acc tile-id]
-               (let [position (get-comp ecs-world tile-id :position)
-                     tile-key (str (:q position) "," (:r position))
-                     tile-data (ecs->tile-map ecs-world tile-id)]
-                 (assoc acc tile-key tile-data)))
-           {}
-           (fantasia.sim.ecs.core/get-all-tiles ecs-world)))
+  "Convert all tile entities to old-style map format keyed by position."
+  [ecs-world]
+  (reduce (fn [acc tile-id]
+            (let [tile-index (get-comp ecs-world tile-id :tile-index)
+                  tile-key (when tile-index (str (:q tile-index) "," (:r tile-index)))
+                  tile-data (ecs->tile-map ecs-world tile-id)]
+              (if (and tile-key tile-data)
+                (assoc acc tile-key tile-data)
+                acc)))
+          {}
+          (ecs-core/get-all-tiles ecs-world)))
 
 (defn ecs->stockpiles-map
   "Convert stockpile entities to old-style map format."
   [ecs-world]
-  (let [stockpile-type (get @component-types :stockpile)]
+  (let [stockpile-instance (fantasia.sim.ecs.components/->Stockpile {})
+        entities (ecs-core/get-all-entities-with-component-safe ecs-world stockpile-instance)]
+    (println "[ECS Adapter] Getting stockpiles, found" (count entities) "stockpile entities")
     (reduce (fn [acc entity-id]
               (let [stockpile (get-comp ecs-world entity-id :stockpile)
                     index (get-comp ecs-world entity-id :tile-index)]
-                (assoc acc (str (:q index) "," (:r index)) (:contents stockpile))))
+                (println "[ECS Adapter] Stockpile entity" entity-id ":" (:contents stockpile))
+                (if index
+                  (assoc acc (str (:q index) "," (:r index)) (:contents stockpile))
+                  acc)))
             {}
-            (be/get-all-entities-with-component ecs-world stockpile-type))))
+            entities))
+  )
 
 (defn ecs->jobs-map
-   "Extract jobs from ECS JobQueue components."
-   [ecs-world]
-   (let [job-queue-type (be/get-component-type (c/->JobQueue {} [] {}))
-         buildings-with-queues (be/get-all-entities-with-component ecs-world job-queue-type)]
-     (reduce (fn [acc building-id]
-               (let [job-queue (be/get-component ecs-world building-id job-queue-type)
-                     jobs (:jobs job-queue {})]
-                 (merge acc jobs)))
-             {}
-             buildings-with-queues)))
+  "Extract jobs from ECS JobQueue components."
+  [ecs-world]
+  (let [buildings-with-queues (ecs-core/get-all-entities-with-component-safe ecs-world (c/->JobQueue {} [] {}))]
+    (reduce (fn [acc building-id]
+              (let [job-queue (ecs-core/get-component-safe ecs-world building-id (c/->JobQueue {} [] {}))
+                    jobs (:jobs job-queue {})]
+                (merge acc jobs)))
+            {}
+            buildings-with-queues)))
 
 (defn ecs->snapshot
-    "Convert ECS world to old-style snapshot for WebSocket broadcast."
-    [ecs-world global-state]
-    (let [tile-visibility (:tile-visibility global-state {})
-            ;; Use global state tiles (generated by biomes) instead of ECS tiles
-            all-tiles (:tiles global-state {})
-            visible-tiles (if (empty? tile-visibility)
-                             all-tiles
-                             (into {}
-                                   (filter (fn [[tile-key _]]
-                                             (let [vis (get tile-visibility tile-key :hidden)]
-                                               (or (= vis :visible) (= vis :revealed))))
-                                           all-tiles)))
-            calendar (time/calendar-info global-state)
-            agent-list (ecs->agent-list ecs-world)
-            memories (mapv (fn [m]
-                           {:id (:id m)
-                            :type (:type m)
-                            :location (:location m)
-                            :created-at (:created-at m)
-                            :strength (:strength m)
-                            :decay-rate (:decay-rate m)
-                            :entity-id (:entity-id m)
-                            :facets (:facets m)})
-                         (vals (:memories global-state)))]
-      (println "[ECS Adapter] Creating snapshot with" (count agent-list) "agents" (count memories) "memories")
-      {:tick (:tick global-state)
-        :shrine (:shrine global-state)
-        :temperature (:temperature global-state)
-        :daylight (:daylight global-state)
-        :calendar calendar
-        :cold-snap (get-in global-state [:levers :cold-snap] 0.4)
-        :levers (:levers global-state)
-         :map (:map global-state)
-         :tiles visible-tiles
-         :tile-visibility tile-visibility
-         :revealed-tiles-snapshot (:revealed-tiles-snapshot global-state {})
-         :recent-events (:recent-events global-state)
-         :attribution (:attribution global-state)
-          :jobs (ecs->jobs-map ecs-world)
-         :items (:items global-state)
-         :stockpiles (ecs->stockpiles-map ecs-world)
-         :agents agent-list
-         :memories memories
-         :ledger (:ledger global-state)}))
+  "Convert ECS world to old-style snapshot for WebSocket broadcast."
+  [ecs-world global-state]
+  (let [tile-visibility (:tile-visibility global-state {})
+        ;; Use global state tiles (generated by biomes) instead of ECS tiles
+        all-tiles (:tiles global-state {})
+        visible-tiles (if (empty? tile-visibility)
+                        all-tiles
+                        (into {}
+                              (filter (fn [[tile-key _]]
+                                        (let [vis (get tile-visibility tile-key :hidden)]
+                                          (or (= vis :visible) (= vis :revealed))))
+                                      all-tiles)))
+        calendar (time/calendar-info global-state)
+        agent-list (ecs->agent-list ecs-world)
+        memories (mapv (fn [m]
+                         {:id (:id m)
+                          :type (:type m)
+                          :location (:location m)
+                          :created-at (:created-at m)
+                          :strength (:strength m)
+                          :decay-rate (:decay-rate m)
+                          :entity-id (:entity-id m)
+                          :facets (:facets m)})
+                       (vals (:memories global-state)))]
+    (println "[ECS Adapter] Creating snapshot with" (count agent-list) "agents" (count memories) "memories")
+    {:tick (:tick global-state)
+     :shrine (:shrine global-state)
+     :temperature (:temperature global-state)
+     :daylight (:daylight global-state)
+     :calendar calendar
+     :cold-snap (get-in global-state [:levers :cold-snap] 0.4)
+     :levers (:levers global-state)
+     :map (:map global-state)
+     :tiles visible-tiles
+     :tile-visibility tile-visibility
+     :revealed-tiles-snapshot (:revealed-tiles-snapshot global-state {})
+     :recent-events (:recent-events global-state)
+     :attribution (:attribution global-state)
+     :jobs (ecs->jobs-map ecs-world)
+     :items (:items global-state)
+     :stockpiles (ecs->stockpiles-map ecs-world)
+     :agents agent-list
+     :memories memories
+     :ledger (:ledger global-state)}))
