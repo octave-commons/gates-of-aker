@@ -26,3 +26,16 @@
           primary (config/get-ollama-primary-model cfg)]
       (is (string? primary))
       (is (= primary (get-in cfg [:ollama :primary-model]))))))
+
+(deftest test-load-ollama-config-deep-merges-nested-defaults
+  (testing "Partial nested config preserves unspecified defaults"
+    (let [tmp-file (java.io.File/createTempFile "ollama-config" ".edn")]
+      (try
+        (spit tmp-file "{:ollama {:primary-model \"custom-model\"}}")
+        (let [cfg (with-redefs [config/get-ollama-config-path (constantly (.getAbsolutePath tmp-file))]
+                    (config/load-ollama-config!))]
+          (is (= "custom-model" (get-in cfg [:ollama :primary-model])))
+          (is (= "http://localhost:11434/api/generate" (get-in cfg [:ollama :url])))
+          (is (= "nomic-embed-text" (get-in cfg [:ollama-embed :model]))))
+        (finally
+          (.delete tmp-file))))))

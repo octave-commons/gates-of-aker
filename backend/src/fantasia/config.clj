@@ -30,6 +30,15 @@
       (log/log-warn "[CONFIG:LOAD-FAILED]" {:path path :error (.getMessage e)})
       nil)))
 
+(defn- deep-merge
+  [left right]
+  (merge-with (fn [x y]
+                (if (and (map? x) (map? y))
+                  (deep-merge x y)
+                  y))
+              (or left {})
+              (or right {})))
+
 (defn get-ollama-config-path
   "Get the path to the Ollama configuration file.
    Checks environment variable OLLAMA_CONFIG_PATH first, then default location."
@@ -42,7 +51,7 @@
   []
   (let [config-path (get-ollama-config-path)
         loaded-config (load-edn-file config-path)
-        merged-config (merge default-ollama-config loaded-config)]
+        merged-config (deep-merge default-ollama-config loaded-config)]
     (if loaded-config
       (log/log-info "[CONFIG:OLLAMA-LOADED]"
                     {:path config-path

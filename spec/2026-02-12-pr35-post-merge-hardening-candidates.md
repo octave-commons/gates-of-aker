@@ -8,8 +8,8 @@ tags: [pr-35, follow-up, hardening, reliability]
 related_pr:
   repo: octave-commons/gates-of-aker
   number: 35
-  branch: device/stealth
-process_ref: docs/reference/process.md
+  branch: "device/stealth"
+process_ref: "docs/reference/process.md"
 ---
 
 ## Objective
