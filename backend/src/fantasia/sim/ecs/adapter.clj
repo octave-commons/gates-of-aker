@@ -92,7 +92,9 @@
               (let [stockpile (get-comp ecs-world entity-id :stockpile)
                     index (get-comp ecs-world entity-id :tile-index)]
                 (println "[ECS Adapter] Stockpile entity" entity-id ":" (:contents stockpile))
-                (assoc acc (str (:q index) "," (:r index)) (:contents stockpile))))
+                (if index
+                  (assoc acc (str (:q index) "," (:r index)) (:contents stockpile))
+                  acc)))
             {}
             entities))
   )

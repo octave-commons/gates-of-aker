@@ -49,7 +49,7 @@ jobs:
         
     - name: Run linting
       working-directory: ./backend
-      run: clojure -X:lint || echo "Linting completed with warnings/errors"
+      run: clojure -X:lint
       
     - name: Run tests
       working-directory: ./backend

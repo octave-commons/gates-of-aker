@@ -268,7 +268,9 @@
                      (build-target-for-agent ecs-world [(:q position) (:r position)]))]
         (if (nil? target)
           ecs-world
-          (let [job-id (str "job-idle-build-" tick "-" (subs (str agent-id) 0 8))
+          (let [agent-id-str (str agent-id)
+                agent-id-prefix (subs agent-id-str 0 (min 8 (count agent-id-str)))
+                job-id (str "job-idle-build-" tick "-" agent-id-prefix)
                 job {:id job-id
                      :type :job/build-structure
                      :structure :stockpile

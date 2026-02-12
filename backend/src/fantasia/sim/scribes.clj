@@ -1,10 +1,12 @@
 (ns fantasia.sim.scribes
   (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.java.io :as io]
-            [clj-http.client :as http]
-            [fantasia.dev.logging :as log]
-            [fantasia.config :as config]))
+             [clojure.string :as str]
+             [clojure.java.io :as io]
+             [clj-http.client :as http]
+             [fantasia.dev.logging :as log]
+             [fantasia.config :as config])
+  (:import (java.io RandomAccessFile)
+           (java.nio ByteBuffer)))
 
 (def ^:private ollama-config (atom nil))
 (def ^:private myths-file-path "myths.jsonl")
@@ -53,7 +55,13 @@
   [myth]
   (try
     (io/make-parents myths-file-path)
-    (spit myths-file-path (str (json/generate-string myth) "\n") :append true)
+    (let [line-bytes (.getBytes (str (json/generate-string myth) "\n") "UTF-8")
+          target-file (io/file myths-file-path)]
+      (with-open [raf (RandomAccessFile. target-file "rw")
+                  channel (.getChannel raf)
+                  _lock (.lock channel)]
+        (.position channel (.size channel))
+        (.write channel (ByteBuffer/wrap line-bytes))))
     (log/log-info "[MYTHS:SAVED]" {:title (:title myth) :themes (:facets myth)})
     (catch Exception e
       (log/log-error "[MYTHS:SAVE-FAILED]" {:error (.getMessage e)}))))
@@ -312,22 +320,27 @@
       (try
         (when-let [state-var (find-var 'fantasia.sim.ecs.tick/*global-state)]
           (when state-var
-            (let [current-world @state-var]
-              (when (get-in current-world [:books book-id])
-                (swap! state-var
-                       (fn [world]
-                         (-> world
-                             (assoc-in [:books book-id :text] book-text)
-                             (assoc-in [:books book-id :generating?] false)
-                             (assoc-in [:books book-id :completed-at] timestamp))))
-                (let [myth-record {:title (get-in current-world [:books book-id :title])
-                                 :text book-text
-                                 :facets facets
-                                 :created-at timestamp}]
-                  (save-myth! myth-record))
-                (log/log-info "[SCRIBE:BOOK-COMPLETE]"
-                              {:book-id book-id
-                               :text-length (count book-text)})))))
+            (let [updated? (volatile! false)]
+              (swap! state-var
+                     (fn [world]
+                       (if (get-in world [:books book-id])
+                         (do
+                           (vreset! updated? true)
+                           (-> world
+                               (assoc-in [:books book-id :text] book-text)
+                               (assoc-in [:books book-id :generating?] false)
+                               (assoc-in [:books book-id :completed-at] timestamp)))
+                         world)))
+              (when @updated?
+                (let [saved-world @state-var
+                      myth-record {:title (get-in saved-world [:books book-id :title])
+                                   :text book-text
+                                   :facets facets
+                                   :created-at timestamp}]
+                  (save-myth! myth-record)
+                  (log/log-info "[SCRIBE:BOOK-COMPLETE]"
+                                {:book-id book-id
+                                 :text-length (count book-text)}))))))
         (catch Exception e
           (log/log-error "[SCRIBE:ASYNC-UPDATE-FAILED]"
                          {:book-id book-id

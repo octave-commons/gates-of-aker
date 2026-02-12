@@ -47,6 +47,14 @@
                                        [(:q partner-pos) (:r partner-pos)]) 2))))
          first)))
 
+(defn- female-entity?
+  [entity-id]
+  (even? (hash (str entity-id))))
+
+(defn- male-entity?
+  [entity-id]
+  (not (female-entity? entity-id)))
+
 (defn- start-pregnancy
   "Start pregnancy for female entity with male partner."
   [ecs-world female-id male-id tick]
@@ -129,7 +137,7 @@
 
 (defn process-reproduction
   "Process reproduction for all entities.
-   Returns [updated-world reproduction-events] tuple."
+   Returns {:world updated-world :events reproduction-events} map."
   [ecs-world tick]
   (let [role-instance (c/->Role :priest)
         role-type (get-component-type-instance role-instance)
@@ -138,18 +146,21 @@
     (reduce
      (fn [{:keys [world events]} entity-id]
        (let [entity-role (be/get-component world entity-id role-type)]
-          (if (#{:knight :peasant} (:type entity-role)) ; Only humans reproduce
-            (let [is-female (even? (hash (str entity-id)))] ; Simple gender determination
+           (if (#{:knight :peasant} (:type entity-role)) ; Only humans reproduce
+            (let [is-female (female-entity? entity-id)] ; Simple gender determination
              (if (and is-female (can-reproduce? world entity-id))
-               (if-let [partner-id (find-nearby-partner world entity-id)]
-                 (let [world-with-pregnancy (start-pregnancy world entity-id partner-id tick)]
-                   {:world world-with-pregnancy
-                    :events (conj events {:type :reproduction-start
-                                         :mother-id entity-id
-                                         :father-id partner-id
-                                         :tick tick})})
-                 {:world world
-                  :events events})
+                (if-let [partner-id (find-nearby-partner world entity-id)]
+                  (if (male-entity? partner-id)
+                    (let [world-with-pregnancy (start-pregnancy world entity-id partner-id tick)]
+                      {:world world-with-pregnancy
+                       :events (conj events {:type :reproduction-start
+                                            :mother-id entity-id
+                                            :father-id partner-id
+                                            :tick tick})})
+                    {:world world
+                     :events events})
+                  {:world world
+                   :events events})
                ;; Check for existing pregnancies
                (let [world-after-pregnancy (process-pregnancy world entity-id tick)]
                  {:world world-after-pregnancy

@@ -88,7 +88,7 @@ export class StateValidator {
   static validateAgent(agent: Agent, index: number): ValidationError[] {
     const errors: ValidationError[] = [];
 
-    if (!agent.id) {
+    if (agent.id === undefined || agent.id === null) {
       errors.push({
         field: `agents[${index}].id`,
         message: 'Agent must have an ID',
@@ -243,7 +243,7 @@ export class StateValidator {
   static validateJob(job: Job, index: number): ValidationError[] {
     const errors: ValidationError[] = [];
 
-    if (!job.id) {
+    if (job.id === undefined || job.id === null) {
       errors.push({
         field: `jobs[${index}].id`,
         message: 'Job must have an ID',

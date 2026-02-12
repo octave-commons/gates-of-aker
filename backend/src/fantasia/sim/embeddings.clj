@@ -1,8 +1,8 @@
 (ns fantasia.sim.embeddings
   (:require [clj-http.client :as http]
-            [cheshire.core :as json]
-            [fantasia.dev.logging :as log]
-            [fantasia.config :as config]))
+             [cheshire.core :as json]
+             [fantasia.dev.logging :as log]
+             [fantasia.config :as config]))
 
 (defonce ^:private nomic-cache (atom {}))
 (defonce ^:private max-cache-size 1000)
@@ -41,7 +41,8 @@
              {:success false :error "No embedding in response"}))
          {:success false :error (str "HTTP " (:status response))}))
     (catch Exception e
-      (log/log-error "[NOMIC:EMBED]" {:error (.getMessage e) :text (subs (str text) 0 (min 50 (count (str text))))})
+      (log/log-error "[NOMIC:EMBED]" {:error (.getMessage e)
+                                       :text-length (count (str text))})
       {:success false :error (.getMessage e)}))
 
 (defn get-or-create-embedding!
@@ -62,13 +63,21 @@
 (defn cosine-similarity
   "Compute cosine similarity between two vectors."
   [v1 v2]
-  (when (and v1 v2)
-    (let [dot (reduce + 0 (map * v1 v2))
-          mag1 (Math/sqrt (reduce + 0 (map #(* % %) v1)))
-          mag2 (Math/sqrt (reduce + 0 (map #(* % %) v2)))]
-      (if (and (pos? mag1) (pos? mag2))
-        (/ dot (* mag1 mag2))
-        0.0))))
+  (let [left (when (sequential? v1) (vec v1))
+        right (when (sequential? v2) (vec v2))]
+    (if (and left
+             right
+             (pos? (count left))
+             (= (count left) (count right))
+             (every? number? left)
+             (every? number? right))
+      (let [dot (reduce + 0 (map * left right))
+            mag1 (Math/sqrt (reduce + 0 (map #(* % %) left)))
+            mag2 (Math/sqrt (reduce + 0 (map #(* % %) right)))]
+        (if (and (pos? mag1) (pos? mag2))
+          (/ dot (* mag1 mag2))
+          0.0))
+      0.0)))
 
 (defn init-embeddings!
   "Initialize embedding system (cache is empty at start)."
