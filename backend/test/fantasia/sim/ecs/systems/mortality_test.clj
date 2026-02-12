@@ -1,9 +1,9 @@
 (ns fantasia.sim.ecs.systems.mortality-test
   (:require [brute.entity :as be]
-            [clojure.test :refer [deftest is testing]]
-            [fantasia.sim.ecs.components :as c]
-            [fantasia.sim.ecs.core :as ecs]
-            [fantasia.sim.ecs.systems.mortality :as mortality]))
+             [clojure.test :refer [deftest is testing]]
+             [fantasia.sim.ecs.components :as c]
+             [fantasia.sim.ecs.core :as ecs]
+             [fantasia.sim.ecs.systems.mortality :as mortality]))
 
 (defn- death-state-type []
   (be/get-component-type (c/->DeathState true nil nil)))
@@ -45,3 +45,30 @@
           world2 (mortality/process world1 99)]
       (is (some? world2))
       (is (some? (be/get-component world2 agent-id (death-state-type)))))))
+
+(deftest death-requeues-claimed-job
+  (testing "when a worker dies their claimed job is returned to pending"
+    (let [world0 (ecs/create-ecs-world)
+          [agent-id world1] (ecs/create-agent world0 nil 0 0 :peasant {:needs (needs 0.1)})
+          [building-id world2] (ecs/create-building world1 [1 0] :house)
+          queue-type (be/get-component-type (c/->JobQueue {} [] {}))
+          job-id "queued-job"
+          queue (c/->JobQueue {job-id {:id job-id
+                                       :type :job/improve
+                                       :priority 50
+                                       :state :claimed
+                                       :worker-id agent-id
+                                       :target-pos [1 0]
+                                       :target [1 0]}}
+                              []
+                              {job-id agent-id})
+          world3 (-> world2
+                     (be/add-component building-id queue)
+                     (be/add-component agent-id (c/->JobAssignment job-id 0.2)))
+          world4 (mortality/process world3 100)
+          queue-after (be/get-component world4 building-id queue-type)
+          requeued-job (get (:jobs queue-after) job-id)]
+      (is (= :pending (:state requeued-job)))
+      (is (nil? (:worker-id requeued-job)))
+      (is (= [job-id] (:pending-jobs queue-after)))
+      (is (empty? (:assigned-jobs queue-after))))))

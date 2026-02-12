@@ -291,6 +291,15 @@
   [a b]
   (hex/distance a b))
 
+(defn- nearest-structure-pos
+  [ecs-world agent-pos structures]
+  (->> (find-building-positions ecs-world)
+       (keep (fn [[pos structure]]
+               (when (contains? structures structure)
+                 pos)))
+       (sort-by #(distance agent-pos %))
+       first))
+
 (defn- find-fruit-tile-target
   [ecs-world agent-pos]
   (let [tile-t (tile-type)
@@ -328,6 +337,7 @@
           job {:id job-id
                :type :job/eat
                :priority 90
+               :agent-id agent-id
                :target-pos target
                :target target
                :resource :fruit
@@ -374,6 +384,19 @@
   (if-let [queue-id (first (be/get-all-entities-with-component world (job-queue-type)))]
     (add-job-to-queue world queue-id job)
     world))
+
+(defn- active-need-job?
+  [job]
+  (not= :completed (:state job :pending)))
+
+(defn- has-active-need-job?
+  [ecs-world agent-id job-types]
+  (boolean
+   (some (fn [job]
+           (and (active-need-job? job)
+                (= agent-id (:agent-id job))
+                (contains? job-types (:type job))))
+         (gather-active-jobs ecs-world))))
 
 (defn- generate-tree-fruit-drops
   [ecs-world global-state]
@@ -424,9 +447,9 @@
                                 :house :job/improve
                                 :warehouse :job/haul
                                 :job/gather-wood)
-                    ;; Keep deliver-food bounded at one per stockpile.
-                    max-jobs (if (= structure :stockpile) 1 2)
-                    existing-job-count (count current-jobs)]
+                     ;; Keep deliver-food bounded at one per stockpile.
+                     max-jobs (if (= structure :stockpile) 1 2)
+                     existing-job-count (count (filter active-job? (vals current-jobs)))]
                 ;; Add jobs if building has fewer than max jobs
                 (if (< existing-job-count max-jobs)
                   (let [job-id (str "job-" tick "-" building-id "-" existing-job-count)
@@ -450,10 +473,14 @@
                                   {:job-id job-id
                                    :type job-type
                                    :building-id building-id
-                                   :target [q r]
-                                   :priority (:priority new-job)
-                                   :source :building-queue})
-                    (be/add-component acc building-id (c/->JobQueue (assoc current-jobs job-id new-job) [] {})))
+                                    :target [q r]
+                                    :priority (:priority new-job)
+                                    :source :building-queue})
+                    (let [pending-jobs (conj (vec (:pending-jobs job-queue [])) job-id)
+                          assigned-jobs (:assigned-jobs job-queue {})]
+                      (be/add-component acc building-id (c/->JobQueue (assoc current-jobs job-id new-job)
+                                                                       pending-jobs
+                                                                       assigned-jobs))))
                   acc)))
             ecs-world
             buildings-with-queues)))
@@ -470,13 +497,15 @@
                     pos (be/get-component acc agent-id pos-t)]
                 (if (and needs pos)
                   (let [acc-after-food
-                        (if (< (:food needs) 0.3)
+                        (if (and (< (:food needs) 0.3)
+                                 (not (has-active-need-job? acc agent-id #{:job/eat :job/gather-food})))
                           (if-let [eat-job (maybe-create-eat-job acc tick agent-id [(:q pos) (:r pos)])]
                             (enqueue-need-job acc eat-job)
                             (let [job-id (str "need-food-" tick "-" agent-id)
                                   food-job {:id job-id
                                             :type :job/gather-food
                                             :priority 90
+                                            :agent-id agent-id
                                             :target-pos [(:q pos) (:r pos)]
                                             :target [(:q pos) (:r pos)]
                                             :created-at tick
@@ -490,37 +519,49 @@
                               (enqueue-need-job acc food-job)))
                           acc)
                         acc-after-sleep
-                        (if (< (:sleep needs) 0.3)
-                          (let [job-id (str "need-sleep-" tick "-" agent-id)
+                        (if (and (< (:sleep needs) 0.3)
+                                 (not (has-active-need-job? acc-after-food agent-id #{:job/rest})))
+                          (let [agent-pos [(:q pos) (:r pos)]
+                                target (or (nearest-structure-pos acc-after-food agent-pos #{:house :campfire})
+                                           agent-pos)
+                                job-id (str "need-sleep-" tick "-" agent-id)
                                 sleep-job {:id job-id
                                            :type :job/rest
                                            :priority 95
-                                           :target-pos [(:q pos) (:r pos)]
-                                           :target [(:q pos) (:r pos)]
+                                           :agent-id agent-id
+                                           :target-pos target
+                                           :target target
                                            :created-at tick
                                            :state :pending}]
                             (log/log-info "[NEED:JOB-CREATED]"
                                           {:agent-id agent-id
                                            :need :sleep
                                            :value (:sleep needs)
-                                           :job-id job-id})
+                                           :job-id job-id
+                                           :target target})
                             (enqueue-need-job acc-after-food sleep-job))
                           acc-after-food)
                         acc-after-warmth
-                        (if (< (:warmth needs) 0.3)
-                          (let [job-id (str "need-warmth-" tick "-" agent-id)
+                        (if (and (< (:warmth needs) 0.3)
+                                 (not (has-active-need-job? acc-after-sleep agent-id #{:job/build-fire})))
+                          (let [agent-pos [(:q pos) (:r pos)]
+                                target (or (nearest-structure-pos acc-after-sleep agent-pos #{:campfire})
+                                           agent-pos)
+                                job-id (str "need-warmth-" tick "-" agent-id)
                                 warmth-job {:id job-id
                                             :type :job/build-fire
                                             :priority 85
-                                            :target-pos [(:q pos) (:r pos)]
-                                            :target [(:q pos) (:r pos)]
+                                            :agent-id agent-id
+                                            :target-pos target
+                                            :target target
                                             :created-at tick
                                             :state :pending}]
                             (log/log-info "[NEED:JOB-CREATED]"
                                           {:agent-id agent-id
                                            :need :warmth
                                            :value (:warmth needs)
-                                           :job-id job-id})
+                                           :job-id job-id
+                                           :target target})
                             (enqueue-need-job acc-after-sleep warmth-job))
                           acc-after-sleep)]
                     acc-after-warmth)

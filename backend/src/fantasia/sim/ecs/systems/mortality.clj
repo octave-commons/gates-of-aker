@@ -89,12 +89,40 @@
   "Remove entity from any assigned jobs and mark jobs as pending."
   [ecs-world entity-id]
   (let [job-instance (c/->JobAssignment nil 0.0)
-        job-type (get-component-type-instance job-instance)
-        current-job (be/get-component ecs-world entity-id job-type)]
-    (if current-job
-      ;; Remove job assignment from dead entity
-      (be/remove-component ecs-world entity-id job-type)
-      ecs-world)))
+         job-type (get-component-type-instance job-instance)
+         queue-instance (c/->JobQueue {} [] {})
+         queue-type (get-component-type-instance queue-instance)
+         current-job (be/get-component ecs-world entity-id job-type)
+         job-id (:job-id current-job)
+         world-without-assignment (be/remove-component ecs-world entity-id job-type)]
+    (reduce (fn [world building-id]
+              (let [queue (be/get-component world building-id queue-type)
+                    jobs (:jobs queue {})
+                    requeue-ids (->> jobs
+                                     (keep (fn [[id job]]
+                                             (when (and (= entity-id (:worker-id job))
+                                                        (or (nil? job-id) (= id job-id)))
+                                               id)))
+                                     vec)]
+                (if (or (nil? queue) (empty? requeue-ids))
+                  world
+                  (let [updated-jobs (reduce (fn [acc id]
+                                               (if-let [job (get acc id)]
+                                                 (assoc acc id (assoc job :worker-id nil :state :pending))
+                                                 acc))
+                                             jobs
+                                             requeue-ids)
+                        pending-jobs (reduce (fn [acc id]
+                                               (conj (vec (remove #(= % id) acc)) id))
+                                             (vec (:pending-jobs queue []))
+                                             requeue-ids)
+                        assigned-jobs (reduce (fn [acc id] (dissoc acc id))
+                                              (:assigned-jobs queue {})
+                                              requeue-ids)
+                        updated-queue (c/->JobQueue updated-jobs pending-jobs assigned-jobs)]
+                    (be/add-component world building-id updated-queue)))))
+            world-without-assignment
+            (be/get-all-entities-with-component world-without-assignment queue-type))))
 
 (defn process
   "Process mortality for all entities, handling deaths and creating memories.
