@@ -81,6 +81,17 @@ export function SelectedPanel({
   }, [selectedCell, tileVisibility]);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const labelForAgent = (agent: Agent | null) => {
+    if (!agent) return "None";
+    const rawName = asAgentRecord(agent)["name"];
+    if (typeof rawName === "string" && rawName.trim().length > 0) {
+      return rawName;
+    }
+    const idValue = String(agent.id ?? "unknown");
+    const shortId = idValue.length > 12 ? `${idValue.slice(0, 8)}...` : idValue;
+    return `Agent ${shortId}`;
+  };
+
   const toggleCollapsed = () => setIsCollapsed((prev) => !prev);
 
   const normalizeValue = (value: unknown, fallback = "None") => {
@@ -131,7 +142,7 @@ export function SelectedPanel({
     : [renderRow("Items", "None")];
 
   const agentRows = selectedTileAgents.length
-    ? selectedTileAgents.map((agent) => renderRow(`Agent ${agent.id}`, normalizeValue(agent.role ?? "unknown")))
+    ? selectedTileAgents.map((agent) => renderRow(labelForAgent(agent), normalizeValue(agent.role ?? "unknown")))
     : [renderRow("Agents", "None")];
 
   const statusLabel = (agent: Agent | null) => {
@@ -203,13 +214,13 @@ export function SelectedPanel({
           </div>
 
            <div style={{ border: "1px solid #ddd", borderRadius: 6, padding: 8, backgroundColor: "#f9f9f9" }}>
-             <div style={{ fontWeight: "bold", fontSize: "0.9em", color: "#666", marginBottom: 6 }}>
-               Focus
-             </div>
-             <div style={{ display: "grid", gap: 4 }}>
-               {renderRow("Selected Agent", normalizeValue(selectedAgentId))}
-             </div>
-           </div>
+              <div style={{ fontWeight: "bold", fontSize: "0.9em", color: "#666", marginBottom: 6 }}>
+                Focus
+              </div>
+              <div style={{ display: "grid", gap: 4 }}>
+                {renderRow("Selected Agent", labelForAgent(selectedAgent))}
+              </div>
+            </div>
 
           {selectedAgent && (
             <div style={{ border: "2px solid #4a90e2", borderRadius: 6, padding: 12, backgroundColor: "#f0f7ff" }}>
@@ -218,7 +229,7 @@ export function SelectedPanel({
               </div>
               <div style={{ display: "grid", gap: 6 }}>
                 <div><strong>ID:</strong> {selectedAgent.id}</div>
-                <div><strong>Name:</strong> {String(asAgentRecord(selectedAgent)["name"] ?? "Unknown")}</div>
+                <div><strong>Name:</strong> {labelForAgent(selectedAgent)}</div>
                 <div><strong>Role:</strong> {selectedAgent.role}</div>
                 <div><strong>Status:</strong> {statusLabel(selectedAgent)}</div>
                 <div><strong>Cause of Death:</strong> {statusCause(selectedAgent)}</div>
@@ -264,7 +275,7 @@ export function SelectedPanel({
                     <div style={{ marginLeft: 12, marginTop: 4, fontSize: "0.9em" }}>
                       {asRelationships(selectedAgent).map((rel: Relationship) => (
                         <div key={rel.agentId ?? rel["agent-id"]}>
-                          {(rel.name ?? `#${rel.agentId ?? rel["agent-id"]}`)}: {typeof rel.affinity === "number" ? rel.affinity.toFixed(2) : rel.affinity}
+                          {(rel.name ?? `Agent ${String(rel.agentId ?? rel["agent-id"] ?? "unknown").slice(0, 8)}`)}: {typeof rel.affinity === "number" ? rel.affinity.toFixed(2) : rel.affinity}
                         </div>
                       ))}
                     </div>

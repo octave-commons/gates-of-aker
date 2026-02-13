@@ -90,11 +90,14 @@
   [ecs-world entity-id]
   (let [job-instance (c/->JobAssignment nil 0.0)
          job-type (get-component-type-instance job-instance)
+         path-instance (c/->Path [] 0)
          queue-instance (c/->JobQueue {} [] {})
          queue-type (get-component-type-instance queue-instance)
          current-job (be/get-component ecs-world entity-id job-type)
          job-id (:job-id current-job)
-         world-without-assignment (be/remove-component ecs-world entity-id job-type)]
+         world-without-assignment (-> ecs-world
+                                      (be/remove-component entity-id job-instance)
+                                      (be/remove-component entity-id path-instance))]
     (reduce (fn [world building-id]
               (let [queue (be/get-component world building-id queue-type)
                     jobs (:jobs queue {})
@@ -145,10 +148,16 @@
               alive? (and (not= false (:alive? death-state true))
                           (not= false (:alive? status true)))
               cause-of-death (when alive? (check-entity-mortality world entity-id))]
-          (if cause-of-death
+          (cond
+            cause-of-death
             (-> world
                 (handle-entity-death tick entity-id cause-of-death nil)
                 (cleanup-jobs-for-dead-entity entity-id))
+
+            (not alive?)
+            (cleanup-jobs-for-dead-entity world entity-id)
+
+            :else
             world)))
       ecs-world
       all-entities))))

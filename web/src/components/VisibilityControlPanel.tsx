@@ -13,6 +13,15 @@ export function VisibilityControlPanel({
   onSelectVisibilityAgent,
 }: VisibilityControlPanelProps) {
   const playerAgents = agents.filter((a: Agent) => a.faction === "player");
+  const labelForAgent = (agent: Agent) => {
+    const name = typeof agent.name === "string" ? agent.name.trim() : "";
+    if (name.length > 0) {
+      return name;
+    }
+    const idValue = String(agent.id ?? "unknown");
+    const shortId = idValue.length > 12 ? `${idValue.slice(0, 8)}...` : idValue;
+    return `Agent ${shortId}`;
+  };
 
   return (
     <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
@@ -41,7 +50,7 @@ export function VisibilityControlPanel({
                 checked={selectedVisibilityAgentId === agentId}
                 onChange={() => onSelectVisibilityAgent(agentId)}
               />
-              <span>{agent.name || `Agent ${agent.id}`}</span>
+              <span>{labelForAgent(agent)}</span>
               <span style={{ opacity: 0.6 }}>
                 ({agent.role || "unknown"} at [{agent.pos?.[0]}, {agent.pos?.[1]}])
               </span>
