@@ -16,3 +16,6 @@ web/coverage/
 
 # Ignore Smart Environment folder
 .smart-env
+
+# Prevent oversized PM2/runtime log artifacts from being committed
+backend/logs/gates-of-aker-backend-out-*.log

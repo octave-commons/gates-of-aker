@@ -33,7 +33,7 @@ interface BuildingPaletteProps {
   onQueueBuild: (
     type: BuildingType,
     pos: [number, number],
-    config?: any
+    config?: { stockpile?: { resource?: string; max_qty?: number } }
   ) => void;
   selectedCell: [number, number] | null;
   disabled?: boolean;

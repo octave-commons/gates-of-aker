@@ -8,8 +8,8 @@
 - When adding future AGENTS files in subdirectories, **explicitly reference this file** to clarify inheritance.
 
 ### Core Documentation (Read These First)
-- [[README]] -> `README.md` - Project overview, basic setup and testing commands
-- [[HACK.md]] - High-level vision and inspirations  
+- [README](README.md) -> `README.md` - Project overview, basic setup and testing commands
+- [HACK.md](HACK.md) - High-level vision and inspirations  
 - [[MISSION]] - Scope and governance principles
 - [[ROADMAP.md]] -> `ROADMAP.md` - Current milestones and priorities
 
@@ -26,7 +26,7 @@
 - [[FRONTEND]] -> `FRONTEND.md` - TypeScript/React frontend style guide
 - [[DIRECTORIES]] -> `DIRECTORIES.md` - Project structure and organization
 - [[TOOLCHAINS]] -> `TOOLCHAINS.md` - Development tools and environment setup
-- [[ecosystem.pm2.edn]] -> `ecosystem.pm2.edn` - PM2 process management configuration
+- [ecosystem.pm2.edn](ecosystem.pm2.edn) -> `ecosystem.pm2.edn` - PM2 process management configuration
 
 ### Knowledge Management
 - [[OBSIDIAN]] -> `OBSIDIAN.md` - Obsidian specific instructions for knowledge graphing
@@ -34,8 +34,8 @@
 - [[orphaned files output]] -> `ORPHANED-FILES.md` - Generated files and cleanup procedures
 
 ### Specifications (Critical for Implementation)
-- [[docs/notes/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
-- [[docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress  
+- [[docs/planning/2026-01-15-roadmap.md]] - Sprint and milestone roadmap
+- [[docs/planning/2026-01-19-milestone3-3.5-progress-review.md]] - Milestone 3 & 3.5 detailed progress  
 - [[spec/2026-01-15-core-loop.md]] - Day/night cycle mechanics
 - [[spec/2026-01-15-myth-engine.md]] - Myth engine specification
 - [[spec/labeling-system.md]] - GitHub issue and spec labeling system
@@ -124,3 +124,66 @@ All GitHub issues and spec files now use standardized labeling system defined in
 - Status labels set to `proposed` for all active work
 
 **See `spec/labeling-system.md` for complete labeling system documentation.**
+
+## RELEVANT SKILLS
+These skills are configured for this directory's technology stack and workflow.
+
+### clojure-namespace-architect
+Resolves Clojure namespace-path mismatches and classpath errors with definitive path conversion
+
+### clojure-quality
+Auto-fix Clojure delimiters and validate syntax with OpenCode tools.
+
+### clojure-syntax-rescue
+Protocol to recover from Clojure/Script syntax errors, specifically bracket mismatches and EOF errors.
+
+### git-safety-check
+Protocol to ensure safe git operations and avoid detached HEAD or dirty commits.
+
+### github-integration
+Perform GitHub operations across all tracked repositories in orgs/**, including issue/PR management, repository synchronization, and automation workflows
+
+### submodule-ops
+Make safe, consistent changes in a workspace with many git submodules under orgs/**
+
+### test-preservation
+Protocol to forbid deleting or skipping tests to make builds pass.
+
+### testing-bun
+Set up and write tests using Bun's built-in test runner for maximum performance and TypeScript support
+
+### testing-clojure-cljs
+Set up and write tests for Clojure and ClojureScript projects using cljs.test, cljs-init-tests, and shadow-cljs
+
+### testing-e2e
+Write end-to-end tests that verify complete user workflows and critical system paths across the full stack
+
+### testing-general
+Apply testing best practices, choose appropriate test types, and establish reliable test coverage across the codebase
+
+### testing-integration
+Write integration tests that verify multiple components work together correctly with real dependencies
+
+### testing-nx
+Configure and run tests across multiple projects using Nx affected detection for efficient workspace testing
+
+### testing-typescript-ava
+Set up and write tests using Ava test runner for TypeScript with minimal configuration and fast execution
+
+### testing-typescript-vitest
+Set up and write tests using Vitest for TypeScript projects with proper configuration and TypeScript support
+
+### testing-unit
+Write fast, focused unit tests for individual functions, classes, and modules with proper isolation and mocking
+
+### work-on-in_progress-task
+Execute the best next work for a task currently in `in_progress`.
+
+### work-on-todo-task
+Execute the best next work for a task currently in `todo`.
+
+### workspace-lint
+Lint all TypeScript and markdown files across the entire workspace, including all submodules under orgs/**
+
+### workspace-typecheck
+Type check all TypeScript files across the entire workspace, including all submodules under orgs/**, using strict TypeScript settings

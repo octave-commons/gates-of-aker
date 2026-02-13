@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { EventCard } from "./EventCard";
+import { EventCard, EventEntry } from "./EventCard";
 
 type EventFeedProps = {
-  events: any[];
+  events: EventEntry[];
   title?: string;
   compact?: boolean;
   collapsible?: boolean;
@@ -19,14 +19,21 @@ export function EventFeed({
   if (collapsible) {
     return (
       <div style={{ marginTop: 12 }}>
-        <div 
+        <button
+          type="button"
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             cursor: "pointer",
             padding: "8px 0",
-            borderBottom: isCollapsed ? "1px solid #ddd" : "none"
+            borderBottom: isCollapsed ? "1px solid #ddd" : "none",
+            borderTop: "none",
+            borderLeft: "none",
+            borderRight: "none",
+            background: "transparent",
+            width: "100%",
+            textAlign: "left",
           }}
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
@@ -39,7 +46,7 @@ export function EventFeed({
           }}>
             ▼
           </span>
-        </div>
+        </button>
         
         {!isCollapsed && (
           <div style={{ 
@@ -55,7 +62,7 @@ export function EventFeed({
                 No events recorded
               </div>
             ) : (
-              [...events].reverse().map((event, idx) => (
+              [...events].reverse().map((event: EventEntry, idx) => (
                 <EventCard key={event.id ?? idx} event={event} compact={compact} />
               ))
             )}
@@ -81,7 +88,7 @@ export function EventFeed({
             No events recorded
           </div>
         ) : (
-          [...events].reverse().map((event, idx) => (
+          [...events].reverse().map((event: EventEntry, idx) => (
             <EventCard key={event.id ?? idx} event={event} compact={compact} />
           ))
         )}

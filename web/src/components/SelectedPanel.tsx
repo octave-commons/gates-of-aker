@@ -1,6 +1,38 @@
 import React, { useState, useMemo, type CSSProperties } from "react";
 import { Agent } from "../types";
-import { getMovementSteps, safeStringify } from "../utils";
+import { getMovementSteps } from "../utils";
+
+type AgentStatus = {
+  "alive?"?: boolean;
+  alive?: boolean;
+  "cause-of-death"?: string;
+  causeOfDeath?: string;
+};
+
+type Relationship = {
+  name?: string;
+  agentId?: string | number;
+  "agent-id"?: string | number;
+  affinity?: number;
+};
+
+const asAgentRecord = (agent: Agent | null): Record<string, unknown> =>
+  agent ? (agent as Record<string, unknown>) : {};
+
+const asStatus = (agent: Agent | null): AgentStatus => {
+  const status = asAgentRecord(agent)["status"];
+  return status && typeof status === "object" ? (status as AgentStatus) : {};
+};
+
+const asStats = (agent: Agent | null): Record<string, number> => {
+  const stats = asAgentRecord(agent)["stats"];
+  return stats && typeof stats === "object" ? (stats as Record<string, number>) : {};
+};
+
+const asRelationships = (agent: Agent | null): Relationship[] => {
+  const rels = asAgentRecord(agent)["relationships"];
+  return Array.isArray(rels) ? (rels as Relationship[]) : [];
+};
 
    type SelectedPanelProps = {
      selectedCell: [number, number] | null;
@@ -51,12 +83,16 @@ export function SelectedPanel({
 
   const labelForAgent = (agent: Agent | null) => {
     if (!agent) return "None";
-    const rawName = (agent as any).name;
-    if (typeof rawName === "string" && rawName.trim().length > 0) return rawName;
+    const rawName = asAgentRecord(agent)["name"];
+    if (typeof rawName === "string" && rawName.trim().length > 0) {
+      return rawName;
+    }
     const idValue = String(agent.id ?? "unknown");
     const shortId = idValue.length > 12 ? `${idValue.slice(0, 8)}...` : idValue;
     return `Agent ${shortId}`;
   };
+
+  const toggleCollapsed = () => setIsCollapsed((prev) => !prev);
 
   const normalizeValue = (value: unknown, fallback = "None") => {
     if (value == null) return fallback;
@@ -111,14 +147,14 @@ export function SelectedPanel({
 
   const statusLabel = (agent: Agent | null) => {
     if (!agent) return "None";
-    const status = (agent as any).status ?? {};
+    const status = asStatus(agent);
     const alive = status["alive?"] ?? status.alive ?? true;
     return alive ? "Alive" : "Dead";
   };
 
   const statusCause = (agent: Agent | null) => {
     if (!agent) return "None";
-    const status = (agent as any).status ?? {};
+    const status = asStatus(agent);
     const cause = status["cause-of-death"] ?? status.causeOfDeath ?? null;
     return cause ? String(cause).replace(":", "").replace(/_/g, " ") : "None";
   };
@@ -134,14 +170,12 @@ export function SelectedPanel({
           cursor: "pointer",
           padding: "8px 0",
           borderBottom: isCollapsed ? "1px solid #ddd" : "none",
-          borderTop: "none",
-          borderLeft: "none",
-          borderRight: "none",
+          border: "none",
+          background: "transparent",
           width: "100%",
-          backgroundColor: "transparent",
           textAlign: "left",
         }}
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={toggleCollapsed}
       >
         <h2 style={{ margin: 0 }}>Selected</h2>
         <span
@@ -180,13 +214,13 @@ export function SelectedPanel({
           </div>
 
            <div style={{ border: "1px solid #ddd", borderRadius: 6, padding: 8, backgroundColor: "#f9f9f9" }}>
-             <div style={{ fontWeight: "bold", fontSize: "0.9em", color: "#666", marginBottom: 6 }}>
-               Focus
-             </div>
-             <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontWeight: "bold", fontSize: "0.9em", color: "#666", marginBottom: 6 }}>
+                Focus
+              </div>
+              <div style={{ display: "grid", gap: 4 }}>
                 {renderRow("Selected Agent", labelForAgent(selectedAgent))}
-             </div>
-           </div>
+              </div>
+            </div>
 
           {selectedAgent && (
             <div style={{ border: "2px solid #4a90e2", borderRadius: 6, padding: 12, backgroundColor: "#f0f7ff" }}>
@@ -201,17 +235,17 @@ export function SelectedPanel({
                 <div><strong>Cause of Death:</strong> {statusCause(selectedAgent)}</div>
                 <div><strong>Position:</strong> {selectedAgent.pos ? `(${selectedAgent.pos[0]}, ${selectedAgent.pos[1]})` : "None"}</div>
 
-                {(selectedAgent as any).stats && (
+                {Object.keys(asStats(selectedAgent)).length > 0 && (
                   <div style={{ marginTop: 8 }}>
                     <strong>Stat Sheet:</strong>
                     <div style={{ marginLeft: 12, marginTop: 4, fontSize: "0.9em" }}>
-                      {Object.entries((selectedAgent as any).stats).map(([key, value]) => (
+                      {Object.entries(asStats(selectedAgent)).map(([key, value]) => (
                         <div key={key}>
                           {key}: {typeof value === "number" ? value.toFixed(3) : String(value)}
                         </div>
                       ))}
                       {(() => {
-                        const movement = getMovementSteps((selectedAgent as any).stats);
+                        const movement = getMovementSteps(asStats(selectedAgent));
                         return (
                           <div>
                             move steps: {movement.base} base / {movement.road} road
@@ -235,11 +269,11 @@ export function SelectedPanel({
                   </div>
                 )}
 
-                {Array.isArray((selectedAgent as any).relationships) && (selectedAgent as any).relationships.length > 0 && (
+                {asRelationships(selectedAgent).length > 0 && (
                   <div style={{ marginTop: 8 }}>
                     <strong>Relationships:</strong>
                     <div style={{ marginLeft: 12, marginTop: 4, fontSize: "0.9em" }}>
-                      {(selectedAgent as any).relationships.map((rel: any) => (
+                      {asRelationships(selectedAgent).map((rel: Relationship) => (
                         <div key={rel.agentId ?? rel["agent-id"]}>
                           {(rel.name ?? `Agent ${String(rel.agentId ?? rel["agent-id"] ?? "unknown").slice(0, 8)}`)}: {typeof rel.affinity === "number" ? rel.affinity.toFixed(2) : rel.affinity}
                         </div>

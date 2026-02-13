@@ -1,11 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { MouseEvent } from "react";
-import { Agent, hasPos, PathPoint } from "../types";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Agent, Snapshot, hasPos, PathPoint } from "../types";
 import type { HexConfig } from "../hex";
-import { axialToPixel, pixelToAxial, hexCorner, getMapBoundsInPixels, type AxialCoords } from "../hex";
-import { hexToFrequency, playTone } from "../audio";
-import { colorForRole, getAgentIcon } from "../utils";
+import { axialToPixel, hexCorner, type AxialCoords } from "../hex";
+import { getAgentIcon } from "../utils";
 import { CONFIG } from "../config/constants";
+import { useKeyboardCameraPan } from "../hooks/useKeyboardCameraPan";
+import { useCanvasWheelZoom } from "../hooks/useCanvasWheelZoom";
+import { useFocusCameraPosition } from "../hooks/useFocusCameraPosition";
+import { useCanvasDragPan } from "../hooks/useCanvasDragPan";
+import { useCanvasSelectionHandlers } from "../hooks/useCanvasSelectionHandlers";
+import { useSelectedCellAnnouncement } from "../hooks/useSelectedCellAnnouncement";
+import { usePreventContextMenu } from "../hooks/usePreventContextMenu";
+import { useEntityVisibility } from "../hooks/useEntityVisibility";
+import { useTileVisibilityState } from "../hooks/useTileVisibilityState";
 
 type CameraState = {
   offsetX: number;
@@ -20,8 +27,28 @@ type SpeechBubble = {
   timestamp: number;
 };
 
+type Relationship = {
+  agentId?: number;
+  "agent-id"?: number;
+  affinity?: number;
+};
+
+type AgentStatus = {
+  "alive?"?: boolean;
+  alive?: boolean;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+
+const asStats = (value: unknown): Record<string, number> | undefined => {
+  const record = asRecord(value);
+  if (!record) return undefined;
+  return record as Record<string, number>;
+};
+
 type SimulationCanvasProps = {
-  snapshot: any;
+  snapshot: Snapshot | null;
   mapConfig: HexConfig | null;
   selectedCell: [number, number] | null;
   selectedAgentId: number | null;
@@ -33,13 +60,13 @@ type SimulationCanvasProps = {
   showNames?: boolean;
   showStats?: boolean;
   speechBubbles?: SpeechBubble[];
-  visibilityData?: Record<string, any> | null;
+  visibilityData?: Record<string, unknown> | null;
   selectedVisibilityAgentId?: number | null;
   tileVisibility?: Record<string, "hidden" | "revealed" | "visible">;
-  revealedTilesSnapshot?: Record<string, any>;
+  revealedTilesSnapshot?: Record<string, unknown>;
 };
 
-export function SimulationCanvas({
+function SimulationCanvasComponent({
   snapshot,
   mapConfig,
   selectedCell,
@@ -59,6 +86,7 @@ export function SimulationCanvas({
 }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const liveRegionId = useId();
 
   const [camera, setCamera] = useState<CameraState>({
     offsetX: 0,
@@ -66,152 +94,33 @@ export function SimulationCanvas({
     zoom: 1.0,
   });
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<[number, number] | null>(null);
-  const [cameraStart, setCameraStart] = useState<CameraState | null>(null);
+  useKeyboardCameraPan({ canvasRef, setCamera });
+  useCanvasWheelZoom({ canvasRef, setCamera });
+  useFocusCameraPosition({ mapConfig, focusPos, focusTrigger, setCamera });
+  const { isDragging, handleMouseDown, handleMouseMove, handleMouseUp } = useCanvasDragPan({
+    camera,
+    setCamera,
+  });
+  const selectedCellAnnouncement = useSelectedCellAnnouncement({
+    selectedCell,
+    selectedAgentId,
+    agents: snapshot?.agents,
+  });
 
-  const keysPressed = useRef<Set<string>>(new Set());
+  const getTileVisibilityState = useTileVisibilityState({ tileVisibility, snapshot });
 
-  const getTileVisibilityState = useCallback((q: number, r: number): "hidden" | "revealed" | "visible" => {
-    const tileKey = `${q},${r}`;
-    const vis = tileVisibility[tileKey];
-    const tileInSnapshot = snapshot?.tiles?.[tileKey];
+  const isVisible = useEntityVisibility({ selectedVisibilityAgentId, visibilityData, snapshot });
 
-    if (tileInSnapshot && vis === undefined) {
-      return "visible";
-    }
-
-    return vis ?? "hidden";
-  }, [snapshot, tileVisibility]);
-
-  const isVisible = useCallback((entity: any, type: "agent" | "tile" | "item" | "stockpile") => {
-    if (!selectedVisibilityAgentId || !visibilityData) return true;
-
-    const selectedAgent = (snapshot.agents ?? []).find((a: Agent) => a.id === selectedVisibilityAgentId);
-    if (!selectedAgent || !hasPos(selectedAgent)) return true;
-
-    const viewerPos = selectedAgent.pos as AxialCoords;
-    const viewerPosStr = `${viewerPos[0]},${viewerPos[1]}`;
-    const visibilityMap = visibilityData[viewerPosStr];
-
-    if (!visibilityMap) return true;
-
-    switch (type) {
-      case "agent": {
-        const visibleAgentIds = visibilityMap.visible_agent_ids ?? [];
-        return visibleAgentIds.includes(entity.id);
-      }
-      case "tile": {
-        const visibleTiles = visibilityMap.visible_tiles ?? [];
-        const tileKey = typeof entity.q === "number" ? `${entity.q},${entity.r}` : entity;
-        return visibleTiles.includes(tileKey);
-      }
-      case "item": {
-        const visibleItems = visibilityMap.visible_items ?? [];
-        const itemKey = typeof entity.q === "number" ? `${entity.q},${entity.r}` : entity;
-        return visibleItems.includes(itemKey);
-      }
-      case "stockpile": {
-        const visibleStockpiles = visibilityMap.visible_stockpiles ?? [];
-        const stockpileKey = typeof entity.q === "number" ? `${entity.q},${entity.r}` : entity;
-        return visibleStockpiles.includes(stockpileKey);
-      }
-      default:
-        return true;
-    }
-  }, [selectedVisibilityAgentId, snapshot, visibilityData]);
-
-  useEffect(() => {
-    let animationFrameId: number | null = null;
-
-    const handleCameraMovement = () => {
-      const keys = Array.from(keysPressed.current);
-      if (keys.length > 0) {
-        setCamera(prevCamera => {
-          let newOffsetX = prevCamera.offsetX;
-          let newOffsetY = prevCamera.offsetY;
-          const moveAmount = CONFIG.canvas.PAN_SPEED / prevCamera.zoom;
-
-          if (keys.includes("KeyW")) newOffsetY += moveAmount;
-          if (keys.includes("KeyS")) newOffsetY -= moveAmount;
-          if (keys.includes("KeyA")) newOffsetX += moveAmount;
-          if (keys.includes("KeyD")) newOffsetX -= moveAmount;
-
-          if (newOffsetX !== prevCamera.offsetX || newOffsetY !== prevCamera.offsetY) {
-            return { ...prevCamera, offsetX: newOffsetX, offsetY: newOffsetY };
-          }
-          return prevCamera;
-        });
-      }
-      animationFrameId = requestAnimationFrame(handleCameraMovement);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
-        e.preventDefault();
-        const wasEmpty = keysPressed.current.size === 0;
-        keysPressed.current.add(e.code);
-        if (wasEmpty) {
-          animationFrameId = requestAnimationFrame(handleCameraMovement);
-        }
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
-        e.preventDefault();
-        keysPressed.current.delete(e.code);
-        if (keysPressed.current.size === 0 && animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-          animationFrameId = null;
-        }
-      }
-    };
-
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.setAttribute("tabIndex", "0");
-    }
-
-    window.addEventListener("keydown", handleKeyDown, { passive: false });
-    window.addEventListener("keyup", handleKeyUp, { passive: false });
-    
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheel = (event: globalThis.WheelEvent) => {
-      event.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = event.clientX - rect.left;
-      const mouseY = event.clientY - rect.top;
-
-      if (event.deltaY === 0) return;
-      const zoomFactor = Math.pow(1 + CONFIG.canvas.ZOOM_STEP, -Math.sign(event.deltaY));
-      setCamera((prev) => {
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const worldX = (mouseX - centerX) / prev.zoom - prev.offsetX;
-        const worldY = (mouseY - centerY) / prev.zoom - prev.offsetY;
-        const newZoom = Math.max(CONFIG.canvas.ZOOM_MIN, Math.min(CONFIG.canvas.ZOOM_MAX, prev.zoom * zoomFactor));
-        const newOffsetX = worldX - (mouseX - centerX) / newZoom;
-        const newOffsetY = worldY - (mouseY - centerY) / newZoom;
-        return { ...prev, zoom: newZoom, offsetX: newOffsetX, offsetY: newOffsetY };
-      });
-    };
-
-    canvas.addEventListener("wheel", handleWheel, { passive: false });
-    return () => canvas.removeEventListener("wheel", handleWheel);
-  }, []);
+  const { handleClick, handleCanvasKeyDown } = useCanvasSelectionHandlers({
+    snapshot,
+    mapConfig,
+    camera,
+    canvasRef,
+    selectedCell,
+    getTileVisibilityState,
+    onCellSelect,
+  });
+  const handleContextMenu = usePreventContextMenu<HTMLCanvasElement>();
 
     useEffect(() => {
     const canvas = canvasRef.current;
@@ -224,9 +133,6 @@ export function SimulationCanvas({
     if (!hasCanvasMethods) {
       return;
     }
-
-    const { width: mapWidth, height: mapHeight } = getMapBoundsInPixels(mapConfig.bounds, CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING);
-    const padding = CONFIG.canvas.HEX_SIZE * 4;
 
     const containerRect = container.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -285,10 +191,14 @@ export function SimulationCanvas({
            const tileKey = `${hex[0]},${hex[1]}`;
            const visibilityState = getTileVisibilityState(hex[0], hex[1]);
            const tiles = snapshot.tiles ?? {};
-           const tile = visibilityState === "revealed" ? revealedTilesSnapshot[tileKey] : tiles[tileKey];
+            const tile = visibilityState === "revealed"
+              ? asRecord(revealedTilesSnapshot[tileKey])
+              : tiles[tileKey];
+            const tileResource = typeof tile?.resource === "string"
+              ? tile.resource.replace(/^:/, "")
+              : tile?.resource;
 
         const [px, py] = axialToPixel(hex, size);
-        const isTileVisible = isVisible({ q: hex[0], r: hex[1] }, "tile");
 
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
@@ -331,21 +241,23 @@ export function SimulationCanvas({
         ctx.stroke();
         ctx.globalAlpha = 1;
 
-        if (visibilityState !== "hidden" && tile?.resource === "tree") {
+        if (visibilityState !== "hidden" && tileResource === "tree") {
             const treeColor = visibilityState === "revealed" ? "#5a7a5a" : CONFIG.colors.RESOURCE.tree;
             ctx.fillStyle = treeColor;
             ctx.beginPath();
             ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.4, 0, Math.PI * 2);
             ctx.fill();
+            ctx.fillStyle = "#6d4c41";
+            ctx.fillRect(px - CONFIG.canvas.HEX_SIZE * 0.05, py + CONFIG.canvas.HEX_SIZE * 0.06, CONFIG.canvas.HEX_SIZE * 0.1, CONFIG.canvas.HEX_SIZE * 0.22);
           }
-          if (visibilityState !== "hidden" && tile?.resource === "grain") {
+          if (visibilityState !== "hidden" && tileResource === "grain") {
             const grainColor = visibilityState === "revealed" ? "#b8a878" : CONFIG.colors.RESOURCE.grain;
             ctx.fillStyle = grainColor;
             ctx.beginPath();
             ctx.arc(px, py, CONFIG.canvas.HEX_SIZE * 0.25, 0, Math.PI * 2);
             ctx.fill();
           }
-          if (visibilityState !== "hidden" && tile?.resource === "rock") {
+          if (visibilityState !== "hidden" && tileResource === "rock") {
             const rockColor = visibilityState === "revealed" ? "#6a6a6a" : CONFIG.colors.RESOURCE.rock;
             ctx.fillStyle = rockColor;
             ctx.beginPath();
@@ -764,12 +676,14 @@ export function SimulationCanvas({
         ["#f59e0b", stats.charisma ?? 0],
       ];
 
-      colors.forEach(([color, value], idx) => {
-        if (value <= 0) return;
+      for (const [idx, [color, value]] of colors.entries()) {
+        if (value <= 0) {
+          continue;
+        }
         const scale = Math.max(0.4, Math.min(1, value));
         const [ox, oy] = offsets[idx];
         drawDot(x + ox, y + oy, pipRadius * scale, color);
-      });
+      }
     };
 
     const drawColonist = (x: number, y: number, role?: string, stats?: Record<string, number>) => {
@@ -859,14 +773,15 @@ export function SimulationCanvas({
       if (!showRelationships) return;
       const agents = snapshot.agents ?? [];
       const agentById = new Map<number, Agent>();
-      agents.forEach((agent: Agent) => {
-        agentById.set(typeof agent.id === "number" ? agent.id : Number(agent.id), agent);
-      });
+      for (const agent of agents as Agent[]) {
+        agentById.set(typeof agent.id === 'number' ? agent.id : Number(agent.id), agent);
+      }
 
       ctx.save();
       ctx.lineWidth = Math.max(1, 1 / camera.zoom);
       for (const agent of agents) {
-        const rels = (agent as any).relationships ?? [];
+        const relsRaw = asRecord(agent)?.relationships;
+        const rels = Array.isArray(relsRaw) ? (relsRaw as Relationship[]) : [];
         if (!hasPos(agent) || !Array.isArray(rels)) continue;
         for (const rel of rels) {
           const targetId = rel.agentId ?? rel["agent-id"];
@@ -895,29 +810,39 @@ export function SimulationCanvas({
 
     drawRelationshipLinks();
 
+     let renderedAgents = 0;
+     let filteredByVisibility = 0;
+     let filteredByPosition = 0;
+     let filteredByTileVisibility = 0;
+
      for (const agent of snapshot.agents ?? []) {
        if (!hasPos(agent)) {
+         filteredByPosition++;
          continue;
        }
-        
-        const [aq, ar] = agent.pos as AxialCoords;
-        if (!isVisible(agent, "agent")) {
-          continue;
+       
+       const [aq, ar] = agent.pos as AxialCoords;
+       
+       if (!isVisible(agent, "agent")) {
+         filteredByVisibility++;
+         continue;
+       }
+       const tileVisibilityState = getTileVisibilityState(aq, ar);
+       if (tileVisibilityState === "hidden") {
+         filteredByTileVisibility++;
+         continue;
         }
-        const tileVisibilityState = getTileVisibilityState(aq, ar);
-        if (tileVisibilityState === "hidden") {
-          continue;
-        }
+        renderedAgents++;
        
        const [ax, ay] = axialToPixel([aq, ar], size);
 const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
         const path = agentPaths[agentId] ?? [];
-       const status = agent.status as any;
+       const status = (asRecord(agent.status) ?? {}) as AgentStatus;
        const alive = status?.["alive?"] ?? status?.alive ?? true;
        const isColonist = ["peasant", "priest", "knight", "champion"].includes(String(agent.role));
 
       if (alive && isColonist) {
-        drawColonist(ax, ay, String(agent.role), (agent as any).stats);
+        drawColonist(ax, ay, String(agent.role), asStats(agent.stats));
       } else {
         const agentColor = alive ? rolePalette(agent.role).body : "#555";
         ctx.beginPath();
@@ -976,15 +901,15 @@ const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
        }
 
        const bubble = speechBubbles.find((b) => b.agentId === agentId);
-        if (bubble) {
-          const bubbleAge = Date.now() - bubble.timestamp;
-          if (bubbleAge < 3000) {
-            drawSpeechBubble(ax, ay, bubble.text, bubbleAge);
-          }
+       if (bubble) {
+         const bubbleAge = Date.now() - bubble.timestamp;
+         if (bubbleAge < 3000) {
+           drawSpeechBubble(ax, ay, bubble.text, bubbleAge);
          }
-       }
-
-    ctx.restore();
+        }
+      }
+     
+     ctx.restore();
 
     const daylight = snapshot.daylight ?? 1;
     const nightAlpha = Math.min(0.7, Math.max(0, (1 - daylight) * 0.75));
@@ -997,90 +922,6 @@ const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
     }
   }, [snapshot, mapConfig, selectedCell, selectedAgentId, camera, showRelationships, showNames, showStats, speechBubbles, visibilityData, selectedVisibilityAgentId, agentPaths, revealedTilesSnapshot, getTileVisibilityState, isVisible]);
 
-  useEffect(() => {
-    if (!mapConfig || !focusPos) return;
-    const _focusTrigger = focusTrigger;
-    void _focusTrigger;
-    const size = CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING;
-    const [px, py] = axialToPixel(focusPos, size);
-    setCamera((prev) => ({ ...prev, offsetX: -px, offsetY: -py }));
-  }, [focusTrigger, focusPos, mapConfig]);
-
-  const handleClick = (event: MouseEvent<HTMLCanvasElement>) => {
-    if (!snapshot || !mapConfig) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    // Get canvas display size (not internal pixel size)
-    const dpr = window.devicePixelRatio || 1;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    // Convert to world coordinates accounting for camera transforms
-    const worldX = (x - centerX) / camera.zoom - camera.offsetX;
-    const worldY = (y - centerY) / camera.zoom - camera.offsetY;
-
-
-
-    const [q, r] = pixelToAxial(worldX, worldY, CONFIG.canvas.HEX_SIZE + CONFIG.canvas.HEX_SPACING);
-    const cell: AxialCoords = [q, r];
-
-    const visibilityState = getTileVisibilityState(q, r);
-    if (visibilityState === "hidden") {
-      return;
-    }
-
-    const hit = (snapshot.agents ?? []).find((a: Agent) => {
-      if (!hasPos(a)) return false;
-      const [aq, ar] = a.pos as AxialCoords;
-      return aq === cell[0] && ar === cell[1];
-    });
-    onCellSelect(cell, hit ? hit.id : null);
-
-    if (hit) {
-      const color = colorForRole(hit.role);
-      const frequency = hexToFrequency(color);
-      playTone(frequency, 0.15);
-    } else {
-      playTone(330, 0.05);
-    }
-  };
-
-  const handleMouseDown = (event: MouseEvent<HTMLCanvasElement>) => {
-    if (event.button === 1) {
-      event.preventDefault();
-      setIsDragging(true);
-      setDragStart([event.clientX, event.clientY]);
-      setCameraStart({ ...camera });
-    }
-  };
-
-  const handleMouseMove = (event: MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !dragStart || !cameraStart) return;
-
-    const dx = event.clientX - dragStart[0];
-    const dy = event.clientY - dragStart[1];
-
-    const newOffsetX = cameraStart.offsetX + dx / camera.zoom;
-    const newOffsetY = cameraStart.offsetY + dy / camera.zoom;
-
-    setCamera({ ...camera, offsetX: newOffsetX, offsetY: newOffsetY });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setDragStart(null);
-    setCameraStart(null);
-  };
-
-  const handleContextMenu = (event: MouseEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-  };
-
   return (
     <div
       ref={containerRef}
@@ -1089,14 +930,37 @@ const agentId = typeof agent.id === 'number' ? agent.id : Number(agent.id);
       <canvas
         data-testid="simulation-canvas"
         ref={canvasRef}
+        tabIndex={0}
+        aria-label="Simulation map canvas"
+        aria-describedby={liveRegionId}
         style={{ display: "block", width: "100%", height: "100%", cursor: isDragging ? "grabbing" : "crosshair" }}
         onClick={handleClick}
+        onKeyDown={handleCanvasKeyDown}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onContextMenu={handleContextMenu}
       />
+      <output
+        id={liveRegionId}
+        aria-live="polite"
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        {selectedCellAnnouncement}
+      </output>
     </div>
   );
 }
+
+export const SimulationCanvas = React.memo(SimulationCanvasComponent);

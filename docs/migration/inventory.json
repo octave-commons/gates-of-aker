@@ -1,0 +1,1732 @@
+{
+  "version": "1.0.0",
+  "generatedAtUtc": "2026-02-10T07:01:04Z",
+  "scope": {
+    "repoRoot": "/home/err/devel/orgs/octave-commons/gates-of-aker",
+    "includedSearchRoots": [
+      "docs/**",
+      "spec/**",
+      "/home/err/devel/docs/notes/fantasia/** (external placeholder candidates)",
+      "/home/err/devel/docs/inbox/ready-for-code/gates-of-aker-design-spec/** (external placeholder candidates)"
+    ],
+    "keywordPattern": "(?i)fantasia|gates of aker|gates-of-aker"
+  },
+  "excludedClasses": [
+    {
+      "class": "session-logs-and-tool-output",
+      "rule": "Exclude timestamp session transcripts and tool-capture markdown (e.g., docs/notes/YYYY.MM.DD.*.md).",
+      "reason": "Transient artifacts are not stable migration targets."
+    },
+    {
+      "class": "dependency-and-build-artifacts",
+      "rule": "Exclude node_modules, lock internals, and generated assets from inventory scope.",
+      "reason": "Non-documentation artifacts are out of scope for docs migration."
+    },
+    {
+      "class": "unrelated-repositories-and-notes",
+      "rule": "Exclude workspace docs not directly tied to Gates of Aker/Fantasia migration context.",
+      "reason": "Avoid accidental cross-project imports."
+    }
+  ],
+  "counts": {
+    "total": 161,
+    "byDecisionAndCategory": {
+      "exclude::history": 1,
+      "external-placeholder::design": 1,
+      "external-placeholder::history": 1,
+      "external-placeholder::planning": 1,
+      "include::decisions": 12,
+      "include::design": 15,
+      "include::history": 11,
+      "include::planning": 117,
+      "include::pseudo": 2
+    }
+  },
+  "files": [
+    {
+      "sourcePath": "/home/err/devel/docs/inbox/ready-for-code/gates-of-aker-design-spec/README.md",
+      "proposedTargetPath": "docs/design/imports/gates-of-aker-design-spec/README.md",
+      "category": "design",
+      "rationale": "External Gates of Aker design package candidate for design baseline import.",
+      "inclusion": {
+        "decision": "external-placeholder",
+        "reason": "Referenced external workspace candidate; mapped as placeholder for later import wave."
+      }
+    },
+    {
+      "sourcePath": "/home/err/devel/docs/inbox/ready-for-code/gates-of-aker-design-spec/spec/00-context.md",
+      "proposedTargetPath": "docs/planning/imports/gates-of-aker-design-spec/00-context.md",
+      "category": "planning",
+      "rationale": "External design-spec package context that can seed planning/spec consolidation.",
+      "inclusion": {
+        "decision": "external-placeholder",
+        "reason": "Referenced external workspace candidate; mapped as placeholder for later import wave."
+      }
+    },
+    {
+      "sourcePath": "/home/err/devel/docs/notes/fantasia/fantasia-agency-faith-mechanics.md",
+      "proposedTargetPath": "docs/history/imports/fantasia-agency-faith-mechanics.md",
+      "category": "history",
+      "rationale": "External fantasia-named source likely to preserve pre-rename historical context.",
+      "inclusion": {
+        "decision": "external-placeholder",
+        "reason": "Referenced external workspace candidate; mapped as placeholder for later import wave."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/2026-01-20-civic-growth-scribes.md",
+      "proposedTargetPath": "docs/history/notes/2026-01-20-civic-growth-scribes.md",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/2026-01-20-phase1-food-rebalancing.md",
+      "proposedTargetPath": "docs/history/notes/2026-01-20-phase1-food-rebalancing.md",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/2026-01-20-phase3-colonist-names.md",
+      "proposedTargetPath": "docs/history/notes/2026-01-20-phase3-colonist-names.md",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/2026-01-25-hidden-tiles-fix.md",
+      "proposedTargetPath": "docs/history/notes/2026-01-25-hidden-tiles-fix.md",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/2026.01.23.12.48.34.md",
+      "proposedTargetPath": "(excluded)",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "exclude",
+        "reason": "Session/log capture; excluded by policy (tool output and transient transcripts)."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/CURRENT_STATE.md",
+      "proposedTargetPath": "docs/history/notes/CURRENT_STATE.md",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/brainstorming/2026-01-15-the-cleanest-third-pillar-names.md",
+      "proposedTargetPath": "docs/history/brainstorming/2026-01-15-the-cleanest-third-pillar-names.md",
+      "category": "history",
+      "rationale": "Brainstorm artifacts preserve ideation context but are not canonical specs.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/brainstorming/2026-01-15-you-can-keep-the-myth-energy-without-pinning-the-project-to-.md",
+      "proposedTargetPath": "docs/history/brainstorming/2026-01-15-you-can-keep-the-myth-energy-without-pinning-the-project-to-.md",
+      "category": "history",
+      "rationale": "Brainstorm artifacts preserve ideation context but are not canonical specs.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/brainstorming/README.md",
+      "proposedTargetPath": "docs/history/brainstorming/README.md",
+      "category": "history",
+      "rationale": "Brainstorm artifacts preserve ideation context but are not canonical specs.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-facet-bundle-selection-mutation-how-myths-evolve-without-fee.md",
+      "proposedTargetPath": "docs/design/2026-01-11-facet-bundle-selection-mutation-how-myths-evolve-without-fee.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-facets-the-missing-gear-that-makes-association-reliable-and-.md",
+      "proposedTargetPath": "docs/design/2026-01-11-facets-the-missing-gear-that-makes-association-reliable-and-.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-fantasia-design-pass-turning-the-vibe-into-a-runnable-loop.md",
+      "proposedTargetPath": "docs/design/2026-01-11-fantasia-design-pass-turning-the-vibe-into-a-runnable-loop.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-fantasia-tightening-what-you-have-and-making-it-gamey.md",
+      "proposedTargetPath": "docs/design/2026-01-11-fantasia-tightening-what-you-have-and-making-it-gamey.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-mentions-as-a-living-belief-network-ant-colony-vibes-but-com.md",
+      "proposedTargetPath": "docs/design/2026-01-11-mentions-as-a-living-belief-network-ant-colony-vibes-but-com.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-miracle-system-make-it-sim-first-story-rich-and-tunable.md",
+      "proposedTargetPath": "docs/design/2026-01-11-miracle-system-make-it-sim-first-story-rich-and-tunable.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-organizations-as-first-class-belief-machines-groups-have-fac.md",
+      "proposedTargetPath": "docs/design/2026-01-11-organizations-as-first-class-belief-machines-groups-have-fac.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-packet-facet-seeding-mentions-tradition-tiers-the-full-chain.md",
+      "proposedTargetPath": "docs/design/2026-01-11-packet-facet-seeding-mentions-tradition-tiers-the-full-chain.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-11-you-ve-basically-described-a-semantic-activation-network-whe.md",
+      "proposedTargetPath": "docs/design/2026-01-11-you-ve-basically-described-a-semantic-activation-network-whe.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-12-got-it-i-ll-treat-this-as-a-design-synthesis-next-step-propo.md",
+      "proposedTargetPath": "docs/design/2026-01-12-got-it-i-ll-treat-this-as-a-design-synthesis-next-step-propo.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-15-aker-boundry-control-flow.md",
+      "proposedTargetPath": "docs/design/2026-01-15-aker-boundry-control-flow.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-15-gates-of-aker-main-zip.md",
+      "proposedTargetPath": "docs/design/2026-01-15-gates-of-aker-main-zip.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-15-sim-modules.md",
+      "proposedTargetPath": "docs/design/2026-01-15-sim-modules.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/2026-01-15-world-schema.md",
+      "proposedTargetPath": "docs/design/2026-01-15-world-schema.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/design/README.md",
+      "proposedTargetPath": "docs/design/README.md",
+      "category": "design",
+      "rationale": "Design architecture and mechanics notes intended as implementation-facing references.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/devops/README.md",
+      "proposedTargetPath": "docs/planning/devops/README.md",
+      "category": "planning",
+      "rationale": "Roadmaps and execution planning documents.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/dsl/2026-01-11-clojure-macro-dsl-for-institutions-groups-as-belief-machines.md",
+      "proposedTargetPath": "pseudo/dsl/2026-01-11-clojure-macro-dsl-for-institutions-groups-as-belief-machines.md",
+      "category": "pseudo",
+      "rationale": "Contains code-like DSL examples and non-integrated prototypes.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/dsl/2026-01-11-event-dsl-macro-based-like-defgroup-event-archetypes-miracle.md",
+      "proposedTargetPath": "pseudo/dsl/2026-01-11-event-dsl-macro-based-like-defgroup-event-archetypes-miracle.md",
+      "category": "pseudo",
+      "rationale": "Contains code-like DSL examples and non-integrated prototypes.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/historical/README.md",
+      "proposedTargetPath": "docs/history/README.md",
+      "category": "history",
+      "rationale": "Historical research context preserved for traceability.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/job-refactoring.md",
+      "proposedTargetPath": "docs/history/notes/job-refactoring.md",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/planning/2025-01-15-mvp.md",
+      "proposedTargetPath": "docs/planning/2025-01-15-mvp.md",
+      "category": "planning",
+      "rationale": "Roadmaps and execution planning documents.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/planning/2026-01-11-a-good-place-to-start-prototyping-the-smallest-slice-that-pr.md",
+      "proposedTargetPath": "docs/planning/2026-01-11-a-good-place-to-start-prototyping-the-smallest-slice-that-pr.md",
+      "category": "planning",
+      "rationale": "Roadmaps and execution planning documents.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/planning/2026-01-11-prototype-plan-clojure-backend-web-view-the-myth-engine-in-a.md",
+      "proposedTargetPath": "docs/planning/2026-01-11-prototype-plan-clojure-backend-web-view-the-myth-engine-in-a.md",
+      "category": "planning",
+      "rationale": "Roadmaps and execution planning documents.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/planning/2026-01-15-roadmap.md",
+      "proposedTargetPath": "docs/planning/2026-01-15-roadmap.md",
+      "category": "planning",
+      "rationale": "Roadmaps and execution planning documents.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/planning/2026-01-19-milestone3-3.5-progress-review.md",
+      "proposedTargetPath": "docs/planning/2026-01-19-milestone3-3.5-progress-review.md",
+      "category": "planning",
+      "rationale": "Roadmaps and execution planning documents.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/planning/README.md",
+      "proposedTargetPath": "docs/planning/README.md",
+      "category": "planning",
+      "rationale": "Roadmaps and execution planning documents.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/notes/world-schema.md",
+      "proposedTargetPath": "docs/history/notes/world-schema.md",
+      "category": "history",
+      "rationale": "Dated operational note kept as historical change record.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/005-aker-scheduler.md",
+      "proposedTargetPath": "docs/planning/tasks/005-aker-scheduler.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/006-sim-spatial.md",
+      "proposedTargetPath": "docs/planning/tasks/006-sim-spatial.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/007-sim-agents.md",
+      "proposedTargetPath": "docs/planning/tasks/007-sim-agents.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/008-sim-institutions.md",
+      "proposedTargetPath": "docs/planning/tasks/008-sim-institutions.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/009-events-runtime.md",
+      "proposedTargetPath": "docs/planning/tasks/009-events-runtime.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/010-world-snapshot.md",
+      "proposedTargetPath": "docs/planning/tasks/010-world-snapshot.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/011-tick-engine.md",
+      "proposedTargetPath": "docs/planning/tasks/011-tick-engine.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "docs/tasks/README.md",
+      "proposedTargetPath": "docs/planning/tasks/README.md",
+      "category": "planning",
+      "rationale": "Task breakdowns and implementation sequencing guidance.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2025-01-20-speech-bubbles-and-social-sounds.md",
+      "proposedTargetPath": "docs/planning/spec/2025-01-20-speech-bubbles-and-social-sounds.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2025-01-21-ui-navigation-ollama-test.md",
+      "proposedTargetPath": "docs/planning/spec/2025-01-21-ui-navigation-ollama-test.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2025-01-21-unique-agent-voices.md",
+      "proposedTargetPath": "docs/planning/spec/2025-01-21-unique-agent-voices.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-13-backend-coverage.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-13-backend-coverage.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-13-backend-tests.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-13-backend-tests.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-13-rimworld-aligned-model.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-13-rimworld-aligned-model.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-14-docker-compose.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-14-docker-compose.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-backend-coverage-push.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-15-backend-coverage-push.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-backend-integration-tests.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-15-backend-integration-tests.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-backend-tests-review.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-15-backend-tests-review.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-champion-agency.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-15-champion-agency.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-core-loop.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-15-core-loop.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-gates-of-aker-roadmap.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-15-gates-of-aker-roadmap.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-myth-engine.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-15-myth-engine.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-15-semantic-packets.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-15-semantic-packets.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-16-compose-e2e-tests.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-16-compose-e2e-tests.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-16-docker-compose-setup.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-16-docker-compose-setup.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-17-milestone2-walls-pathing-build-ghosts.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-17-milestone2-walls-pathing-build-ghosts.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-17-milestone3-colony-core.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-17-milestone3-colony-core.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-17-next-sim-step.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-17-next-sim-step.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-18-ecs-integration.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-18-ecs-integration.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-18-ecs-migration.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-18-ecs-migration.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-18-pathing-logging.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-18-pathing-logging.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-agent-idle-jobs.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-agent-idle-jobs.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-building-palette.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-building-palette.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-health-indicator.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-health-indicator.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-job-provider-recipe-loop.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-job-provider-recipe-loop.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-logging-improvements.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-logging-improvements.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-milestone3-facets.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-milestone3-facets.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-milestone3-lifecycle.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-milestone3-lifecycle.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-shrine-job-queue.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-shrine-job-queue.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-19-sleep-hunger-time-ui.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-19-sleep-hunger-time-ui.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-agent-fire-creation-mood.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-agent-fire-creation-mood.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-backend-code-review.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-20-backend-code-review.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-civic-growth-scribes.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-civic-growth-scribes.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-combat-hunting-factions.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-combat-hunting-factions.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-ecs-biome-rendering.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-ecs-biome-rendering.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-ecs-spec.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-ecs-spec.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-factions-viewer.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-factions-viewer.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-farm-job-building.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-farm-job-building.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-food-hunting-mythology.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-food-hunting-mythology.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-fruit-reduction.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-fruit-reduction.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-palette-stockpile-totals.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-palette-stockpile-totals.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-reproduction.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-reproduction.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-roads-happy-rest-stats.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-roads-happy-rest-stats.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-sim-stuck-first-tick.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-sim-stuck-first-tick.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-social-abstract-layer.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-social-abstract-layer.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-social-interactions.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-social-interactions.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-social-visualization.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-social-visualization.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-tile-selection-standardization.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-tile-selection-standardization.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-tiles-blank.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-tiles-blank.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-20-tree-fruit-growth-tuning.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-20-tree-fruit-growth-tuning.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-aggressive-civilization-building.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-aggressive-civilization-building.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-heat-diversity-summary.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-heat-diversity-summary.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-hunting-improvements.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-hunting-improvements.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-job-loop-verification.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-job-loop-verification.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-los-and-delta-updates-summary.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-los-and-delta-updates-summary.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-los-and-delta-updates.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-los-and-delta-updates.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-milestone3-3.5-next-steps.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-milestone3-3.5-next-steps.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-myth-panel.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-myth-panel.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-ollama-cold-start-improvements.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-ollama-cold-start-improvements.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-reproduction-constraints.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-reproduction-constraints.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-trace-mythology-system.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-trace-mythology-system.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-unified-cultural-panel.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-unified-cultural-panel.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-21-wildlife-ecosystem.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-21-wildlife-ecosystem.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-bun-migration.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-22-bun-migration.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-ecs-migration-status.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-22-ecs-migration-status.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-milestone3.5-assessment.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-22-milestone3.5-assessment.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-milestone3.5-completion-report.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-22-milestone3.5-completion-report.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-milestone3.5-final-report.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-22-milestone3.5-final-report.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-milestone3.5-frontend-status.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-22-milestone3.5-frontend-status.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-milestone3.5-integration-progress.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-22-milestone3.5-integration-progress.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-22-milestone3.5-status.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-22-milestone3.5-status.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-23-backend-ecs-analysis.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-23-backend-ecs-analysis.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-23-visibility-bug-fix.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-23-visibility-bug-fix.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-24-backend-coverage-analysis.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-24-backend-coverage-analysis.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-24-ecs-component-fix.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-24-ecs-component-fix.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-25-initial-buildings-jobs-fix.md",
+      "proposedTargetPath": "docs/planning/spec/2026-01-25-initial-buildings-jobs-fix.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/2026-01-25-milestone3.5-completion.md",
+      "proposedTargetPath": "docs/decisions/spec/2026-01-25-milestone3.5-completion.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/README.md",
+      "proposedTargetPath": "docs/planning/spec/README.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/add-configurable-tree-count.md",
+      "proposedTargetPath": "docs/planning/spec/add-configurable-tree-count.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-code-review-2026-01-22.md",
+      "proposedTargetPath": "docs/decisions/spec/backend-code-review-2026-01-22.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/ARCH-001-split-jobs-clj.md",
+      "proposedTargetPath": "docs/planning/backend-issues/ARCH-001-split-jobs-clj.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/ARCH-002-add-docstrings.md",
+      "proposedTargetPath": "docs/planning/backend-issues/ARCH-002-add-docstrings.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/CRITICAL-001-implement-query-need-axis.md",
+      "proposedTargetPath": "docs/planning/backend-issues/CRITICAL-001-implement-query-need-axis.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/INDEX.md",
+      "proposedTargetPath": "docs/planning/backend-issues/INDEX.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/LOGGING-001-replace-println.md",
+      "proposedTargetPath": "docs/planning/backend-issues/LOGGING-001-replace-println.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/PERF-001-remove-unused-bfs.md",
+      "proposedTargetPath": "docs/planning/backend-issues/PERF-001-remove-unused-bfs.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/SECURITY-001-input-validation.md",
+      "proposedTargetPath": "docs/planning/backend-issues/SECURITY-001-input-validation.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/STYLE-001-magic-numbers.md",
+      "proposedTargetPath": "docs/planning/backend-issues/STYLE-001-magic-numbers.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/backend-issues/TEST-001-fix-test-runner.md",
+      "proposedTargetPath": "docs/planning/backend-issues/TEST-001-fix-test-runner.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/biomes.md",
+      "proposedTargetPath": "docs/planning/spec/biomes.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/colonist-combat-durability.md",
+      "proposedTargetPath": "docs/planning/spec/colonist-combat-durability.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/ecs-migration-plan.md",
+      "proposedTargetPath": "docs/planning/spec/ecs-migration-plan.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/fog-of-war.md",
+      "proposedTargetPath": "docs/planning/spec/fog-of-war.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/frontend-hex-map-fix.md",
+      "proposedTargetPath": "docs/planning/spec/frontend-hex-map-fix.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/frontend-hexmap-entity-camera-fix.md",
+      "proposedTargetPath": "docs/planning/spec/frontend-hexmap-entity-camera-fix.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/github-actions-ci.md",
+      "proposedTargetPath": "docs/planning/spec/github-actions-ci.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/issues/ecs-migration/001-phase-1-foundation.md",
+      "proposedTargetPath": "docs/planning/issues/ecs-migration/001-phase-1-foundation.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/issues/ecs-migration/002-phase-2-component-extraction.md",
+      "proposedTargetPath": "docs/planning/issues/ecs-migration/002-phase-2-component-extraction.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/issues/ecs-migration/003-phase-3-systems.md",
+      "proposedTargetPath": "docs/planning/issues/ecs-migration/003-phase-3-systems.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/issues/ecs-migration/004-phase-4-world-migration.md",
+      "proposedTargetPath": "docs/planning/issues/ecs-migration/004-phase-4-world-migration.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/issues/ecs-migration/005-phase-5-advanced-features.md",
+      "proposedTargetPath": "docs/planning/issues/ecs-migration/005-phase-5-advanced-features.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/issues/ecs-migration/006-phase-6-lod.md",
+      "proposedTargetPath": "docs/planning/issues/ecs-migration/006-phase-6-lod.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/issues/ecs-migration/README.md",
+      "proposedTargetPath": "docs/planning/issues/ecs-migration/README.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/labeling-system-implementation-summary.md",
+      "proposedTargetPath": "docs/decisions/spec/labeling-system-implementation-summary.md",
+      "category": "decisions",
+      "rationale": "Spec/report captures rationale, assessments, and decision context.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/labeling-system.md",
+      "proposedTargetPath": "docs/planning/spec/labeling-system.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/ollama-config.md",
+      "proposedTargetPath": "docs/planning/spec/ollama-config.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/test-coverage-improvement-plan.md",
+      "proposedTargetPath": "docs/planning/spec/test-coverage-improvement-plan.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/tree-fruit-dropping.md",
+      "proposedTargetPath": "docs/planning/spec/tree-fruit-dropping.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/tui-hex-view.md",
+      "proposedTargetPath": "docs/planning/spec/tui-hex-view.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/visibility-fix.md",
+      "proposedTargetPath": "docs/planning/spec/visibility-fix.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/visibility-system-fix.md",
+      "proposedTargetPath": "docs/planning/spec/visibility-system-fix.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    },
+    {
+      "sourcePath": "spec/visibility-system.md",
+      "proposedTargetPath": "docs/planning/spec/visibility-system.md",
+      "category": "planning",
+      "rationale": "Spec artifact defining intended work, milestones, or implementation plans.",
+      "inclusion": {
+        "decision": "include",
+        "reason": "Keyword hit within in-scope repo docs/spec/tasks and suitable for taxonomy migration."
+      }
+    }
+  ],
+  "external_imports": {
+    "deterministicMarker": "external_imports.v1",
+    "sourceScope": [
+      "/home/err/devel/docs/**"
+    ],
+    "notes": "External import staging only; no /home/err/devel/orgs/* repo docs allowed in this section.",
+    "candidates": [
+      {
+        "sourcePath": "/home/err/devel/docs/notes/fantasia/fantasia-core-game-mechanics.md",
+        "targetPath": "docs/design/imports/fantasia-core-game-mechanics.md",
+        "category": "design",
+        "decision": "include",
+        "rationale": "Defines champion/pantheon core loop and map/control mechanics aligned to Gates-of-Aker gameplay docs."
+      },
+      {
+        "sourcePath": "/home/err/devel/docs/notes/fantasia/fantasia-agency-faith-mechanics.md",
+        "targetPath": "docs/design/imports/fantasia-agency-faith-mechanics.md",
+        "category": "design",
+        "decision": "include",
+        "rationale": "Details agency and faith control constraints that directly inform day/night mode interaction design."
+      },
+      {
+        "sourcePath": "/home/err/devel/docs/notes/fantasia/fantasia-miracle-system.md",
+        "targetPath": "docs/design/imports/fantasia-miracle-system.md",
+        "category": "design",
+        "decision": "include",
+        "rationale": "Captures miracle verification/attribution mechanics relevant to pantheon power progression docs."
+      },
+      {
+        "sourcePath": "/home/err/devel/docs/notes/2026.02.10.00.36.56.md",
+        "targetPath": null,
+        "category": "history",
+        "decision": "exclude",
+        "rationale": "Creative lyric draft; not implementation-facing migration material."
+      },
+      {
+        "sourcePath": "/home/err/devel/docs/inbox/ready-for-code/gates-of-aker-design-spec/README.md",
+        "targetPath": null,
+        "category": "planning",
+        "decision": "exclude",
+        "rationale": "Appears to describe a separate instruction-layer project context, not this game-repo migration track."
+      }
+    ],
+    "counts": {
+      "include": 3,
+      "exclude": 2
+    }
+  },
+  "migration_execution": {
+    "lastRunUtc": "2026-02-10T07:28:19Z",
+    "movedCount": 154,
+    "copiedCount": 3,
+    "skippedCount": 0,
+    "exceptionCount": 3,
+    "exceptions": [
+      {
+        "type": "target-exists-different-content",
+        "sourcePath": "docs/notes/design/README.md",
+        "targetPath": "docs/design/README.md",
+        "detail": "Skipped move because destination exists with different content."
+      },
+      {
+        "type": "target-exists-different-content",
+        "sourcePath": "docs/notes/historical/README.md",
+        "targetPath": "docs/history/README.md",
+        "detail": "Skipped move because destination exists with different content."
+      },
+      {
+        "type": "target-exists-different-content",
+        "sourcePath": "docs/notes/planning/README.md",
+        "targetPath": "docs/planning/README.md",
+        "detail": "Skipped move because destination exists with different content."
+      }
+    ]
+  }
+}

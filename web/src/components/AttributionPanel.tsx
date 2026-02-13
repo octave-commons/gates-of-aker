@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import type { CSSProperties } from "react";
 
 type AttributionPanelProps = {
-  data: any;
+  data: unknown;
   style?: CSSProperties;
 };
 
@@ -23,14 +23,14 @@ export function AttributionPanel({ data, style = {} }: AttributionPanelProps) {
     });
   };
 
-  const renderTree = (data: any, path: string = "root", level: number = 0) => {
+  const renderTree = (data: unknown, path: string = "root", level: number = 0) => {
     const isObject = data !== null && typeof data === "object";
     const isArray = Array.isArray(data);
     const hasChildren = isObject && Object.keys(data).length > 0;
     const isExpanded = expandedPaths.has(path);
 
     if (!hasChildren) {
-      const formatValue = (value: any): string => {
+      const formatValue = (value: unknown): string => {
         if (value === null) return "null";
         if (value === undefined) return "undefined";
         if (typeof value === "string") return `"${value}"`;
@@ -61,14 +61,18 @@ export function AttributionPanel({ data, style = {} }: AttributionPanelProps) {
 
     return (
       <div key={path}>
-        <div 
+        <button
+          type="button"
           style={{ 
             paddingLeft: level * 16, 
             minHeight: 24,
             cursor: "pointer",
             backgroundColor: isExpanded ? "#f0f0f0" : "transparent",
             borderRadius: 4,
-            padding: "2px 4px"
+            padding: "2px 4px",
+            width: "100%",
+            textAlign: "left",
+            border: "none",
           }}
           onClick={() => toggleExpanded(path)}
         >
@@ -81,7 +85,7 @@ export function AttributionPanel({ data, style = {} }: AttributionPanelProps) {
           <span style={{ color: "#333", fontStyle: "italic" }}>
             {isArray ? `Array[${data.length}]` : `Object{${Object.keys(data).length}}`}
           </span>
-        </div>
+        </button>
         
         {isExpanded && (
           <div>
@@ -94,16 +98,18 @@ export function AttributionPanel({ data, style = {} }: AttributionPanelProps) {
     );
   };
 
-  const getStats = (data: any): { keys: number; depth: number; totalNodes: number } => {
+  const getStats = (data: unknown): { keys: number; depth: number; totalNodes: number } => {
     let totalNodes = 0;
     let maxDepth = 0;
 
-    const traverse = (obj: any, depth: number = 0) => {
+    const traverse = (obj: unknown, depth: number = 0) => {
       maxDepth = Math.max(maxDepth, depth);
       totalNodes++;
       
       if (obj !== null && typeof obj === "object") {
-        Object.values(obj).forEach(value => traverse(value, depth + 1));
+        Object.values(obj).forEach((value) => {
+          traverse(value, depth + 1);
+        });
       }
     };
 
@@ -118,14 +124,21 @@ export function AttributionPanel({ data, style = {} }: AttributionPanelProps) {
 
   return (
     <div className="attribution-panel" style={style}>
-      <div 
+      <button
+        type="button"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           cursor: "pointer",
           padding: "8px 0",
-          borderBottom: isCollapsed ? "1px solid #ddd" : "none"
+          borderBottom: isCollapsed ? "1px solid #ddd" : "none",
+          borderTop: "none",
+          borderLeft: "none",
+          borderRight: "none",
+          background: "transparent",
+          width: "100%",
+          textAlign: "left",
         }}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
@@ -138,7 +151,7 @@ export function AttributionPanel({ data, style = {} }: AttributionPanelProps) {
         }}>
           ▼
         </span>
-      </div>
+      </button>
       
       {!isCollapsed && (
         <>

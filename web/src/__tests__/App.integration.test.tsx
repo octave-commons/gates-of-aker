@@ -1,9 +1,9 @@
+import '@testing-library/jest-dom/vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from '../App';
-import { WSClient, WSMessage } from '../ws';
+import { WSMessage } from '../ws';
 import * as audio from '../audio';
 
 const mockWs = {
@@ -12,6 +12,10 @@ const mockWs = {
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
   readyState: 1,
+  onopen: null as (() => void) | null,
+  onclose: null as (() => void) | null,
+  onerror: null as (() => void) | null,
+  onmessage: null as ((event: MessageEvent) => void) | null,
 };
 
 vi.mock('../audio', () => ({
@@ -41,6 +45,10 @@ const renderAppAtSimRoute = () => {
 describe('App Core Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWs.onopen = null;
+    mockWs.onclose = null;
+    mockWs.onerror = null;
+    mockWs.onmessage = null;
     global.WebSocket = vi.fn(() => mockWs) as any;
     (global.fetch as any).mockResolvedValue({
       ok: true,
@@ -67,6 +75,111 @@ describe('App Core Integration Tests', () => {
       await waitFor(() => {
         expect(global.WebSocket).toHaveBeenCalled();
       }, { timeout: 3000 });
+    });
+
+    it('keeps a single websocket and handles social_interaction after state updates', async () => {
+      renderAppAtSimRoute();
+
+      await waitFor(() => {
+        expect(global.WebSocket).toHaveBeenCalledTimes(1);
+        expect(mockWs.onmessage).toBeTypeOf('function');
+      });
+
+      const hello: WSMessage = {
+        op: 'hello',
+        state: {
+          tick: 1,
+          map: { kind: 'hex', layout: 'pointy', bounds: { shape: 'rect', w: 3, h: 3, origin: [0, 0] } },
+          agents: [
+            { id: 1, role: 'priest', pos: [0, 0], status: { alive: true }, needs: {}, recall: {} },
+            { id: 2, role: 'knight', pos: [1, 0], status: { alive: true }, needs: {}, recall: {} },
+          ],
+          tiles: {
+            '0,0': { terrain: 'ground' },
+            '1,0': { terrain: 'ground' },
+          },
+        } as any,
+      };
+
+      act(() => {
+        mockWs.onmessage?.(new MessageEvent('message', { data: JSON.stringify(hello) }));
+      });
+
+      const social: WSMessage = {
+        op: 'social_interaction',
+        data: {
+          agent_1_id: 1,
+          agent_2_id: 2,
+          interaction_type: 'ritual',
+        },
+      } as any;
+
+      act(() => {
+        mockWs.onmessage?.(new MessageEvent('message', { data: JSON.stringify(social) }));
+      });
+
+      expect(audio.playToneSequenceWithVoice).toHaveBeenCalledTimes(2);
+      expect(global.WebSocket).toHaveBeenCalledTimes(1);
+    });
+
+    it('updates status bar on websocket close and reopen', async () => {
+      renderAppAtSimRoute();
+
+      await waitFor(() => {
+        expect(mockWs.onclose).toBeTypeOf('function');
+        expect(mockWs.onopen).toBeTypeOf('function');
+      });
+
+      act(() => {
+        mockWs.onclose?.();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/WS:/)).toHaveTextContent('WS: closed');
+      });
+
+      act(() => {
+        mockWs.onopen?.();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/WS:/)).toHaveTextContent('WS: open');
+      });
+    });
+
+    it('shows a dismissible websocket error alert', async () => {
+      renderAppAtSimRoute();
+
+      await waitFor(() => {
+        expect(mockWs.onerror).toBeTypeOf('function');
+      });
+
+      act(() => {
+        mockWs.onerror?.();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('WebSocket connection error');
+      });
+
+      const initialConnections = (global.WebSocket as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+
+      act(() => {
+        screen.getByRole('button', { name: 'Retry now' }).click();
+      });
+
+      await waitFor(() => {
+        const currentConnections = (global.WebSocket as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+        expect(currentConnections).toBeGreaterThan(initialConnections);
+      });
+
+      act(() => {
+        screen.getByRole('button', { name: 'Dismiss' }).click();
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      });
     });
   });
 

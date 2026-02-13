@@ -1,7 +1,7 @@
 import React from "react";
 
   type WorldInfoPanelProps = {
-    calendar?: Record<string, any> | null;
+    calendar?: Record<string, unknown> | null;
   };
 
   const titleCase = (value: string | null | undefined) => {
@@ -21,20 +21,26 @@ import React from "react";
    return `${Math.round(value * 100)}%`;
  };
  
- const formatValue = (value?: number) => {
-   if (typeof value !== "number" || Number.isNaN(value)) return "--";
-   return value.toFixed(2);
- };
+  const formatValue = (value?: number) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return "--";
+    return value.toFixed(2);
+  };
+
+  const asString = (value: unknown): string | undefined =>
+    typeof value === "string" ? value : undefined;
+
+  const asNumber = (value: unknown): number | undefined =>
+    typeof value === "number" ? value : undefined;
  
  export function WorldInfoPanel({ calendar }: WorldInfoPanelProps) {
-   const timeOfDay = titleCase(calendar?.["time-of-day"] ?? calendar?.timeOfDay);
-   const season = titleCase(calendar?.season);
-   const day = calendar?.day ?? "--";
-   const year = calendar?.year ?? "--";
-   const hour = formatHour(calendar?.hour);
-   const temperature = formatValue(calendar?.temperature);
-   const daylight = formatPercent(calendar?.daylight);
-   const coldSnap = formatPercent(calendar?.["cold-snap"] ?? calendar?.coldSnap);
+    const timeOfDay = titleCase(asString(calendar?.["time-of-day"] ?? calendar?.timeOfDay));
+    const season = titleCase(asString(calendar?.season));
+    const day = asNumber(calendar?.day) ?? "--";
+    const year = asNumber(calendar?.year) ?? "--";
+    const hour = formatHour(asNumber(calendar?.hour));
+    const temperature = formatValue(asNumber(calendar?.temperature));
+    const daylight = formatPercent(asNumber(calendar?.daylight));
+    const coldSnap = formatPercent(asNumber(calendar?.["cold-snap"] ?? calendar?.coldSnap));
  
    return (
      <div style={{ padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>

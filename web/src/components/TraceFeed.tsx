@@ -2,11 +2,47 @@ import { memo } from "react";
 import { Trace } from "../types";
 import { fmt } from "../utils";
 
+type TracePacket = {
+  intent?: string;
+  facets?: string[] | string;
+  "claim-hint"?: string;
+};
+
+type TraceSpreadEntry = {
+  from?: string | number;
+  to?: string | number;
+  w?: number | string;
+  delta?: number | string;
+};
+
+type TraceEventRecall = {
+  "event-type"?: string;
+  delta?: number | string;
+  new?: number | string;
+};
+
+type TraceMention = {
+  "event-type"?: string;
+  claim?: string;
+  weight?: number | string;
+};
+
+type DisplayTrace = Trace & {
+  "trace/id"?: string | number;
+  tick?: number;
+  speaker?: string;
+  listener?: string;
+  packet?: TracePacket;
+  spread?: TraceSpreadEntry[];
+  "event-recall"?: TraceEventRecall;
+  mention?: TraceMention;
+};
+
 type TraceFeedProps = {
   traces: Trace[];
 };
 
-const TraceCard = memo(function TraceCard({ trace, idx }: { trace: Trace; idx: number }) {
+const TraceCard = memo(function TraceCard({ trace, idx }: { trace: DisplayTrace; idx: number }) {
   if (!trace) return null;
 
   try {
@@ -39,8 +75,8 @@ const TraceCard = memo(function TraceCard({ trace, idx }: { trace: Trace; idx: n
         <div style={{ marginTop: 8 }}>
           <strong>spread</strong>
           <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
-            {(trace.spread ?? []).slice(0, 12).map((entry: any, i: number) => (
-              <div key={i} style={{ fontFamily: "monospace", fontSize: 12 }}>
+            {(trace.spread ?? []).slice(0, 12).map((entry: TraceSpreadEntry, i: number) => (
+              <div key={`${String(entry.from)}-${String(entry.to)}-${String(entry.delta)}-${i}`} style={{ fontFamily: "monospace", fontSize: 12 }}>
                 {String(entry.from)} → {String(entry.to)} w={fmt(entry.w)} Δ={fmt(entry.delta)}
               </div>
             ))}
@@ -85,7 +121,7 @@ export function TraceFeed({ traces }: TraceFeedProps) {
       </div>
       <div style={{ display: "grid", gap: 10 }}>
         {[...traces].reverse().map((trace: Trace, idx) => (
-          <TraceCard key={trace["trace/id"] ?? idx} trace={trace} idx={idx} />
+          <TraceCard key={(trace as DisplayTrace)["trace/id"] ?? idx} trace={trace as DisplayTrace} idx={idx} />
         ))}
       </div>
     </div>
