@@ -20,6 +20,8 @@ import {
   VisibilityControlPanel,
   MemoryOverlay,
   FacetControls,
+  ForkTalesPanel,
+  ForkTalesPage,
 } from "./components";
 import { TraceFeed } from "./components/TraceFeed";
 import { Agent, Snapshot, hasPos } from "./types";
@@ -418,6 +420,10 @@ export function App() {
     navigate("/ollama-test");
   }, [navigate]);
 
+  const handleForkTales = useCallback(() => {
+    navigate("/fork-tales");
+  }, [navigate]);
+
   const handleBackToMenu = useCallback(() => {
     navigate("/menu");
   }, [navigate]);
@@ -546,8 +552,9 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<SplashScreen onComplete={handleSplashComplete} />} />
-      <Route path="/menu" element={<MainMenu onNewGame={handleNewGame} onOllamaTest={handleOllamaTest} />} />
+      <Route path="/menu" element={<MainMenu onNewGame={handleNewGame} onOllamaTest={handleOllamaTest} onForkTales={handleForkTales} />} />
       <Route path="/ollama-test" element={<OllamaTestPage onBack={handleBackToMenu} />} />
+      <Route path="/fork-tales" element={<ForkTalesPage onBack={handleBackToMenu} />} />
       <Route path="/sim" element={(
     <div
       style={{ display: "grid", gridTemplateColumns: "1fr 320px 320px", overflow: "hidden", margin: 0 }}
@@ -763,6 +770,8 @@ export function App() {
             selectedVisibilityAgentId={selectedVisibilityAgentId}
             onSelectVisibilityAgent={setSelectedVisibilityAgentId}
           />
+
+          <ForkTalesPanel />
 
           <div style={{ marginTop: 12, padding: 12, border: "1px solid #aaa", borderRadius: 8 }}>
            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>World Size</h3>

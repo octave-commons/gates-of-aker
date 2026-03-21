@@ -100,25 +100,31 @@
             outs' (conj outs snapshot)]
         (recur (inc i) outs')))))
 
+(def ^:private initial-fork-tales-roster
+  [{:name "Duct" :role :priest :offset [0 0]}
+   {:name "Null" :role :knight :offset [1 0]}
+   {:name "Patch" :role :peasant :offset [-1 0]}
+   {:name "Sei" :role :peasant :offset [0 1]}
+   {:name "莉津律宗利都" :role :peasant :offset [0 -1]}])
+
 (defn spawn-initial-agents!
-  "Spawn initial agents near map center."
+  "Spawn initial Fork Tales agents near map center."
   [ecs-world bounds]
   (let [center-q (if (= (:shape bounds) :rect)
                    (+ (:origin-q bounds 0) (quot (:w bounds) 2))
                    (:origin-q bounds 0))
         center-r (if (= (:shape bounds) :rect)
                    (+ (:origin-r bounds 0) (quot (:h bounds) 2))
-                   (:origin-r bounds 0))
-        spawn-radius 10
-        rng #(rand-int spawn-radius)]
-    (println "[ECS] Spawning initial agents near center:" center-q center-r)
-    (let [[_ ecs-world1] (ecs-core/create-agent ecs-world nil center-q center-r :priest)
-          [_ ecs-world2] (ecs-core/create-agent ecs-world1 nil (+ center-q (rng)) (+ center-r (rng)) :knight)
-          [_ ecs-world3] (ecs-core/create-agent ecs-world2 nil (+ center-q (rng)) (+ center-r (rng)) :peasant)
-          [_ ecs-world4] (ecs-core/create-agent ecs-world3 nil (+ center-q (rng)) (+ center-r (rng)) :peasant)
-          [_ ecs-world5] (ecs-core/create-agent ecs-world4 nil (+ center-q (rng)) (+ center-r (rng)) :peasant)]
-      (println "[ECS] Spawned 5 initial agents")
-       ecs-world5)))
+                   (:origin-r bounds 0))]
+    (println "[ECS] Spawning initial Fork Tales agents near center:" center-q center-r)
+    (let [spawned-world (reduce (fn [world {:keys [name role offset]}]
+                                  (let [[dq dr] offset
+                                        [_ next-world] (ecs-core/create-agent world nil (+ center-q dq) (+ center-r dr) role {:name name})]
+                                    next-world))
+                                ecs-world
+                                initial-fork-tales-roster)]
+      (println "[ECS] Spawned" (count initial-fork-tales-roster) "initial agents")
+      spawned-world)))
 
 (defn spawn-initial-buildings!
   "Spawn initial buildings with job queues near map center.

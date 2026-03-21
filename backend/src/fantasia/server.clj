@@ -9,6 +9,7 @@
       [fantasia.sim.embeddings :as embeddings]
       [fantasia.sim.gates.runtime :as gates-runtime]
       [fantasia.sim.scribes :as scribes]
+      [fantasia.story.fork-tales :as fork-tales]
       [nrepl.server :as nrepl]
       [org.httpkit.server :as http]
       [reitit.ring :as ring]))
@@ -17,11 +18,17 @@
   "Create a JSON HTTP response."
   ([body]
    {:status 200
-    :headers {"Content-Type" "application/json"}
+    :headers {"Content-Type" "application/json"
+              "Access-Control-Allow-Origin" "*"
+              "Access-Control-Allow-Headers" "Content-Type"
+              "Access-Control-Allow-Methods" "GET, POST, OPTIONS"}
     :body (json/generate-string body)})
   ([status body]
    {:status status
-    :headers {"Content-Type" "application/json"}
+    :headers {"Content-Type" "application/json"
+              "Access-Control-Allow-Origin" "*"
+              "Access-Control-Allow-Headers" "Content-Type"
+              "Access-Control-Allow-Methods" "GET, POST, OPTIONS"}
     :body (json/generate-string body)}))
 
 (defn read-json-body
@@ -138,6 +145,27 @@
     (if (:success result)
       (json-resp 200 {:connected true :latency_ms latency :model ollama-model})
       (json-resp 200 {:connected false :latency_ms latency :model ollama-model :error (:error result)}))))
+
+(defn handle-fork-tales-status []
+  (json-resp 200 (fork-tales/storyteller-status)))
+
+(defn handle-fork-tales-history []
+  (json-resp 200 (fork-tales/chapter-history)))
+
+(defn handle-fork-tales-chapter [req]
+  (let [chapter-number (get-in req [:path-params :chapter-number])
+        chapter (fork-tales/chapter-detail chapter-number)]
+    (if chapter
+      (json-resp 200 chapter)
+      (json-resp 404 {:ok false :error "Chapter not found" :chapter_number chapter-number}))))
+
+(defn handle-fork-tales-continue [req]
+  (let [body (or (read-json-body req) {})
+        state (sim/get-state)
+        ecs-world (sim/get-ecs-world)
+        snapshot (adapter/ecs->snapshot ecs-world state)
+        result (fork-tales/generate-next-chapter! snapshot body)]
+    (json-resp (if (:ok result) 200 500) result)))
 
 (defn get-visible-tiles
    "Return only visible or revealed tiles from state.
@@ -412,10 +440,26 @@
         ["/api/ollama/test"
          {:get (fn [_] (handle-ollama-test))
           :post (fn [_] (handle-ollama-test))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
+
+        ["/api/fork-tales/status"
+         {:get (fn [_] (handle-fork-tales-status))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
+
+        ["/api/fork-tales/history"
+         {:get (fn [_] (handle-fork-tales-history))
+          :options (fn [_] (json-resp 200 {:ok true}))}]
+
+        ["/api/fork-tales/history/:chapter-number"
+         {:get handle-fork-tales-chapter
+          :options (fn [_] (json-resp 200 {:ok true}))}]
+
+        ["/api/fork-tales/continue"
+         {:post handle-fork-tales-continue
           :options (fn [_] (json-resp 200 {:ok true}))}]])))
 
 (defn -main [& _]
-  (let [port 3000]
+  (let [port (or (some-> (System/getenv "PORT") Integer/parseInt) 3000)]
     (println (str "Fantasia backend listening on http://localhost:" port))
     (start-nrepl!)
     (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable stop-nrepl!))

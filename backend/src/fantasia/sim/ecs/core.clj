@@ -60,7 +60,7 @@
    ([system id q r role opts]
        (let [system (or system (create-ecs-world))  ; Guard against nil system
              entity-id (or id (java.util.UUID/randomUUID))
-             {:keys [warmth food sleep wood needs status inventory frontier recall path job-id]} opts
+             {:keys [name warmth food sleep wood needs status inventory frontier recall path job-id]} opts
              needs' (or needs (c/->Needs (or warmth 0.8) (or food 0.7) (or sleep 0.6) 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
              status' (or status (c/->AgentStatus true false true nil))
              inventory' (or inventory (c/->PersonalInventory (or wood 0) (or food 0) {}))
@@ -68,7 +68,7 @@
              recall' (or recall (c/->Recall {}))
              base-system (-> system
                             (be/add-entity entity-id)
-                            (be/add-component entity-id (c/->AgentInfo entity-id (str "agent-" entity-id)))
+                            (be/add-component entity-id (c/->AgentInfo entity-id (or name (str "agent-" entity-id))))
                             (be/add-component entity-id (c/->Position q r))
                             (be/add-component entity-id (c/->Role role))
                             (be/add-component entity-id needs')

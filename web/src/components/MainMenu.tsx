@@ -3,13 +3,15 @@ import React, { useState, useEffect } from "react";
 interface MainMenuProps {
   onNewGame: () => void;
   onOllamaTest: () => void;
+  onForkTales: () => void;
 }
 
-export function MainMenu({ onNewGame, onOllamaTest }: MainMenuProps) {
+export function MainMenu({ onNewGame, onOllamaTest, onForkTales }: MainMenuProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const menuItems = [
     { id: "newgame", label: "New Game", action: onNewGame },
+    { id: "fork-tales", label: "Fork Tales", action: onForkTales },
     { id: "ollama", label: "Ollama Test", action: onOllamaTest },
     { id: "settings", label: "Settings", action: () => {} },
     { id: "credits", label: "Credits", action: () => {} },
