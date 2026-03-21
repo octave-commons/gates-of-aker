@@ -24,7 +24,7 @@ Gates of Aker now has a dedicated Fork Tales continuation path in the backend.
 
 ### Default paths
 
-- Fork Tales narrative directory default: `../../../../vaults/fork_tales/narrative` (relative to `backend/`)
+- Fork Tales narrative directory default: `../../../../fork_tales/narrative` (relative to `backend/`)
 - Myth memory default: `../.myth/myths.jsonl` (relative to `backend/`)
 
 ### Frontend control surface
@@ -52,18 +52,29 @@ Gates of Aker now has a dedicated Fork Tales continuation path in the backend.
 
 - Backend now respects `PORT` from the environment instead of assuming `3000` only.
 - All JSON responses now emit CORS headers so the Vite frontend can talk to a backend on a different local port.
+- Storyteller default model changed from Gemini to `mistral-large-3:675b`.
+- Added env override support for non-Gemini storyteller selection:
+  - `STORYTELLER_MODEL`
+  - `FORK_TALES_MODEL`
+- Added deployable base-path support for the frontend:
+  - Vite `base` now honors `VITE_BASE_PATH`
+  - React Router now uses `import.meta.env.BASE_URL` as basename
 - Current live local deploy was started with:
   - backend: `http://127.0.0.1:3300`
   - frontend: `http://127.0.0.1:5173/fork-tales`
-- PM2 process names:
-  - `gates-backend`
-  - `gates-frontend`
+- Current live node deploy is on the `ussy.promethean.rest` node.
+- Path-based deploy still exists, but the dedicated host is now the correct operator surface:
+  - app: `https://gates.ussy.promethean.rest/fork-tales`
+  - API: `https://gates.ussy.promethean.rest/api/fork-tales/status`
+- Remote PM2 process names:
+  - `gates-aker-backend`
+  - `gates-aker-preview`
 
 ### Verification
 
 - Backend test suite: `cd backend && clojure -X:test`
 - Frontend panel test: `npm test --prefix web -- src/components/__tests__/ForkTalesPanel.test.tsx`
 - Frontend build: `npm run build --prefix web`
-- Manual dry run against real proxy succeeded and resolved the next chapter path under `devel/vaults/fork_tales/narrative/` without writing.
+- Manual dry run against real proxy succeeded and resolved the next chapter path under `devel/orgs/octave-commons/fork_tales/narrative/` without writing.
 - Browser verification used a dedicated preview on `http://127.0.0.1:4173/fork-tales` with screenshot artifact `/tmp/gates-fork-tales-page-verified.png`.
 - Live deploy verification now also succeeded on `http://127.0.0.1:5173/fork-tales` against backend `http://127.0.0.1:3300`, with screenshot artifact `/tmp/gates-fork-tales-live-deploy.png`.

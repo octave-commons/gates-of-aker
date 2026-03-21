@@ -27,7 +27,7 @@
     :timeout-ms 90000
     :context-chapters 4
     :context-chars 2400
-    :narrative-dir "../../../../vaults/fork_tales/narrative"
+    :narrative-dir "../../../../fork_tales/narrative"
     :myths-path "../.myth/myths.jsonl"
     :character-roster ["Duct" "Null" "Patch" "Sei" "莉津律宗利都" "Rin" "Truth" "Axiom" "Cephalon"]}})
 
@@ -105,7 +105,7 @@
                             (System/getenv "FORK_TALES_MODEL")
                             %
                             "mistral-large-3:675b"))
-        (update :narrative-dir #(or % (System/getenv "FORK_TALES_NARRATIVE_DIR") "../../../../vaults/fork_tales/narrative"))
+        (update :narrative-dir #(or % (System/getenv "FORK_TALES_NARRATIVE_DIR") "../../../../fork_tales/narrative"))
         (update :myths-path #(or % (System/getenv "FORK_TALES_MYTHS_PATH") "../.myth/myths.jsonl"))
         (update :context-chapters #(or % 4))
         (update :context-chars #(or % 2400))

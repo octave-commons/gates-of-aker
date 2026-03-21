@@ -12,13 +12,13 @@ Estimated-Effort: 12 hours
 
 ## Context
 
-The user wants Gates of Aker to act as a never-ending story engine for `devel/vaults/fork_tales/narrative/`.
+The user wants Gates of Aker to act as a never-ending story engine for `devel/orgs/octave-commons/fork_tales/narrative/`.
 
 Desired outcome:
 - Gates of Aker should be able to continue the Fork Tales narrative, not just emit short generic myths.
 - The existing Fork Tales cast should appear inside the game world as named agents/characters.
 - Story generation should use the proxy instance at `https://ussy.promethean.rest` via existing environment variables, not only localhost Ollama.
-- Generated chapters should be able to append directly into `devel/vaults/fork_tales/narrative/`.
+- Generated chapters should be able to append directly into `devel/orgs/octave-commons/fork_tales/narrative/`.
 
 ## Current State
 
@@ -42,7 +42,7 @@ Desired outcome:
 
 ### Phase 2 — Fork Tales corpus + chapter generation
 
-1. Read the existing Fork Tales chapters from `devel/vaults/fork_tales/narrative/`.
+1. Read the existing Fork Tales chapters from `devel/orgs/octave-commons/fork_tales/narrative/`.
 2. Compute the next chapter number and output filename deterministically.
 3. Build a prompt from:
    - recent chapters
@@ -128,7 +128,7 @@ Desired outcome:
 ## Definition of Done
 
 - A backend API can generate the next Fork Tales chapter from Gates of Aker state.
-- Generated chapters can be written into `devel/vaults/fork_tales/narrative/`.
+- Generated chapters can be written into `devel/orgs/octave-commons/fork_tales/narrative/`.
 - Story generation uses the proxy at `ussy.promethean.rest` via env-backed auth.
 - Initial world agents appear with Fork Tales names in snapshots/UI.
 - `.myth/myths.jsonl` receives a memory entry for each written chapter.
