@@ -23,6 +23,9 @@
 (defn- status-type []
   (be/get-component-type (c/->AgentStatus true false false nil)))
 
+(defn- death-type []
+  (be/get-component-type (c/->DeathState true nil nil)))
+
 (defn- job-assignment-type []
   (be/get-component-type (c/->JobAssignment nil 0.0)))
 
@@ -31,6 +34,8 @@
 
 (defn- needs-type []
   (be/get-component-type (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)))
+
+(declare alive-agent?)
 
 (defn- gather-active-jobs
   [ecs-world]
@@ -252,14 +257,14 @@
         assignment-t (job-assignment-type)
         pos-t (position-type)
         tick (:tick global-state 0)
-        candidates (when (empty? active-jobs)
-                     (->> (be/get-all-entities-with-component ecs-world role-t)
-                          (filter (fn [agent-id]
-                                    (let [status (be/get-component ecs-world agent-id status-t)
-                                          assignment (be/get-component ecs-world agent-id assignment-t)]
-                                      (and (or (nil? status) (:alive? status true))
-                                           (nil? assignment)
-                                           (:idle? (or status (c/->AgentStatus true false true nil)) true)))))))]
+         candidates (when (empty? active-jobs)
+                      (->> (be/get-all-entities-with-component ecs-world role-t)
+                           (filter (fn [agent-id]
+                                     (let [status (be/get-component ecs-world agent-id status-t)
+                                           assignment (be/get-component ecs-world agent-id assignment-t)]
+                                       (and (alive-agent? ecs-world agent-id)
+                                            (nil? assignment)
+                                            (:idle? (or status (c/->AgentStatus true false true nil)) true)))))))]
     (if (or (nil? queue-id) (empty? candidates))
       ecs-world
       (let [agent-id (first candidates)
@@ -396,7 +401,14 @@
            (and (active-need-job? job)
                 (= agent-id (:agent-id job))
                 (contains? job-types (:type job))))
-         (gather-active-jobs ecs-world))))
+          (gather-active-jobs ecs-world))))
+
+(defn- alive-agent?
+  [ecs-world agent-id]
+  (let [status (be/get-component ecs-world agent-id (status-type))
+        death-state (be/get-component ecs-world agent-id (death-type))]
+    (and (not= false (:alive? status true))
+         (not= false (:alive? death-state true)))))
 
 (defn- generate-tree-fruit-drops
   [ecs-world global-state]
@@ -492,13 +504,13 @@
         agent-ids (be/get-all-entities-with-component ecs-world needs-t)
         tick (:tick global-state 0)]
     (reduce (fn [acc agent-id]
-              (let [needs (be/get-component acc agent-id needs-t)
+            (let [needs (be/get-component acc agent-id needs-t)
                     pos-t (position-type)
                     pos (be/get-component acc agent-id pos-t)]
-                (if (and needs pos)
-                  (let [acc-after-food
-                        (if (and (< (:food needs) 0.3)
-                                 (not (has-active-need-job? acc agent-id #{:job/eat :job/gather-food})))
+                (if (and needs pos (alive-agent? acc agent-id))
+                   (let [acc-after-food
+                         (if (and (< (:food needs) 0.3)
+                                  (not (has-active-need-job? acc agent-id #{:job/eat :job/gather-food})))
                           (if-let [eat-job (maybe-create-eat-job acc tick agent-id [(:q pos) (:r pos)])]
                             (enqueue-need-job acc eat-job)
                             (let [job-id (str "need-food-" tick "-" agent-id)

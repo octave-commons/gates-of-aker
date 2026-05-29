@@ -52,6 +52,14 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
 }: ThoughtsPanelProps) {
   const displayAgents = collapsible && collapsed ? [] : agents.slice(0, 8);
 
+  const labelForAgent = (agent: Agent) => {
+    const rawName = (agent as Record<string, unknown>).name;
+    if (typeof rawName === "string" && rawName.trim().length > 0) return rawName;
+    const idValue = String(agent.id ?? "unknown");
+    const shortId = idValue.length > 12 ? `${idValue.slice(0, 8)}...` : idValue;
+    return `Agent ${shortId}`;
+  };
+
   const getThoughtColor = (needValue: number) => {
     if (needValue < 0.3) return "#f44336";
     if (needValue < 0.6) return "#FFC107";
@@ -168,7 +176,7 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
               borderRadius: 4
             }}>
               <div style={{ fontWeight: "bold", fontSize: 13, marginBottom: 4 }}>
-                Selected Agent #{selectedAgent.id}
+                Selected {labelForAgent(selectedAgent)}
               </div>
               <div style={{ fontSize: 12, color: "#555" }}>
                 {getThoughtText(selectedAgent)}
@@ -243,7 +251,7 @@ export const ThoughtsPanel = memo(function ThoughtsPanel({
                       marginBottom: 4
                     }}>
                       <span style={{ fontWeight: 600, color: "#333" }}>
-                        #{agent.id} {agent.role ?? ""}
+                        {labelForAgent(agent)} {agent.role ?? ""}
                       </span>
                       <span style={{
                         color: getUrgencyColor(agent),

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
 import { describe, expect, it } from "vitest";
 import { JobQueuePanel } from "../JobQueuePanel";
 
@@ -28,7 +29,7 @@ describe("JobQueuePanel", () => {
 
     expect(screen.getByText(/Job Queue \(1\)/)).toBeInTheDocument();
     expect(screen.getByText("Eat")).toBeInTheDocument();
-    expect(screen.getByText(/Agent #1/)).toBeInTheDocument();
+    expect(screen.getByText(/Agent 1/)).toBeInTheDocument();
     expect(screen.getByText(/\[5, 10\]/)).toBeInTheDocument();
   });
 
@@ -49,7 +50,7 @@ describe("JobQueuePanel", () => {
     render(<JobQueuePanel jobs={jobs} />);
 
     expect(screen.getByText("Sleep")).toBeInTheDocument();
-    expect(screen.getByText(/Agent #2/)).toBeInTheDocument();
+    expect(screen.getByText(/Agent 2/)).toBeInTheDocument();
   });
 
   it("displays job with chop-tree type", () => {

@@ -14,6 +14,9 @@
 (defn- status-type []
   (be/get-component-type (c/->AgentStatus true false false nil)))
 
+(defn- death-type []
+  (be/get-component-type (c/->DeathState true nil nil)))
+
 (defn- position-type []
   (be/get-component-type (c/->Position 0 0)))
 
@@ -205,7 +208,14 @@
 
 (defn- clear-assignment
   [ecs-world agent-id]
-  (be/remove-component ecs-world agent-id (job-assignment-type)))
+  (be/remove-component ecs-world agent-id (c/->JobAssignment nil 0.0)))
+
+(defn- alive-agent?
+  [ecs-world agent-id]
+  (let [status (be/get-component ecs-world agent-id (status-type))
+        death-state (be/get-component ecs-world agent-id (death-type))]
+    (and (not= false (:alive? status true))
+         (not= false (:alive? death-state true)))))
 
 (defn- target-pos
   [job]
@@ -271,7 +281,9 @@
         agents-with-jobs (be/get-all-entities-with-component ecs-world assignment-t)]
     (reduce (fn [world agent-id]
               (if-let [assignment (be/get-component world agent-id assignment-t)]
-                (process-job-for-agent world tick agent-id assignment)
+                (if (alive-agent? world agent-id)
+                  (process-job-for-agent world tick agent-id assignment)
+                  (clear-assignment world agent-id))
                 world))
             ecs-world
             agents-with-jobs)))

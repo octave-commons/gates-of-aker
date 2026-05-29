@@ -130,6 +130,8 @@
   [ecs-world attacker-id target-id tick]
   (let [role-instance (c/->Role :priest)
         role-type (get-component-type-instance role-instance)
+        status-instance (c/->AgentStatus true false true nil)
+        status-type (get-component-type-instance status-instance)
         needs-instance (c/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5)
         needs-type (get-component-type-instance needs-instance)
         
@@ -147,18 +149,20 @@
         new-health (max 0.0 (- current-health reduced-damage))
         
         new-needs (assoc target-needs :health new-health)
-        
+
         attacker-needs (be/get-component ecs-world attacker-id needs-type)
         attacker-needs' (if (= (:type attacker-role) :wolf)
                         (update attacker-needs :food + const/wolf-attack-food-gain)
-                        attacker-needs)]
+                        attacker-needs)
+        target-status (or (be/get-component ecs-world target-id status-type)
+                          status-instance)]
     
     (if (<= new-health 0.0)
       ;; Target died
       (let [death-state (c/->DeathState false :combat tick)
-            death-type (get-component-type-instance death-state)
             ecs-world' (-> ecs-world
                            (be/add-component target-id death-state)
+                           (be/add-component target-id (assoc target-status :alive? false :cause-of-death :combat :idle? false))
                            (be/add-component target-id new-needs)
                            (be/add-component attacker-id attacker-needs'))]
         {:world ecs-world'

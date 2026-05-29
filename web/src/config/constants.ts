@@ -38,7 +38,7 @@ export const CONFIG = {
       rocky: "#616161",
     },
     RESOURCE: {
-      tree: "#2e7d32",
+      tree: "#1b5e20",
       grain: "#ffeb3b",
       rock: "#757575",
       wood: "#8d6e63",

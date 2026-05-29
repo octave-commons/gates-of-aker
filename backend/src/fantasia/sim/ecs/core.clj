@@ -49,9 +49,16 @@
         direct (be/get-all-entities-with-component system component-type)]
     (if (seq direct)
       direct
-      (if-let [resolved-type (matching-component-type system component-type)]
-        (be/get-all-entities-with-component system resolved-type)
-        []))))
+        (if-let [resolved-type (matching-component-type system component-type)]
+          (be/get-all-entities-with-component system resolved-type)
+          []))))
+
+(defn- default-agent-name
+  [entity-id role]
+  (let [role-label (name (or role :agent))
+        id-str (str entity-id)
+        short-id (subs id-str 0 (min 8 (count id-str)))]
+    (str role-label "-" short-id)))
 
 (defn create-agent
    "Create an agent entity with standard components."
@@ -60,17 +67,18 @@
    ([system id q r role opts]
        (let [system (or system (create-ecs-world))  ; Guard against nil system
              entity-id (or id (java.util.UUID/randomUUID))
-             {:keys [name warmth food sleep wood needs status inventory frontier recall path job-id]} opts
+             {:keys [warmth food sleep wood needs status inventory frontier recall path job-id]} opts
              needs' (or needs (c/->Needs (or warmth 0.8) (or food 0.7) (or sleep 0.6) 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
              status' (or status (c/->AgentStatus true false true nil))
-             inventory' (or inventory (c/->PersonalInventory (or wood 0) (or food 0) {}))
-             frontier' (or frontier (c/->Frontier {}))
-             recall' (or recall (c/->Recall {}))
-             base-system (-> system
-                            (be/add-entity entity-id)
-                            (be/add-component entity-id (c/->AgentInfo entity-id (or name (str "agent-" entity-id))))
-                            (be/add-component entity-id (c/->Position q r))
-                            (be/add-component entity-id (c/->Role role))
+              inventory' (or inventory (c/->PersonalInventory (or wood 0) (or food 0) {}))
+              frontier' (or frontier (c/->Frontier {}))
+              recall' (or recall (c/->Recall {}))
+              agent-name (default-agent-name entity-id role)
+              base-system (-> system
+                             (be/add-entity entity-id)
+                             (be/add-component entity-id (c/->AgentInfo entity-id agent-name))
+                             (be/add-component entity-id (c/->Position q r))
+                             (be/add-component entity-id (c/->Role role))
                             (be/add-component entity-id needs')
                             (be/add-component entity-id inventory')
                             (be/add-component entity-id status')

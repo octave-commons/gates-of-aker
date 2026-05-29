@@ -72,3 +72,39 @@
       (is (nil? (:worker-id requeued-job)))
       (is (= [job-id] (:pending-jobs queue-after)))
       (is (empty? (:assigned-jobs queue-after))))))
+
+(deftest already-dead-entity-still-cleans-assignment-and-path
+  (testing "mortality cleanup clears stale assignment/path even when entity is already dead"
+    (let [world0 (ecs/create-ecs-world)
+          [agent-id world1] (ecs/create-agent world0 nil 0 0 :peasant {:needs (needs 0.9)})
+          [building-id world2] (ecs/create-building world1 [1 0] :house)
+          queue-type (be/get-component-type (c/->JobQueue {} [] {}))
+          assignment-type (be/get-component-type (c/->JobAssignment nil 0.0))
+          path-type (be/get-component-type (c/->Path [] 0))
+          death-type (be/get-component-type (c/->DeathState true nil nil))
+          status-type' (be/get-component-type (c/->AgentStatus true false true nil))
+          job-id "stale-job"
+          queue (c/->JobQueue {job-id {:id job-id
+                                       :type :job/improve
+                                       :priority 40
+                                       :state :claimed
+                                       :worker-id agent-id
+                                       :target-pos [1 0]
+                                       :target [1 0]}}
+                              []
+                              {job-id agent-id})
+          world3 (-> world2
+                     (be/add-component building-id queue)
+                     (be/add-component agent-id (c/->JobAssignment job-id 0.4))
+                     (be/add-component agent-id (c/->Path [[1 0]] 0))
+                     (be/add-component agent-id (c/->DeathState false :combat 88))
+                     (be/add-component agent-id (c/->AgentStatus false false false :combat)))
+          world4 (mortality/process world3 101)
+          queue-after (be/get-component world4 building-id queue-type)
+          requeued-job (get (:jobs queue-after) job-id)]
+      (is (false? (:alive? (be/get-component world4 agent-id death-type))))
+      (is (false? (:alive? (be/get-component world4 agent-id status-type'))))
+      (is (nil? (be/get-component world4 agent-id assignment-type)))
+      (is (nil? (be/get-component world4 agent-id path-type)))
+      (is (= :pending (:state requeued-job)))
+      (is (nil? (:worker-id requeued-job))))))

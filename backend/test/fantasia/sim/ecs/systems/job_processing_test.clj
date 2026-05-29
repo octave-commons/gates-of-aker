@@ -304,6 +304,18 @@
                               (when (and index (= [(:q index) (:r index)] [4 0]))
                                 entity-id)))
                           (be/get-all-entities result))
-          queue-component (when target-id
-                            (be/get-component result target-id (ecs/component-class (c/->JobQueue {} [] {}))))]
+           queue-component (when target-id
+                             (be/get-component result target-id (ecs/component-class (c/->JobQueue {} [] {}))))]
       (is (some? queue-component)))))
+
+(deftest dead-agent-assignment-is-cleared
+  (testing "Job processing clears stale assignment for dead agents"
+    (let [world0 (helpers/create-test-world)
+          [agent-id world1] (helpers/create-test-agent world0 :peasant 0 0)
+          world2 (-> world1
+                     (be/add-component agent-id (c/->JobAssignment "stale" 0.3))
+                     (be/add-component agent-id (c/->DeathState false :combat 1))
+                     (be/add-component agent-id (c/->AgentStatus false false false :combat)))
+          result (jp/process world2 {:tick 99})
+          assignment (be/get-component result agent-id (ecs/component-class (c/->JobAssignment nil 0.0)))]
+      (is (nil? assignment)))))
