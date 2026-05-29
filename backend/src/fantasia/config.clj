@@ -4,7 +4,7 @@
             [fantasia.dev.logging :as log]))
 
 (def default-ollama-config
-  "Default Ollama configuration if config file is missing."
+  "Default configuration if config file is missing."
   {:ollama
    {:url "http://localhost:11434/api/generate"
     :primary-model "qwen3:4b"
@@ -17,7 +17,19 @@
    :ollama-embed
    {:url "http://localhost:11434/api/embed"
     :model "nomic-embed-text"
-    :timeout-ms 10000}})
+    :timeout-ms 10000}
+   :storyteller
+   {:provider :openai-compatible
+    :base-url nil
+    :model "mistral-large-3:675b"
+    :temperature 0.9
+    :max-tokens 1400
+    :timeout-ms 90000
+    :context-chapters 4
+    :context-chars 2400
+    :narrative-dir "../../../../fork_tales/narrative"
+    :myths-path "../.myth/myths.jsonl"
+    :character-roster ["Duct" "Null" "Patch" "Sei" "莉津律宗利都" "Rin" "Truth" "Axiom" "Cephalon"]}})
 
 (defn- load-edn-file
   "Load EDN file from path, return nil if file doesn't exist or can't be read."
@@ -74,3 +86,29 @@
   "Get the primary Ollama model."
   [config]
   (get-in config [:ollama :primary-model] "qwen3:4b"))
+
+(defn get-storyteller-config
+  "Get storyteller configuration with env-backed proxy defaults."
+  [config]
+  (let [storyteller (get config :storyteller {})]
+    (-> storyteller
+        (update :provider #(or % :openai-compatible))
+        (update :base-url #(or %
+                               (System/getenv "OPEN_HAX_OPENAI_PROXY_URL")
+                               (System/getenv "OPENAI_BASE_URL")
+                               (System/getenv "PROMETHEAN_OPENAI_API")))
+        (assoc :api-key (or (:api-key storyteller)
+                            (System/getenv "OPEN_HAX_OPENAI_PROXY_AUTH_TOKEN")
+                            (System/getenv "OPENAI_API_KEY")
+                            (System/getenv "OPENAI_KEY")))
+        (update :model #(or (System/getenv "STORYTELLER_MODEL")
+                            (System/getenv "FORK_TALES_MODEL")
+                            %
+                            "mistral-large-3:675b"))
+        (update :narrative-dir #(or % (System/getenv "FORK_TALES_NARRATIVE_DIR") "../../../../fork_tales/narrative"))
+        (update :myths-path #(or % (System/getenv "FORK_TALES_MYTHS_PATH") "../.myth/myths.jsonl"))
+        (update :context-chapters #(or % 4))
+        (update :context-chars #(or % 2400))
+        (update :timeout-ms #(or % 90000))
+        (update :temperature #(or % 0.9))
+        (update :max-tokens #(or % 1400)))))

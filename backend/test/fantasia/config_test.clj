@@ -8,6 +8,7 @@
       (is (map? cfg))
       (is (contains? cfg :ollama))
       (is (contains? cfg :ollama-embed))
+      (is (contains? cfg :storyteller))
       (is (string? (get-in cfg [:ollama :url])))
       (is (string? (get-in cfg [:ollama :primary-model])))
       (is (vector? (get-in cfg [:ollama :fallback-models]))))))
@@ -31,11 +32,14 @@
   (testing "Partial nested config preserves unspecified defaults"
     (let [tmp-file (java.io.File/createTempFile "ollama-config" ".edn")]
       (try
-        (spit tmp-file "{:ollama {:primary-model \"custom-model\"}}")
+        (spit tmp-file "{:ollama {:primary-model \"custom-model\"}\n :storyteller {:model \"custom-story-model\"}}")
         (let [cfg (with-redefs [config/get-ollama-config-path (constantly (.getAbsolutePath tmp-file))]
-                    (config/load-ollama-config!))]
+                    (config/load-ollama-config!))
+              storyteller (config/get-storyteller-config cfg)]
           (is (= "custom-model" (get-in cfg [:ollama :primary-model])))
           (is (= "http://localhost:11434/api/generate" (get-in cfg [:ollama :url])))
-          (is (= "nomic-embed-text" (get-in cfg [:ollama-embed :model]))))
+          (is (= "nomic-embed-text" (get-in cfg [:ollama-embed :model])))
+          (is (= "custom-story-model" (:model storyteller)))
+          (is (= 4 (:context-chapters storyteller))))
         (finally
           (.delete tmp-file))))))

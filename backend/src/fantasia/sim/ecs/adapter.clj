@@ -12,6 +12,7 @@
      :needs (be/get-component-type (fantasia.sim.ecs.components/->Needs 0.6 0.7 0.7 1.0 0.8 0.6 0.5 0.5 0.5 0.6 0.5 0.5 0.5))
      :inventory (be/get-component-type (fantasia.sim.ecs.components/->Inventory 0 0))
      :role (be/get-component-type (fantasia.sim.ecs.components/->Role :priest))
+     :agent-info (be/get-component-type (fantasia.sim.ecs.components/->AgentInfo nil nil))
      :frontier (be/get-component-type (fantasia.sim.ecs.components/->Frontier {}))
      :recall (be/get-component-type (fantasia.sim.ecs.components/->Recall {}))
      :status (be/get-component-type (fantasia.sim.ecs.components/->AgentStatus true false true nil))
@@ -51,6 +52,7 @@
   [ecs-world agent-id]
   (let [position (get-comp ecs-world agent-id :position)
         role (get-comp ecs-world agent-id :role)
+        agent-info (get-comp ecs-world agent-id :agent-info)
         needs (get-comp ecs-world agent-id :needs)
         inventory (get-comp ecs-world agent-id :inventory)
         agent-info-type (be/get-component-type (c/->AgentInfo nil nil))

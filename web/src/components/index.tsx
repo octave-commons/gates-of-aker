@@ -25,3 +25,5 @@ export { TabPanel } from "./TabPanel";
 export { SplashScreen } from "./SplashScreen";
 export { MainMenu } from "./MainMenu";
 export { OllamaTestPage } from "./OllamaTestPage";
+export { ForkTalesPanel } from "./ForkTalesPanel";
+export { ForkTalesPage } from "./ForkTalesPage";
