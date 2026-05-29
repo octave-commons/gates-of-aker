@@ -116,14 +116,18 @@
         center-r (if (= (:shape bounds) :rect)
                    (+ (:origin-r bounds 0) (quot (:h bounds) 2))
                    (:origin-r bounds 0))]
-    (println "[ECS] Spawning initial Fork Tales agents near center:" center-q center-r)
+    (log/log-info "[ECS:SPAWN-INITIAL-AGENTS]"
+                  {:center-q center-q
+                   :center-r center-r
+                   :roster-count (count initial-fork-tales-roster)})
     (let [spawned-world (reduce (fn [world {:keys [name role offset]}]
                                   (let [[dq dr] offset
                                         [_ next-world] (ecs-core/create-agent world nil (+ center-q dq) (+ center-r dr) role {:name name})]
                                     next-world))
                                 ecs-world
                                 initial-fork-tales-roster)]
-      (println "[ECS] Spawned" (count initial-fork-tales-roster) "initial agents")
+      (log/log-info "[ECS:SPAWNED-INITIAL-AGENTS]"
+                    {:count (count initial-fork-tales-roster)})
       spawned-world)))
 
 (defn spawn-initial-buildings!

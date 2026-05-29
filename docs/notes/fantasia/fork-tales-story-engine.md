@@ -48,6 +48,55 @@ Gates of Aker now has a dedicated Fork Tales continuation path in the backend.
   - full chapter detail viewer
   - preview/write result card separate from historical browsing
 
+### API contracts
+
+#### `GET /api/fork-tales/status`
+
+- Response `200` JSON fields:
+  - `configured: boolean` — true when proxy/model configuration is usable.
+  - `provider: string` — storyteller provider label.
+  - `model: string` — selected storyteller model.
+  - `narrative_dir: string` — filesystem path scanned for chapter files.
+  - `narrative_exists: boolean` — whether the narrative directory exists.
+  - `chapter_count: number` — number of discovered chapter files.
+  - `latest_chapter?: { number?: number, title?: string, path?: string }` — newest chapter summary when present.
+- Error shape: `{ error: string }` with a non-2xx status if status collection fails.
+
+#### `GET /api/fork-tales/history`
+
+- Response `200` JSON fields:
+  - `configured: boolean` — same readiness signal as status.
+  - `chapter_count: number` — total discovered chapters.
+  - `chapters: Array<{ number?: number, title?: string, path?: string, preview?: string }>` — newest-first chapter summaries.
+- Error shape: `{ error: string }` with a non-2xx status if history loading fails.
+
+#### `GET /api/fork-tales/history/:chapter-number`
+
+- Path parameter:
+  - `chapter-number: integer` — requested chapter number.
+- Response `200` JSON fields:
+  - `number?: number`
+  - `title?: string`
+  - `path?: string`
+  - `preview?: string`
+  - `text?: string` — full chapter body when available.
+- Error shape: `{ error: string }`; `404` is used when the requested chapter is absent.
+
+#### `POST /api/fork-tales/continue`
+
+- Request JSON fields:
+  - `dry_run?: boolean` — defaults to preview mode; when true, generate text without writing a chapter file.
+  - `user_prompt?: string` — optional operator steering text appended to the story prompt.
+- Response `200` JSON fields:
+  - `ok: boolean`
+  - `configured: boolean`
+  - `chapter_number?: number`
+  - `title?: string`
+  - `path?: string`
+  - `written: boolean` — false for dry runs, true when a chapter file was persisted.
+  - `text?: string`
+- Error shape: `{ ok: false, configured?: boolean, error: string }` with a non-2xx status for config or generation failures.
+
 ### Deployment/runtime notes
 
 - Backend now respects `PORT` from the environment instead of assuming `3000` only.

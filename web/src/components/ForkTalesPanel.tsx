@@ -85,6 +85,7 @@ export function ForkTalesPanel({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoSelectedChapterRef = useRef(false);
+  const chapterRequestIdRef = useRef(0);
 
   const statusUrl = useMemo(
     () => `${backendOrigin.replace(/\/$/, "")}/api/fork-tales/status`,
@@ -121,6 +122,8 @@ export function ForkTalesPanel({
       if (!Number.isFinite(chapterNumber)) {
         return;
       }
+      const requestId = ++chapterRequestIdRef.current;
+      setSelectedChapterNumber(chapterNumber);
       if (!options?.silent) {
         setLoadingChapter(true);
       }
@@ -130,12 +133,16 @@ export function ForkTalesPanel({
         if (!response.ok) {
           throw new Error(data.error || `HTTP ${response.status}`);
         }
+        if (requestId !== chapterRequestIdRef.current) {
+          return;
+        }
         setSelectedChapter(data);
-        setSelectedChapterNumber(chapterNumber);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load chapter detail");
+        if (requestId === chapterRequestIdRef.current) {
+          setError(err instanceof Error ? err.message : "Failed to load chapter detail");
+        }
       } finally {
-        if (!options?.silent) {
+        if (!options?.silent && requestId === chapterRequestIdRef.current) {
           setLoadingChapter(false);
         }
       }
@@ -349,11 +356,11 @@ export function ForkTalesPanel({
               <div style={{ fontSize: 12, opacity: 0.7 }}>No chapters found yet.</div>
             ) : (
               <div style={{ display: "grid", gap: 8, maxHeight: 220, overflowY: "auto" }}>
-                {history.map((chapter) => {
+                {history.map((chapter, index) => {
                   const isSelected = chapter.number === selectedChapterNumber;
                   return (
                     <button
-                      key={chapter.number ?? chapter.path ?? chapter.title}
+                      key={chapter.number ?? chapter.path ?? chapter.title ?? `chapter-${index}`}
                       type="button"
                       onClick={() => {
                         if (typeof chapter.number === "number") {
